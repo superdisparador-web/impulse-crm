@@ -39,7 +39,7 @@ const menu = [
   },
   {
     title: "WhatsApp",
-    href: "/connections",
+    href: "/whatsapp",
     icon: MessageCircle,
   },
   {
