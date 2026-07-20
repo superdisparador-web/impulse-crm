@@ -755,17 +755,19 @@ enum TriggerType {
 }
 
 model Organization {
-  id        String    @id @default(cuid())
-  name      String    @db.VarChar(255)
-  document  String?   @db.VarChar(32)
-  email     String?   @db.VarChar(255)
-  phone     String?   @db.VarChar(32)
-  active    Boolean   @default(true)
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
-  users     User[]
-  leads     Lead[]
+  id                String             @id @default(cuid())
+  name              String             @db.VarChar(255)
+  document          String?            @db.VarChar(32)
+  email             String?            @db.VarChar(255)
+  phone             String?            @db.VarChar(32)
+  active            Boolean            @default(true)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  deletedAt         DateTime?
+  users             User[]
+  leads             Lead[]
+  whatsappAccounts  WhatsappAccount[]
+  whatsappTemplates WhatsappTemplate[]
 
   @@index([name])
   @@index([deletedAt])
@@ -832,6 +834,54 @@ enum LeadHistoryAction {
   ASSIGNED
   UNASSIGNED
   DELETED
+}
+
+enum WhatsappAccountStatus {
+  CONNECTED
+  DISCONNECTED
+}
+
+model WhatsappAccount {
+  id                String                @id @default(cuid())
+  organizationId    String
+  name              String                @db.VarChar(255)
+  phoneNumber       String                @db.VarChar(32)
+  phoneNumberId     String                @db.VarChar(128)
+  businessAccountId String                @db.VarChar(128)
+  accessToken       String                @db.Text
+  verifyToken       String                @db.VarChar(255)
+  webhookSecret     String?               @db.VarChar(255)
+  status            WhatsappAccountStatus @default(DISCONNECTED)
+  connectedAt       DateTime?
+  lastSyncAt        DateTime?
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+  deletedAt         DateTime?
+  organization      Organization          @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId])
+  @@index([phoneNumberId])
+  @@index([businessAccountId])
+  @@index([status])
+  @@index([deletedAt])
+}
+
+model WhatsappTemplate {
+  id             String       @id @default(cuid())
+  organizationId String
+  name           String       @db.VarChar(255)
+  category       String       @db.VarChar(64)
+  language       String       @db.VarChar(16)
+  status         String       @db.VarChar(64)
+  components     Json
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([organizationId, name, language])
+  @@index([organizationId])
+  @@index([category])
+  @@index([status])
 }
 
 model Lead {
