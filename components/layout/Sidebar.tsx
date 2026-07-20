@@ -12,6 +12,7 @@ import {
   CalendarClock,
   Shuffle,
   Building2,
+  UserRoundCog,
   Settings,
 } from "lucide-react";
 
@@ -60,6 +61,11 @@ const menu = [
     title: "Organizações",
     href: "/organizations",
     icon: Building2,
+  },
+  {
+    title: "Usuários",
+    href: "/users",
+    icon: UserRoundCog,
   },
   {
     title: "Configurações",
