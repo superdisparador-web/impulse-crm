@@ -43,7 +43,7 @@ export class AuthService {
   async login(data: LoginDto) {
     const user = await this.usersService.findByEmail(data.email);
 
-    if (!user) {
+    if (!user || !user.active || user.deletedAt) {
       throw new UnauthorizedException('Credenciais inválidas');
     }
 
