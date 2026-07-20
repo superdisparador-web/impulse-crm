@@ -1,5 +1,4 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
 import { Request } from 'express';
 import { AssignLeadDto } from './dto/assign-lead.dto';
 import { CreateLeadDto } from './dto/create-lead.dto';
@@ -7,11 +6,12 @@ import { ListLeadsDto } from './dto/list-leads.dto';
 import { UpdateLeadStatusDto } from './dto/update-lead-status.dto';
 import { UpdateLeadTemperatureDto } from './dto/update-lead-temperature.dto';
 import { UpdateLeadDto } from './dto/update-lead.dto';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { LeadsService } from './leads.service';
 
 type AuthRequest = Request & { user?: { id?: string } };
 
-@UseGuards(AuthGuard('jwt'))
+@UseGuards(JwtAuthGuard)
 @Controller('leads')
 export class LeadsController {
   constructor(private readonly leadsService: LeadsService) {}
