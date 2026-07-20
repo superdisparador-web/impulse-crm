@@ -765,6 +765,7 @@ model Organization {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
   users     User[]
+  leads     Lead[]
 
   @@index([name])
   @@index([deletedAt])
@@ -783,6 +784,8 @@ model User {
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
   deletedAt      DateTime?
+  assignedLeads  Lead[]
+  leadHistory    LeadHistory[]
 
   @@index([organizationId])
   @@index([deletedAt])
@@ -791,4 +794,89 @@ model User {
 enum Role {
   ADMIN
   CORRETOR
+}
+
+enum LeadSource {
+  MANUAL
+  IMPORT
+  WHATSAPP
+  CAMPAIGN
+  FACEBOOK
+  INSTAGRAM
+  LANDING_PAGE
+  REFERRAL
+  PHONE
+  OTHER
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  UNQUALIFIED
+  CONVERTED
+  LOST
+}
+
+enum LeadTemperature {
+  COLD
+  WARM
+  HOT
+}
+
+enum LeadHistoryAction {
+  CREATED
+  UPDATED
+  STATUS_CHANGED
+  TEMPERATURE_CHANGED
+  ASSIGNED
+  UNASSIGNED
+  DELETED
+}
+
+model Lead {
+  id              String          @id @default(cuid())
+  name            String          @db.VarChar(255)
+  phone           String          @db.VarChar(32)
+  normalizedPhone String          @db.VarChar(32)
+  email           String?         @db.VarChar(255)
+  document        String?         @db.VarChar(64)
+  source          LeadSource      @default(MANUAL)
+  status          LeadStatus      @default(NEW)
+  temperature     LeadTemperature @default(COLD)
+  notes           String?
+  organizationId  String
+  assignedUserId  String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  deletedAt       DateTime?
+  organization    Organization    @relation(fields: [organizationId], references: [id])
+  assignedUser    User?           @relation(fields: [assignedUserId], references: [id])
+  history         LeadHistory[]
+
+  @@index([organizationId])
+  @@index([assignedUserId])
+  @@index([normalizedPhone])
+  @@index([status])
+  @@index([temperature])
+  @@index([source])
+  @@index([createdAt])
+  @@index([deletedAt])
+}
+
+model LeadHistory {
+  id                String            @id @default(cuid())
+  leadId            String
+  action            LeadHistoryAction
+  description       String            @db.VarChar(500)
+  metadata          Json?
+  performedByUserId String?
+  createdAt         DateTime          @default(now())
+  lead              Lead              @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  performedByUser   User?             @relation(fields: [performedByUserId], references: [id])
+
+  @@index([leadId])
+  @@index([performedByUserId])
+  @@index([action])
+  @@index([createdAt])
 }
