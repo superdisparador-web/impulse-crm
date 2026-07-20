@@ -754,6 +754,21 @@ enum TriggerType {
   advanced
 }
 
+model Organization {
+  id        String    @id @default(cuid())
+  name      String    @db.VarChar(255)
+  document  String?   @db.VarChar(32)
+  email     String?   @db.VarChar(255)
+  phone     String?   @db.VarChar(32)
+  active    Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([name])
+  @@index([deletedAt])
+}
+
 model User {
   id        String   @id @default(cuid())
   name      String

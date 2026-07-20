@@ -11,8 +11,9 @@ import { SettingsModule } from './settings/settings.module';
 import { QueuesModule } from './queues/queues.module';
 import { ReportsModule } from './reports/reports.module';
 import { UploadsModule } from './uploads/uploads.module';
+import { OrganizationsModule } from './organizations/organizations.module';
 
 @Module({
-  imports: [AuthModule, UsersModule, PrismaModule, DashboardModule, ContactsModule, WhatsappModule, CampaignsModule, EvolutionModule, SettingsModule, QueuesModule, ReportsModule, UploadsModule]
+  imports: [AuthModule, UsersModule, PrismaModule, DashboardModule, ContactsModule, WhatsappModule, CampaignsModule, EvolutionModule, SettingsModule, QueuesModule, ReportsModule, UploadsModule, OrganizationsModule]
 })
 export class AppModule {}
