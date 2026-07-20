@@ -60,7 +60,7 @@ export default function LeadForm({
     setLoading(true);
 
     try {
-      const payload: Record<string, any> = {
+      const payload: Partial<LeadData> = {
         name: form.name.trim(),
         phone: form.phone.trim(),
       };
