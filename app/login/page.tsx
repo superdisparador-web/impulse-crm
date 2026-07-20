@@ -1,33 +1,74 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { login } from "@/services/auth";
+
 export default function LoginPage() {
+  const router = useRouter();
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  async function handleLogin(e: React.FormEvent) {
+    e.preventDefault();
+
+    try {
+      setLoading(true);
+      setError("");
+
+      await login(email, password);
+
+      router.push("/dashboard");
+    } catch {
+      setError("E-mail ou senha inválidos.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
-    <main className="min-h-screen bg-slate-950 flex items-center justify-center">
-      <div className="w-full max-w-md rounded-2xl bg-slate-900 p-8 shadow-2xl border border-slate-800">
-        <h1 className="text-3xl font-bold text-white text-center">
+    <main className="flex min-h-screen items-center justify-center bg-slate-950">
+      <form
+        onSubmit={handleLogin}
+        className="w-full max-w-md rounded-xl bg-slate-900 p-8 shadow-xl"
+      >
+        <h1 className="mb-8 text-center text-3xl font-bold text-white">
           Impulse CRM
         </h1>
 
-        <p className="text-slate-400 text-center mt-2">
-          Faça login para continuar
-        </p>
+        <input
+          type="email"
+          placeholder="E-mail"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className="mb-4 w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 text-white"
+        />
 
-        <div className="mt-8 space-y-4">
-          <input
-            type="email"
-            placeholder="E-mail"
-            className="w-full rounded-lg bg-slate-800 border border-slate-700 px-4 py-3 text-white outline-none"
-          />
+        <input
+          type="password"
+          placeholder="Senha"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          className="mb-4 w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 text-white"
+        />
 
-          <input
-            type="password"
-            placeholder="Senha"
-            className="w-full rounded-lg bg-slate-800 border border-slate-700 px-4 py-3 text-white outline-none"
-          />
+        {error && (
+          <p className="mb-4 text-sm text-red-500">
+            {error}
+          </p>
+        )}
 
-          <button className="w-full rounded-lg bg-green-600 hover:bg-green-700 py-3 text-white font-semibold transition">
-            Entrar
-          </button>
-        </div>
-      </div>
+        <button
+          disabled={loading}
+          className="w-full rounded-lg bg-blue-600 py-3 font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+        >
+          {loading ? "Entrando..." : "Entrar"}
+        </button>
+      </form>
     </main>
   );
 }

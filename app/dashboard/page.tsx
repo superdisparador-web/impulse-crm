@@ -17,40 +17,40 @@ export default function Dashboard() {
   }, []);
 
   return (
-    <main className="min-h-screen bg-slate-950 text-white p-8">
-      <h1 className="text-4xl font-bold mb-8">Dashboard</h1>
+    <>
+      <h1 className="text-4xl font-bold mb-8 text-slate-900">
+        Dashboard
+      </h1>
 
       <div className="grid grid-cols-4 gap-6">
-
-        <div className="bg-slate-900 rounded-xl p-6">
-          <h2 className="text-gray-400">WhatsApps</h2>
-          <p className="text-3xl font-bold text-green-500">
+        <div className="rounded-xl bg-white p-6 shadow">
+          <h2 className="text-slate-500">WhatsApps</h2>
+          <p className="text-3xl font-bold text-green-600">
             {dados.whatsapps}
           </p>
         </div>
 
-        <div className="bg-slate-900 rounded-xl p-6">
-          <h2 className="text-gray-400">Contatos</h2>
+        <div className="rounded-xl bg-white p-6 shadow">
+          <h2 className="text-slate-500">Contatos</h2>
           <p className="text-3xl font-bold">
             {dados.contacts}
           </p>
         </div>
 
-        <div className="bg-slate-900 rounded-xl p-6">
-          <h2 className="text-gray-400">Campanhas</h2>
+        <div className="rounded-xl bg-white p-6 shadow">
+          <h2 className="text-slate-500">Campanhas</h2>
           <p className="text-3xl font-bold">
             {dados.campaigns}
           </p>
         </div>
 
-        <div className="bg-slate-900 rounded-xl p-6">
-          <h2 className="text-gray-400">Mensagens Hoje</h2>
-          <p className="text-3xl font-bold text-blue-400">
+        <div className="rounded-xl bg-white p-6 shadow">
+          <h2 className="text-slate-500">Mensagens Hoje</h2>
+          <p className="text-3xl font-bold text-blue-600">
             {dados.today}
           </p>
         </div>
-
       </div>
-    </main>
+    </>
   );
 }
