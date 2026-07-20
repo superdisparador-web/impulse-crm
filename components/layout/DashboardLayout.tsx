@@ -1,6 +1,7 @@
 "use client";
 
 import { ReactNode } from "react";
+import { usePathname } from "next/navigation";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
 
@@ -11,6 +12,12 @@ interface DashboardLayoutProps {
 export default function DashboardLayout({
   children,
 }: DashboardLayoutProps) {
+  const pathname = usePathname();
+
+  if (pathname === "/login") {
+    return children;
+  }
+
   return (
     <div className="flex h-screen bg-slate-100">
       <Sidebar />
