@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import Modal from "@/components/ui/Modal";
 import AgentForm from "@/components/agents/AgentForm";
@@ -15,7 +15,7 @@ export default function ContactsPage() {
   const [error, setError] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
 
-  async function loadAgents() {
+  const loadAgents = useCallback(async function loadAgents() {
     try {
       setLoading(true);
       setError("");
@@ -29,11 +29,15 @@ export default function ContactsPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
 
   useEffect(() => {
-    loadAgents();
-  }, []);
+    const timeoutId = window.setTimeout(() => {
+      void loadAgents();
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [loadAgents]);
 
   function handleCloseModal() {
     setModalOpen(false);
@@ -44,7 +48,7 @@ export default function ContactsPage() {
 
     setModalOpen(false);
 
-    loadAgents();
+    void loadAgents();
   }
 
   return (

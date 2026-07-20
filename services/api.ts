@@ -26,3 +26,27 @@ export async function api<T>(
 
   return response.json();
 }
+
+api.get = function get<T>(endpoint: string): Promise<T> {
+  return api<T>(endpoint);
+};
+
+api.post = function post<T>(endpoint: string, data: unknown): Promise<T> {
+  return api<T>(endpoint, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+};
+
+api.put = function put<T>(endpoint: string, data: unknown): Promise<T> {
+  return api<T>(endpoint, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+};
+
+api.delete = function remove<T>(endpoint: string): Promise<T> {
+  return api<T>(endpoint, {
+    method: "DELETE",
+  });
+};

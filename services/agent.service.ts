@@ -1,29 +1,5 @@
 import { api } from "./api";
-
-export interface Agent {
-  id: string;
-  companyId: string;
-  name: string;
-  whatsapp: string;
-  email?: string;
-  mode?: string;
-  weight?: number;
-  maxActiveLeads?: number;
-  region?: string;
-  active: boolean;
-}
-
-export interface CreateAgentDto {
-  companyId: string;
-  name: string;
-  whatsapp: string;
-  email?: string;
-  mode?: string;
-  weight?: number;
-  maxActiveLeads?: number;
-  region?: string;
-  active?: boolean;
-}
+import { Agent, CreateAgentDto } from "@/types/agent";
 
 class AgentService {
   async getAll(): Promise<Agent[]> {

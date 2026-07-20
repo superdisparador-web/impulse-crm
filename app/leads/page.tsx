@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "@/services/api";
 import LeadForm, { LeadData } from "@/components/leads/LeadForm";
 
@@ -20,7 +20,7 @@ export default function LeadsPage() {
 
   const [search, setSearch] = useState("");
 
-  async function loadLeads() {
+  const loadLeads = useCallback(async function loadLeads() {
     try {
       const data = await api<Lead[]>("/leads");
 
@@ -31,11 +31,15 @@ export default function LeadsPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
 
   useEffect(() => {
-    loadLeads();
-  }, []);
+    const timeoutId = window.setTimeout(() => {
+      void loadLeads();
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [loadLeads]);
 
   const filteredLeads = useMemo(() => {
     const term = search.toLowerCase().trim();
@@ -86,7 +90,7 @@ export default function LeadsPage() {
           onSuccess={() => {
             setSelectedLead(undefined);
             setShowForm(false);
-            loadLeads();
+            void loadLeads();
           }}
         />
       )}      <main className="space-y-6">
