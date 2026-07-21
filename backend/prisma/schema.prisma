@@ -769,6 +769,7 @@ model Organization {
   whatsappAccounts  WhatsappAccount[]
   whatsappTemplates WhatsappTemplate[]
   campaigns         Campaign[]
+  messageQueues     MessageQueue[]
   webhookEvents     WebhookEvent[]
   inboundMessages   InboundMessage[]
   statusHistories   MessageStatusHistory[]
@@ -865,6 +866,7 @@ model WhatsappAccount {
   deletedAt              DateTime?
   organization           Organization           @relation(fields: [organizationId], references: [id])
   campaigns              Campaign[]
+  messageQueues          MessageQueue[]
   webhookEvents          WebhookEvent[]
   inboundMessages        InboundMessage[]
   messageStatusHistories MessageStatusHistory[]
@@ -991,6 +993,8 @@ model Campaign {
   whatsappAccount    WhatsappAccount?    @relation(fields: [whatsappAccountId], references: [id])
   whatsappTemplate   WhatsappTemplate?   @relation(fields: [whatsappTemplateId], references: [id])
   recipients         CampaignRecipient[]
+  messageQueues      MessageQueue[]
+  messageLogs        MessageLog[]
 
   @@index([organizationId])
   @@index([status])
@@ -1022,12 +1026,92 @@ model CampaignRecipient {
   campaign       Campaign                @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   lead           Lead?                   @relation(fields: [leadId], references: [id])
   assignedUser   User?                   @relation(fields: [assignedUserId], references: [id])
+  messageQueues  MessageQueue[]
+  messageLogs    MessageLog[]
 
   @@unique([campaignId, leadId])
   @@index([campaignId])
   @@index([leadId])
   @@index([status])
   @@index([assignedUserId])
+}
+
+enum QueueStatus {
+  PENDING
+  PROCESSING
+  SENT
+  DELIVERED
+  READ
+  FAILED
+  CANCELED
+}
+
+enum Priority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+model MessageQueue {
+  id                  String             @id @default(cuid())
+  organizationId      String
+  campaignId          String?
+  campaignRecipientId String?
+  whatsappAccountId   String?
+  messageId           String?            @db.VarChar(255)
+  phone               String             @db.VarChar(32)
+  payload             Json?
+  status              QueueStatus        @default(PENDING)
+  priority            Priority           @default(NORMAL)
+  scheduledAt         DateTime?
+  processedAt         DateTime?
+  sentAt              DateTime?
+  deliveredAt         DateTime?
+  readAt              DateTime?
+  failedAt            DateTime?
+  errorMessage        String?
+  attempts            Int                @default(0)
+  maxAttempts         Int                @default(3)
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+  organization        Organization       @relation(fields: [organizationId], references: [id])
+  campaign            Campaign?          @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  campaignRecipient   CampaignRecipient? @relation(fields: [campaignRecipientId], references: [id], onDelete: SetNull)
+  whatsappAccount     WhatsappAccount?   @relation(fields: [whatsappAccountId], references: [id], onDelete: SetNull)
+  logs                MessageLog[]
+
+  @@index([organizationId])
+  @@index([campaignId])
+  @@index([campaignRecipientId])
+  @@index([whatsappAccountId])
+  @@index([messageId])
+  @@index([status])
+  @@index([priority])
+  @@index([scheduledAt])
+  @@index([createdAt])
+}
+
+model MessageLog {
+  id                  String             @id @default(cuid())
+  messageQueueId      String?
+  campaignId          String?
+  campaignRecipientId String?
+  messageId           String?            @db.VarChar(255)
+  status              QueueStatus
+  description         String?            @db.VarChar(500)
+  metadata            Json?
+  createdAt           DateTime           @default(now())
+  messageQueue        MessageQueue?      @relation(fields: [messageQueueId], references: [id], onDelete: SetNull)
+  campaign            Campaign?          @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  campaignRecipient   CampaignRecipient? @relation(fields: [campaignRecipientId], references: [id], onDelete: SetNull)
+
+  @@index([messageQueueId])
+  @@index([campaignId])
+  @@index([campaignRecipientId])
+  @@index([messageId])
+  @@index([status])
+  @@index([createdAt])
 }
 
 enum WebhookProvider {
