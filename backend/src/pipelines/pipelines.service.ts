@@ -43,6 +43,8 @@ export class PipelinesService {
 
   async remove(organizationId: string, id: string) {
     await this.ensurePipeline(organizationId, id);
+    const leads = await this.prisma.lead.count({ where: { organizationId, pipelineId: id, deletedAt: null } });
+    if (leads > 0) throw new BadRequestException('Não é possível excluir pipeline com leads ativos');
     await this.prisma.pipeline.update({ where: { id }, data: { deletedAt: new Date(), active: false } });
     return { success: true };
   }
@@ -64,7 +66,11 @@ export class PipelinesService {
 
   async updateStage(organizationId: string, id: string, data: UpdatePipelineStageDto) {
     const current = await this.ensureStage(organizationId, id);
-    if (data.pipelineId) await this.ensurePipeline(organizationId, data.pipelineId);
+    if (data.pipelineId && data.pipelineId !== current.pipelineId) {
+      await this.ensurePipeline(organizationId, data.pipelineId);
+      const leads = await this.prisma.lead.count({ where: { organizationId, stageId: id, deletedAt: null } });
+      if (leads > 0) throw new BadRequestException('Não é possível mover etapa com leads ativos para outro pipeline');
+    }
     return this.prisma.pipelineStage.update({ where: { id }, data: { name: data.name?.trim(), pipelineId: data.pipelineId ?? current.pipelineId, order: data.order, color: data.color, active: data.active }, select: stageSelect });
   }
 
