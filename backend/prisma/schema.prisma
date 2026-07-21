@@ -755,20 +755,24 @@ enum TriggerType {
 }
 
 model Organization {
-  id                String             @id @default(cuid())
-  name              String             @db.VarChar(255)
-  document          String?            @db.VarChar(32)
-  email             String?            @db.VarChar(255)
-  phone             String?            @db.VarChar(32)
-  active            Boolean            @default(true)
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
+  id                String                 @id @default(cuid())
+  name              String                 @db.VarChar(255)
+  document          String?                @db.VarChar(32)
+  email             String?                @db.VarChar(255)
+  phone             String?                @db.VarChar(32)
+  active            Boolean                @default(true)
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
   deletedAt         DateTime?
   users             User[]
   leads             Lead[]
   whatsappAccounts  WhatsappAccount[]
   whatsappTemplates WhatsappTemplate[]
   campaigns         Campaign[]
+  messageQueues     MessageQueue[]
+  webhookEvents     WebhookEvent[]
+  inboundMessages   InboundMessage[]
+  statusHistories   MessageStatusHistory[]
 
   @@index([name])
   @@index([deletedAt])
@@ -845,23 +849,27 @@ enum WhatsappAccountStatus {
 }
 
 model WhatsappAccount {
-  id                String                @id @default(cuid())
-  organizationId    String
-  name              String                @db.VarChar(255)
-  phoneNumber       String                @db.VarChar(32)
-  phoneNumberId     String                @db.VarChar(128)
-  businessAccountId String                @db.VarChar(128)
-  accessToken       String                @db.Text
-  verifyToken       String                @db.VarChar(255)
-  webhookSecret     String?               @db.VarChar(255)
-  status            WhatsappAccountStatus @default(DISCONNECTED)
-  connectedAt       DateTime?
-  lastSyncAt        DateTime?
-  createdAt         DateTime              @default(now())
-  updatedAt         DateTime              @updatedAt
-  deletedAt         DateTime?
-  organization      Organization          @relation(fields: [organizationId], references: [id])
-  campaigns         Campaign[]
+  id                     String                 @id @default(cuid())
+  organizationId         String
+  name                   String                 @db.VarChar(255)
+  phoneNumber            String                 @db.VarChar(32)
+  phoneNumberId          String                 @db.VarChar(128)
+  businessAccountId      String                 @db.VarChar(128)
+  accessToken            String                 @db.Text
+  verifyToken            String                 @db.VarChar(255)
+  webhookSecret          String?                @db.VarChar(255)
+  status                 WhatsappAccountStatus  @default(DISCONNECTED)
+  connectedAt            DateTime?
+  lastSyncAt             DateTime?
+  createdAt              DateTime               @default(now())
+  updatedAt              DateTime               @updatedAt
+  deletedAt              DateTime?
+  organization           Organization           @relation(fields: [organizationId], references: [id])
+  campaigns              Campaign[]
+  messageQueues          MessageQueue[]
+  webhookEvents          WebhookEvent[]
+  inboundMessages        InboundMessage[]
+  messageStatusHistories MessageStatusHistory[]
 
   @@index([organizationId])
   @@index([phoneNumberId])
@@ -985,6 +993,8 @@ model Campaign {
   whatsappAccount    WhatsappAccount?    @relation(fields: [whatsappAccountId], references: [id])
   whatsappTemplate   WhatsappTemplate?   @relation(fields: [whatsappTemplateId], references: [id])
   recipients         CampaignRecipient[]
+  messageQueues      MessageQueue[]
+  messageLogs        MessageLog[]
 
   @@index([organizationId])
   @@index([status])
@@ -1016,10 +1026,223 @@ model CampaignRecipient {
   campaign       Campaign                @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   lead           Lead?                   @relation(fields: [leadId], references: [id])
   assignedUser   User?                   @relation(fields: [assignedUserId], references: [id])
+  messageQueues  MessageQueue[]
+  messageLogs    MessageLog[]
 
   @@unique([campaignId, leadId])
   @@index([campaignId])
   @@index([leadId])
   @@index([status])
   @@index([assignedUserId])
+}
+
+enum QueueStatus {
+  PENDING
+  PROCESSING
+  SENT
+  DELIVERED
+  READ
+  FAILED
+  CANCELED
+}
+
+enum Priority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+model MessageQueue {
+  id                  String             @id @default(cuid())
+  organizationId      String
+  campaignId          String?
+  campaignRecipientId String?
+  whatsappAccountId   String?
+  messageId           String?            @db.VarChar(255)
+  phone               String             @db.VarChar(32)
+  payload             Json?
+  status              QueueStatus        @default(PENDING)
+  priority            Priority           @default(NORMAL)
+  scheduledAt         DateTime?
+  processedAt         DateTime?
+  sentAt              DateTime?
+  deliveredAt         DateTime?
+  readAt              DateTime?
+  failedAt            DateTime?
+  errorMessage        String?
+  attempts            Int                @default(0)
+  maxAttempts         Int                @default(3)
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+  organization        Organization       @relation(fields: [organizationId], references: [id])
+  campaign            Campaign?          @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  campaignRecipient   CampaignRecipient? @relation(fields: [campaignRecipientId], references: [id], onDelete: SetNull)
+  whatsappAccount     WhatsappAccount?   @relation(fields: [whatsappAccountId], references: [id], onDelete: SetNull)
+  logs                MessageLog[]
+
+  @@index([organizationId])
+  @@index([campaignId])
+  @@index([campaignRecipientId])
+  @@index([whatsappAccountId])
+  @@index([messageId])
+  @@index([status])
+  @@index([priority])
+  @@index([scheduledAt])
+  @@index([createdAt])
+}
+
+model MessageLog {
+  id                  String             @id @default(cuid())
+  messageQueueId      String?
+  campaignId          String?
+  campaignRecipientId String?
+  messageId           String?            @db.VarChar(255)
+  status              QueueStatus
+  description         String?            @db.VarChar(500)
+  metadata            Json?
+  createdAt           DateTime           @default(now())
+  messageQueue        MessageQueue?      @relation(fields: [messageQueueId], references: [id], onDelete: SetNull)
+  campaign            Campaign?          @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  campaignRecipient   CampaignRecipient? @relation(fields: [campaignRecipientId], references: [id], onDelete: SetNull)
+
+  @@index([messageQueueId])
+  @@index([campaignId])
+  @@index([campaignRecipientId])
+  @@index([messageId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+enum WebhookProvider {
+  META
+}
+
+enum WebhookEventStatus {
+  RECEIVED
+  PROCESSED
+  FAILED
+  IGNORED
+}
+
+enum InboundMessageType {
+  TEXT
+  AUDIO
+  IMAGE
+  VIDEO
+  DOCUMENT
+  LOCATION
+  CONTACT
+  STICKER
+  REACTION
+  BUTTON
+  INTERACTIVE
+  UNKNOWN
+}
+
+enum MetaMessageStatus {
+  SENT
+  DELIVERED
+  READ
+  FAILED
+  CANCELED
+}
+
+model WebhookEvent {
+  id                String             @id @default(cuid())
+  provider          WebhookProvider    @default(META)
+  eventType         String             @db.VarChar(64)
+  status            WebhookEventStatus @default(RECEIVED)
+  whatsappAccountId String?
+  phoneNumberId     String?            @db.VarChar(128)
+  metaMessageId     String?            @db.VarChar(255)
+  payload           Json
+  errorMessage      String?
+  signatureValid    Boolean?
+  processedAt       DateTime?
+  createdAt         DateTime           @default(now())
+  whatsappAccount   WhatsappAccount?   @relation(fields: [whatsappAccountId], references: [id])
+  organizationId    String?
+  organization      Organization?      @relation(fields: [organizationId], references: [id])
+
+  @@index([provider])
+  @@index([eventType])
+  @@index([status])
+  @@index([whatsappAccountId])
+  @@index([organizationId])
+  @@index([phoneNumberId])
+  @@index([metaMessageId])
+  @@index([createdAt])
+}
+
+model InboundMessage {
+  id                String             @id @default(cuid())
+  whatsappAccountId String?
+  phoneNumberId     String?            @db.VarChar(128)
+  from              String             @db.VarChar(64)
+  customerName      String?            @db.VarChar(255)
+  metaMessageId     String             @unique @db.VarChar(255)
+  type              InboundMessageType @default(UNKNOWN)
+  text              String?
+  payload           Json
+  receivedAt        DateTime
+  createdAt         DateTime           @default(now())
+  whatsappAccount   WhatsappAccount?   @relation(fields: [whatsappAccountId], references: [id])
+  organizationId    String?
+  organization      Organization?      @relation(fields: [organizationId], references: [id])
+  mediaFiles        MediaFile[]
+
+  @@index([whatsappAccountId])
+  @@index([organizationId])
+  @@index([phoneNumberId])
+  @@index([from])
+  @@index([type])
+  @@index([receivedAt])
+}
+
+model MediaFile {
+  id               String             @id @default(cuid())
+  inboundMessageId String?
+  metaMediaId      String             @db.VarChar(255)
+  type             InboundMessageType
+  mimeType         String?            @db.VarChar(128)
+  sha256           String?            @db.VarChar(255)
+  fileName         String?            @db.VarChar(500)
+  url              String?            @db.Text
+  downloadStatus   String             @default("PENDING") @db.VarChar(32)
+  metadata         Json?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  inboundMessage   InboundMessage?    @relation(fields: [inboundMessageId], references: [id], onDelete: SetNull)
+
+  @@index([inboundMessageId])
+  @@index([metaMediaId])
+  @@index([type])
+  @@index([downloadStatus])
+}
+
+model MessageStatusHistory {
+  id                String            @id @default(cuid())
+  whatsappAccountId String?
+  phoneNumberId     String?           @db.VarChar(128)
+  metaMessageId     String            @db.VarChar(255)
+  status            MetaMessageStatus
+  recipientPhone    String?           @db.VarChar(64)
+  conversationId    String?           @db.VarChar(255)
+  pricing           Json?
+  errors            Json?
+  rawPayload        Json
+  occurredAt        DateTime
+  createdAt         DateTime          @default(now())
+  whatsappAccount   WhatsappAccount?  @relation(fields: [whatsappAccountId], references: [id])
+  organizationId    String?
+  organization      Organization?     @relation(fields: [organizationId], references: [id])
+
+  @@unique([metaMessageId, status, occurredAt])
+  @@index([whatsappAccountId])
+  @@index([organizationId])
+  @@index([phoneNumberId])
+  @@index([metaMessageId])
+  @@index([status])
+  @@index([occurredAt])
 }
