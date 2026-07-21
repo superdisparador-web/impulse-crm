@@ -769,6 +769,7 @@ model Organization {
   whatsappAccounts  WhatsappAccount[]
   whatsappTemplates WhatsappTemplate[]
   campaigns         Campaign[]
+  messageQueues     MessageQueue[]
 
   @@index([name])
   @@index([deletedAt])
@@ -862,6 +863,7 @@ model WhatsappAccount {
   deletedAt         DateTime?
   organization      Organization          @relation(fields: [organizationId], references: [id])
   campaigns         Campaign[]
+  messageQueues     MessageQueue[]
 
   @@index([organizationId])
   @@index([phoneNumberId])
@@ -985,6 +987,8 @@ model Campaign {
   whatsappAccount    WhatsappAccount?    @relation(fields: [whatsappAccountId], references: [id])
   whatsappTemplate   WhatsappTemplate?   @relation(fields: [whatsappTemplateId], references: [id])
   recipients         CampaignRecipient[]
+  messageQueues      MessageQueue[]
+  messageLogs        MessageLog[]
 
   @@index([organizationId])
   @@index([status])
@@ -1016,10 +1020,82 @@ model CampaignRecipient {
   campaign       Campaign                @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   lead           Lead?                   @relation(fields: [leadId], references: [id])
   assignedUser   User?                   @relation(fields: [assignedUserId], references: [id])
+  messageQueues  MessageQueue[]
+  messageLogs    MessageLog[]
 
   @@unique([campaignId, leadId])
   @@index([campaignId])
   @@index([leadId])
   @@index([status])
   @@index([assignedUserId])
+}
+
+enum QueueStatus {
+  PENDING
+  WAITING
+  PROCESSING
+  SENT
+  FAILED
+  RETRYING
+  CANCELED
+}
+
+enum Priority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+model MessageQueue {
+  id                String             @id @default(cuid())
+  organizationId    String
+  campaignId        String
+  recipientId       String?
+  whatsappAccountId String?
+  status            QueueStatus        @default(PENDING)
+  priority          Priority           @default(NORMAL)
+  attempt           Int                @default(0)
+  maxAttempts       Int                @default(3)
+  scheduledAt       DateTime           @default(now())
+  startedAt         DateTime?
+  finishedAt        DateTime?
+  lastError         String?
+  payload           Json
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  organization      Organization       @relation(fields: [organizationId], references: [id])
+  campaign          Campaign           @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  recipient         CampaignRecipient? @relation(fields: [recipientId], references: [id])
+  whatsappAccount   WhatsappAccount?   @relation(fields: [whatsappAccountId], references: [id])
+  logs              MessageLog[]
+
+  @@index([organizationId])
+  @@index([campaignId])
+  @@index([recipientId])
+  @@index([whatsappAccountId])
+  @@index([status])
+  @@index([priority])
+  @@index([scheduledAt])
+  @@index([createdAt])
+}
+
+model MessageLog {
+  id          String             @id @default(cuid())
+  queueId     String
+  campaignId  String
+  recipientId String?
+  status      QueueStatus
+  message     String
+  response    Json?
+  createdAt   DateTime           @default(now())
+  queue       MessageQueue       @relation(fields: [queueId], references: [id], onDelete: Cascade)
+  campaign    Campaign           @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  recipient   CampaignRecipient? @relation(fields: [recipientId], references: [id])
+
+  @@index([queueId])
+  @@index([campaignId])
+  @@index([recipientId])
+  @@index([status])
+  @@index([createdAt])
 }
