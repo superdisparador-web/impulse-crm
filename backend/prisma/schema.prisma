@@ -789,7 +789,12 @@ model User {
   updatedAt          DateTime            @updatedAt
   deletedAt          DateTime?
   assignedLeads      Lead[]
+  managedLeads       Lead[]              @relation("LeadManager")
+  createdLeads       Lead[]              @relation("LeadCreatedBy")
   leadHistory        LeadHistory[]
+  leadEvents         LeadEvent[]
+  leadActivities     LeadActivity[]      @relation("LeadActivityResponsible")
+  createdActivities  LeadActivity[]      @relation("LeadActivityCreatedBy")
   createdCampaigns   Campaign[]          @relation("CampaignCreatedBy")
   campaignRecipients CampaignRecipient[]
 
@@ -807,27 +812,67 @@ enum LeadSource {
   IMPORT
   WHATSAPP
   CAMPAIGN
+  CSV_IMPORT
+  META_ADS
+  WEBSITE
+  PUBLIC_API
+  WEBHOOK
+  REFERRAL
+  ORGANIC
   FACEBOOK
   INSTAGRAM
   LANDING_PAGE
-  REFERRAL
   PHONE
   OTHER
 }
 
 enum LeadStatus {
   NEW
-  CONTACTED
+  ASSIGNED
+  CONTACT_PENDING
+  IN_CONTACT
   QUALIFIED
   UNQUALIFIED
   CONVERTED
   LOST
+  ARCHIVED
 }
 
 enum LeadTemperature {
   COLD
   WARM
   HOT
+  UNKNOWN
+}
+
+enum LeadEventType {
+  LEAD_CREATED
+  LEAD_UPDATED
+  LEAD_ASSIGNED
+  LEAD_UNASSIGNED
+  LEAD_STATUS_CHANGED
+  LEAD_TEMPERATURE_CHANGED
+  LEAD_ARCHIVED
+  LEAD_CONVERTED
+  LEAD_LOST
+  LEAD_DUPLICATE_DETECTED
+  LEAD_ACTIVITY_CREATED
+  LEAD_ACTIVITY_UPDATED
+  LEAD_ACTIVITY_COMPLETED
+}
+
+enum LeadActivityStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELED
+}
+
+enum LeadActivityPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
 }
 
 enum LeadHistoryAction {
@@ -892,34 +937,114 @@ model WhatsappTemplate {
 }
 
 model Lead {
-  id                 String              @id @default(cuid())
-  name               String              @db.VarChar(255)
-  phone              String              @db.VarChar(32)
-  normalizedPhone    String              @db.VarChar(32)
-  email              String?             @db.VarChar(255)
-  document           String?             @db.VarChar(64)
-  source             LeadSource          @default(MANUAL)
-  status             LeadStatus          @default(NEW)
-  temperature        LeadTemperature     @default(COLD)
+  id                 String                 @id @default(cuid())
+  name               String?                @db.VarChar(255)
+  phone              String?                @db.VarChar(32)
+  normalizedPhone    String?                @db.VarChar(32)
+  email              String?                @db.VarChar(255)
+  normalizedEmail    String?                @db.VarChar(255)
+  document           String?                @db.VarChar(64)
+  source             LeadSource             @default(MANUAL)
+  status             LeadStatus             @default(NEW)
+  temperature        LeadTemperature        @default(UNKNOWN)
+  score              Int                    @default(0)
   notes              String?
   organizationId     String
   assignedUserId     String?
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
+  managerUserId      String?
+  createdByUserId    String?
+  lastAssignedAt     DateTime?
+  lastInteractionAt  DateTime?
+  convertedAt        DateTime?
+  lostAt             DateTime?
+  archivedAt         DateTime?
+  metadata           Json?
+  createdAt          DateTime               @default(now())
+  updatedAt          DateTime               @updatedAt
   deletedAt          DateTime?
-  organization       Organization        @relation(fields: [organizationId], references: [id])
-  assignedUser       User?               @relation(fields: [assignedUserId], references: [id])
+  organization       Organization           @relation(fields: [organizationId], references: [id])
+  assignedUser       User?                  @relation(fields: [assignedUserId], references: [id])
+  managerUser        User?                  @relation("LeadManager", fields: [managerUserId], references: [id])
+  createdByUser      User?                  @relation("LeadCreatedBy", fields: [createdByUserId], references: [id])
   history            LeadHistory[]
+  events             LeadEvent[]
+  externalIdentities LeadExternalIdentity[]
+  activities         LeadActivity[]
   campaignRecipients CampaignRecipient[]
 
-  @@index([organizationId])
-  @@index([assignedUserId])
-  @@index([normalizedPhone])
-  @@index([status])
-  @@index([temperature])
-  @@index([source])
-  @@index([createdAt])
+  @@index([organizationId, createdAt])
+  @@index([organizationId, updatedAt])
+  @@index([organizationId, status, createdAt])
+  @@index([organizationId, assignedUserId, status, createdAt])
+  @@index([organizationId, managerUserId, status, createdAt])
+  @@index([organizationId, source, createdAt])
+  @@index([organizationId, normalizedPhone])
+  @@index([organizationId, normalizedEmail])
+  @@index([organizationId, document])
+  @@index([organizationId, archivedAt])
   @@index([deletedAt])
+}
+
+model LeadExternalIdentity {
+  id                String   @id @default(cuid())
+  leadId            String
+  organizationId    String
+  provider          String   @db.VarChar(64)
+  externalId        String   @db.VarChar(255)
+  externalAccountId String?  @db.VarChar(255)
+  metadata          Json?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  lead              Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, provider, externalAccountId, externalId])
+  @@index([organizationId, leadId])
+  @@index([organizationId, provider])
+}
+
+model LeadEvent {
+  id             String        @id @default(cuid())
+  leadId         String
+  organizationId String
+  eventType      LeadEventType
+  description    String        @db.VarChar(500)
+  payload        Json?
+  actorUserId    String?
+  requestId      String?
+  idempotencyKey String?
+  occurredAt     DateTime      @default(now())
+  createdAt      DateTime      @default(now())
+  lead           Lead          @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  actorUser      User?         @relation(fields: [actorUserId], references: [id])
+
+  @@unique([organizationId, idempotencyKey])
+  @@index([organizationId, leadId, occurredAt])
+  @@index([organizationId, eventType, occurredAt])
+  @@index([organizationId, actorUserId, occurredAt])
+  @@index([organizationId, requestId])
+}
+
+model LeadActivity {
+  id                String               @id @default(cuid())
+  leadId            String
+  organizationId    String
+  title             String               @db.VarChar(255)
+  dueAt             DateTime
+  status            LeadActivityStatus   @default(PENDING)
+  priority          LeadActivityPriority @default(MEDIUM)
+  note              String?
+  completedAt       DateTime?
+  responsibleUserId String
+  createdByUserId   String
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+  lead              Lead                 @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  responsibleUser   User                 @relation("LeadActivityResponsible", fields: [responsibleUserId], references: [id])
+  createdByUser     User                 @relation("LeadActivityCreatedBy", fields: [createdByUserId], references: [id])
+
+  @@index([organizationId, leadId, dueAt])
+  @@index([organizationId, responsibleUserId, status, dueAt])
+  @@index([organizationId, status, priority, dueAt])
 }
 
 model LeadHistory {

@@ -1,44 +1,36 @@
 import { LeadSource, LeadStatus, LeadTemperature } from '@prisma/client';
-import { IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { Type } from 'class-transformer';
+import { IsArray, IsEmail, IsEnum, IsObject, IsOptional, IsString, ValidateNested } from 'class-validator';
+
+export class LeadExternalIdentityDto {
+  @IsString()
+  provider: string;
+
+  @IsString()
+  externalId: string;
+
+  @IsOptional()
+  @IsString()
+  externalAccountId?: string | null;
+
+  @IsOptional()
+  @IsObject()
+  metadata?: Record<string, unknown>;
+}
 
 export class CreateLeadDto {
-  @IsNotEmpty()
-  @IsString()
-  name: string;
-
-  @IsNotEmpty()
-  @IsString()
-  phone: string;
-
-  @IsOptional()
-  @IsEmail()
-  email?: string;
-
-  @IsOptional()
-  @IsString()
-  document?: string;
-
-  @IsOptional()
-  @IsEnum(LeadSource)
-  source?: LeadSource;
-
-  @IsOptional()
-  @IsEnum(LeadStatus)
-  status?: LeadStatus;
-
-  @IsOptional()
-  @IsEnum(LeadTemperature)
-  temperature?: LeadTemperature;
-
-  @IsOptional()
-  @IsString()
-  notes?: string;
-
-  @IsNotEmpty()
-  @IsString()
-  organizationId: string;
-
-  @IsOptional()
-  @IsString()
-  assignedUserId?: string | null;
+  @IsOptional() @IsString() name?: string | null;
+  @IsOptional() @IsString() phone?: string | null;
+  @IsOptional() @IsEmail() email?: string | null;
+  @IsOptional() @IsString() document?: string | null;
+  @IsOptional() @IsEnum(LeadSource) source?: LeadSource;
+  @IsOptional() @IsEnum(LeadStatus) status?: LeadStatus;
+  @IsOptional() @IsEnum(LeadTemperature) temperature?: LeadTemperature;
+  @IsOptional() @IsString() notes?: string | null;
+  @IsOptional() @IsString() organizationId?: string;
+  @IsOptional() @IsString() assignedUserId?: string | null;
+  @IsOptional() @IsString() managerUserId?: string | null;
+  @IsOptional() @IsObject() metadata?: Record<string, unknown>;
+  @IsOptional() @ValidateNested() @Type(() => LeadExternalIdentityDto) externalIdentity?: LeadExternalIdentityDto;
+  @IsOptional() @IsArray() @ValidateNested({ each: true }) @Type(() => LeadExternalIdentityDto) externalIdentities?: LeadExternalIdentityDto[];
 }
