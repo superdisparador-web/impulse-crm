@@ -7,8 +7,15 @@ const eslintConfig = defineConfig([
   ...nextTs,
   // Override default ignores of eslint-config-next.
   globalIgnores([
-    // Default ignores of eslint-config-next:
+    // Default ignores of eslint-config-next and generated artifacts.
+    ".next/",
     ".next/**",
+    "dist/",
+    "dist/**",
+    "coverage/",
+    "coverage/**",
+    "node_modules/",
+    "node_modules/**",
     "out/**",
     "build/**",
     "backend/dist/**",
