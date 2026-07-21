@@ -16,10 +16,11 @@ export class CreateUserDto {
   @IsString()
   phone?: string;
 
+  @IsOptional()
   @IsEnum(Role)
-  role: Role;
+  role?: Role;
 
-  @IsNotEmpty()
+  @IsOptional()
   @IsString()
-  organizationId: string;
+  organizationId?: string;
 }

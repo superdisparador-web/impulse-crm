@@ -18,7 +18,6 @@ export class RolesGuard implements CanActivate {
     if (!userId) throw new ForbiddenException('Usuário não autenticado');
     const user = await this.prisma.user.findFirst({ where: { id: userId, active: true, deletedAt: null }, select: { role: true, organizationId: true } });
     if (!user || !roles.includes(user.role)) throw new ForbiddenException('Permissão insuficiente');
-    if (user.role === Role.ADMIN && user.organizationId === null) return true;
-    throw new ForbiddenException('Apenas administrador global pode executar esta operação');
+    return true;
   }
 }
