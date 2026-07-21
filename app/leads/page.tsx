@@ -6,15 +6,12 @@ import LeadFilters from "@/components/leads/LeadFilters";
 import LeadForm from "@/components/leads/LeadForm";
 import LeadTable from "@/components/leads/LeadTable";
 import { leadService } from "@/services/lead.service";
-import { organizationService } from "@/services/organization.service";
 import { userService } from "@/services/user.service";
 import { Lead, LeadListParams, LeadStatus, LeadTemperature } from "@/types/lead";
-import { Organization } from "@/types/organization";
 import { User } from "@/types/user";
 
 export default function LeadsPage() {
   const [leads, setLeads] = useState<Lead[]>([]);
-  const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [filters, setFilters] = useState<LeadListParams>({
     page: 1,
@@ -38,15 +35,13 @@ export default function LeadsPage() {
     setError("");
 
     try {
-      const [leadData, orgData, userData] = await Promise.all([
+      const [leadData, userData] = await Promise.all([
         leadService.getAll(filters),
-        organizationService.getAll({ limit: 100 }),
         userService.getAll({ limit: 100, active: true }),
       ]);
 
       setLeads(leadData.items);
       setMeta(leadData.meta);
-      setOrganizations(orgData.items);
       setUsers(userData.items);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro ao carregar leads.");
@@ -139,7 +134,6 @@ export default function LeadsPage() {
 
       <LeadFilters
         filters={filters}
-        organizations={organizations}
         users={users}
         onChange={setFilters}
       />
@@ -186,7 +180,6 @@ export default function LeadsPage() {
         <LeadForm
           key={formLead?.id ?? "new"}
           lead={formLead}
-          organizations={organizations}
           users={users}
           onCancel={() => setFormLead(undefined)}
           onSuccess={() => {

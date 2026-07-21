@@ -34,11 +34,16 @@ export class CreateLeadDto {
   @IsString()
   notes?: string;
 
-  @IsNotEmpty()
-  @IsString()
-  organizationId: string;
 
   @IsOptional()
   @IsString()
   assignedUserId?: string | null;
+
+  @IsOptional()
+  @IsString()
+  pipelineId?: string | null;
+
+  @IsOptional()
+  @IsString()
+  stageId?: string | null;
 }
