@@ -9,6 +9,7 @@ import {
   UserCog,
   MessageCircle,
   Megaphone,
+  Send,
   CalendarClock,
   Shuffle,
   Building2,
@@ -46,6 +47,11 @@ const menu = [
     title: "Campanhas",
     href: "/campaigns",
     icon: Megaphone,
+  },
+  {
+    title: "Disparos",
+    href: "/messaging",
+    icon: Send,
   },
   {
     title: "Follow-ups",
