@@ -770,6 +770,8 @@ model Organization {
   campaigns         Campaign[]
   whatsappAccounts  WhatsappAccount[]
   whatsappTemplates WhatsappTemplate[]
+  messageQueues     MessageQueue[]
+  messageLogs       MessageLog[]
 
   @@index([name])
   @@index([deletedAt])
@@ -792,6 +794,8 @@ model User {
   leadHistory      LeadHistory[]
   pipelineHistory  PipelineHistory[]
   createdCampaigns Campaign[]
+  messageQueues    MessageQueue[]
+  messageLogs      MessageLog[]
 
   @@index([organizationId])
   @@index([deletedAt])
@@ -879,6 +883,7 @@ model WhatsappAccount {
   organization   Organization          @relation(fields: [organizationId], references: [id])
   campaigns      Campaign[]
   templates      WhatsappTemplate[]
+  messageQueues  MessageQueue[]
 
   @@index([organizationId])
   @@index([status])
@@ -900,6 +905,7 @@ model WhatsappTemplate {
   organization      Organization     @relation(fields: [organizationId], references: [id])
   whatsappAccount   WhatsappAccount? @relation(fields: [whatsappAccountId], references: [id])
   campaigns         Campaign[]
+  messageQueues     MessageQueue[]
 
   @@index([organizationId])
   @@index([whatsappAccountId])
@@ -927,6 +933,8 @@ model Campaign {
   whatsappAccount    WhatsappAccount?    @relation(fields: [whatsappAccountId], references: [id])
   whatsappTemplate   WhatsappTemplate?   @relation(fields: [whatsappTemplateId], references: [id])
   recipients         CampaignRecipient[]
+  messageQueues      MessageQueue[]
+  messageLogs        MessageLog[]
 
   @@index([organizationId])
   @@index([createdByUserId])
@@ -957,6 +965,68 @@ model CampaignRecipient {
   @@index([leadId])
   @@index([phone])
   @@index([status])
+}
+
+model MessageQueue {
+  id                 String            @id @default(cuid())
+  organizationId     String
+  leadId             String?
+  campaignId         String?
+  whatsappAccountId  String?
+  whatsappTemplateId String?
+  createdByUserId    String?
+  phone              String            @db.VarChar(32)
+  payload            Json?
+  status             String            @default("PENDING") @db.VarChar(32)
+  scheduledAt        DateTime?
+  attempts           Int               @default(0)
+  lastError          String?
+  processedAt        DateTime?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+  organization       Organization      @relation(fields: [organizationId], references: [id])
+  lead               Lead?             @relation(fields: [leadId], references: [id])
+  campaign           Campaign?         @relation(fields: [campaignId], references: [id])
+  whatsappAccount    WhatsappAccount?  @relation(fields: [whatsappAccountId], references: [id])
+  whatsappTemplate   WhatsappTemplate? @relation(fields: [whatsappTemplateId], references: [id])
+  createdByUser      User?             @relation(fields: [createdByUserId], references: [id])
+  logs               MessageLog[]
+
+  @@index([organizationId])
+  @@index([leadId])
+  @@index([campaignId])
+  @@index([whatsappAccountId])
+  @@index([whatsappTemplateId])
+  @@index([createdByUserId])
+  @@index([status])
+  @@index([scheduledAt])
+}
+
+model MessageLog {
+  id             String        @id @default(cuid())
+  organizationId String
+  queueId        String?
+  leadId         String?
+  campaignId     String?
+  userId         String?
+  phone          String?       @db.VarChar(32)
+  status         String        @db.VarChar(32)
+  message        String?
+  metadata       Json?
+  createdAt      DateTime      @default(now())
+  organization   Organization  @relation(fields: [organizationId], references: [id])
+  queue          MessageQueue? @relation(fields: [queueId], references: [id], onDelete: SetNull)
+  lead           Lead?         @relation(fields: [leadId], references: [id])
+  campaign       Campaign?     @relation(fields: [campaignId], references: [id])
+  user           User?         @relation(fields: [userId], references: [id])
+
+  @@index([organizationId])
+  @@index([queueId])
+  @@index([leadId])
+  @@index([campaignId])
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
 }
 
 model Pipeline {
@@ -1046,6 +1116,8 @@ model Lead {
   history            LeadHistory[]
   pipelineHistory    PipelineHistory[]
   campaignRecipients CampaignRecipient[]
+  messageQueues      MessageQueue[]
+  messageLogs        MessageLog[]
 
   @@index([organizationId])
   @@index([assignedUserId])
