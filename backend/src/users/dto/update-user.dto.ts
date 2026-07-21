@@ -18,9 +18,6 @@ export class UpdateUserDto {
   @IsEnum(Role)
   role?: Role;
 
-  @IsOptional()
-  @IsString()
-  organizationId?: string;
 
   @IsOptional()
   @IsBoolean()

@@ -13,7 +13,6 @@ const userSelect = {
   phone: true,
   role: true,
   active: true,
-  organizationId: true,
   organization: { select: { id: true, name: true } },
   createdAt: true,
   updatedAt: true,
@@ -24,16 +23,14 @@ const userSelect = {
 export class UsersService {
   constructor(private prisma: PrismaService) {}
 
-  async findAll(query: ListUsersDto = {}) {
+  async findAll(organizationId: string, query: ListUsersDto = {}) {
     const page = query.page ?? 1;
     const limit = query.limit ?? 10;
     const where: Prisma.UserWhereInput = {
+      organizationId,
       deletedAt: null,
-      ...(query.search
-        ? { OR: [{ name: { contains: query.search, mode: 'insensitive' } }, { email: { contains: query.search, mode: 'insensitive' } }] }
-        : {}),
+      ...(query.search ? { OR: [{ name: { contains: query.search, mode: 'insensitive' } }, { email: { contains: query.search, mode: 'insensitive' } }] } : {}),
       ...(query.active !== undefined ? { active: query.active } : {}),
-      ...(query.organizationId ? { organizationId: query.organizationId } : {}),
     };
 
     const [items, total] = await this.prisma.$transaction([
@@ -44,52 +41,44 @@ export class UsersService {
     return { items, meta: { total, page, limit, totalPages: Math.ceil(total / limit) } };
   }
 
-  async findOne(id: string) {
-    const user = await this.prisma.user.findFirst({ where: { id, deletedAt: null }, select: userSelect });
+  async findOne(organizationId: string, id: string) {
+    const user = await this.prisma.user.findFirst({ where: { id, organizationId, deletedAt: null }, select: userSelect });
     if (!user) throw new NotFoundException('Usuário não encontrado');
     return user;
   }
 
-  async findByEmail(email: string) {
-    return this.prisma.user.findFirst({ where: { email, deletedAt: null } });
-  }
+  async findByEmail(email: string) { return this.prisma.user.findFirst({ where: { email, deletedAt: null } }); }
 
-  async create(data: CreateUserDto | { name: string; email: string; password: string; role?: Role }) {
+  async create(data: CreateUserDto | { name: string; email: string; password: string; role?: Role }, organizationId?: string | null) {
     await this.ensureEmailAvailable(data.email);
-    if ('organizationId' in data && data.organizationId) await this.ensureOrganization(data.organizationId);
-
+    if (organizationId) await this.ensureOrganization(organizationId);
     const password = data.password.startsWith('$2') ? data.password : await bcrypt.hash(data.password, 10);
-
-    return this.prisma.user.create({
-      data: { ...data, password, role: data.role ?? Role.CORRETOR },
-      select: userSelect,
-    });
+    return this.prisma.user.create({ data: { ...data, organizationId, password, role: data.role ?? Role.CORRETOR }, select: userSelect });
   }
 
-  async update(id: string, data: UpdateUserDto) {
-    await this.findOne(id);
+  async update(organizationId: string, id: string, data: UpdateUserDto) {
+    await this.findOne(organizationId, id);
     if (data.email) await this.ensureEmailAvailable(data.email, id);
-    if (data.organizationId) await this.ensureOrganization(data.organizationId);
     return this.prisma.user.update({ where: { id }, data, select: userSelect });
   }
 
-  async updateStatus(id: string, active: boolean) {
-    await this.findOne(id);
+  async updateStatus(organizationId: string, id: string, active: boolean) {
+    await this.findOne(organizationId, id);
     return this.prisma.user.update({ where: { id }, data: { active }, select: userSelect });
   }
 
-  async remove(id: string) {
-    await this.findOne(id);
+  async remove(organizationId: string, id: string) {
+    await this.findOne(organizationId, id);
     return this.prisma.user.update({ where: { id }, data: { deletedAt: new Date(), active: false }, select: userSelect });
   }
 
   private async ensureEmailAvailable(email: string, ignoreId?: string) {
-    const existing = await this.prisma.user.findFirst({ where: { email, deletedAt: null, ...(ignoreId ? { id: { not: ignoreId } } : {}) } });
+    const existing = await this.prisma.user.findFirst({ where: { email, deletedAt: null, ...(ignoreId ? { id: { not: ignoreId } } : {}) }, select: { id: true } });
     if (existing) throw new ConflictException('E-mail já cadastrado');
   }
 
-  private async ensureOrganization(organizationId: string) {
-    const organization = await this.prisma.organization.findFirst({ where: { id: organizationId, deletedAt: null } });
+  private async ensureOrganization(id: string) {
+    const organization = await this.prisma.organization.findFirst({ where: { id, deletedAt: null }, select: { id: true } });
     if (!organization) throw new NotFoundException('Empresa não encontrada');
   }
 }

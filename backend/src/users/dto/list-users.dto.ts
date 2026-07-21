@@ -31,7 +31,4 @@ export class ListUsersDto {
   @IsBoolean()
   active?: boolean;
 
-  @IsOptional()
-  @IsString()
-  organizationId?: string;
 }

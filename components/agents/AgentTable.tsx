@@ -2,7 +2,6 @@
 
 interface Agent {
   id: string;
-  companyId: string;
   name: string;
   whatsapp: string;
   email?: string;

@@ -12,7 +12,6 @@ export interface User {
   phone?: string | null;
   role: UserRole;
   active: boolean;
-  organizationId?: string | null;
   organization?: UserOrganization | null;
   createdAt: string;
   updatedAt: string;
@@ -25,7 +24,6 @@ export interface UserFormData {
   password?: string;
   phone?: string;
   role: UserRole;
-  organizationId: string;
   active?: boolean;
 }
 
@@ -39,5 +37,4 @@ export interface ListUsersParams {
   limit?: number;
   search?: string;
   active?: boolean | '';
-  organizationId?: string;
 }

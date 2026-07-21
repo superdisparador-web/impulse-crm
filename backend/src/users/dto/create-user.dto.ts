@@ -18,8 +18,4 @@ export class CreateUserDto {
 
   @IsEnum(Role)
   role: Role;
-
-  @IsNotEmpty()
-  @IsString()
-  organizationId: string;
 }

@@ -1,6 +1,5 @@
 export interface Agent {
   id: string;
-  companyId: string;
   name: string;
   whatsapp: string;
   email?: string;
@@ -12,7 +11,6 @@ export interface Agent {
 }
 
 export interface CreateAgentDto {
-  companyId: string;
   name: string;
   whatsapp: string;
   email?: string;
