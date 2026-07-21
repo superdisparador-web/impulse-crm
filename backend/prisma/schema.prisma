@@ -768,26 +768,29 @@ model Organization {
   leads             Lead[]
   whatsappAccounts  WhatsappAccount[]
   whatsappTemplates WhatsappTemplate[]
+  campaigns         Campaign[]
 
   @@index([name])
   @@index([deletedAt])
 }
 
 model User {
-  id             String        @id @default(cuid())
-  name           String
-  email          String        @unique
-  password       String
-  phone          String?       @db.VarChar(32)
-  role           Role          @default(ADMIN)
-  active         Boolean       @default(true)
-  organizationId String?
-  organization   Organization? @relation(fields: [organizationId], references: [id])
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
-  deletedAt      DateTime?
-  assignedLeads  Lead[]
-  leadHistory    LeadHistory[]
+  id                 String              @id @default(cuid())
+  name               String
+  email              String              @unique
+  password           String
+  phone              String?             @db.VarChar(32)
+  role               Role                @default(ADMIN)
+  active             Boolean             @default(true)
+  organizationId     String?
+  organization       Organization?       @relation(fields: [organizationId], references: [id])
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  deletedAt          DateTime?
+  assignedLeads      Lead[]
+  leadHistory        LeadHistory[]
+  createdCampaigns   Campaign[]          @relation("CampaignCreatedBy")
+  campaignRecipients CampaignRecipient[]
 
   @@index([organizationId])
   @@index([deletedAt])
@@ -858,6 +861,7 @@ model WhatsappAccount {
   updatedAt         DateTime              @updatedAt
   deletedAt         DateTime?
   organization      Organization          @relation(fields: [organizationId], references: [id])
+  campaigns         Campaign[]
 
   @@index([organizationId])
   @@index([phoneNumberId])
@@ -877,6 +881,7 @@ model WhatsappTemplate {
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
   organization   Organization @relation(fields: [organizationId], references: [id])
+  campaigns      Campaign[]
 
   @@unique([organizationId, name, language])
   @@index([organizationId])
@@ -885,24 +890,25 @@ model WhatsappTemplate {
 }
 
 model Lead {
-  id              String          @id @default(cuid())
-  name            String          @db.VarChar(255)
-  phone           String          @db.VarChar(32)
-  normalizedPhone String          @db.VarChar(32)
-  email           String?         @db.VarChar(255)
-  document        String?         @db.VarChar(64)
-  source          LeadSource      @default(MANUAL)
-  status          LeadStatus      @default(NEW)
-  temperature     LeadTemperature @default(COLD)
-  notes           String?
-  organizationId  String
-  assignedUserId  String?
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
-  deletedAt       DateTime?
-  organization    Organization    @relation(fields: [organizationId], references: [id])
-  assignedUser    User?           @relation(fields: [assignedUserId], references: [id])
-  history         LeadHistory[]
+  id                 String              @id @default(cuid())
+  name               String              @db.VarChar(255)
+  phone              String              @db.VarChar(32)
+  normalizedPhone    String              @db.VarChar(32)
+  email              String?             @db.VarChar(255)
+  document           String?             @db.VarChar(64)
+  source             LeadSource          @default(MANUAL)
+  status             LeadStatus          @default(NEW)
+  temperature        LeadTemperature     @default(COLD)
+  notes              String?
+  organizationId     String
+  assignedUserId     String?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  deletedAt          DateTime?
+  organization       Organization        @relation(fields: [organizationId], references: [id])
+  assignedUser       User?               @relation(fields: [assignedUserId], references: [id])
+  history            LeadHistory[]
+  campaignRecipients CampaignRecipient[]
 
   @@index([organizationId])
   @@index([assignedUserId])
@@ -929,4 +935,91 @@ model LeadHistory {
   @@index([performedByUserId])
   @@index([action])
   @@index([createdAt])
+}
+
+enum CampaignStatus {
+  DRAFT
+  SCHEDULED
+  PROCESSING
+  PAUSED
+  COMPLETED
+  CANCELED
+  FAILED
+}
+
+enum CampaignRecipientStatus {
+  PENDING
+  QUEUED
+  SENT
+  DELIVERED
+  READ
+  CLICKED
+  FAILED
+  SKIPPED
+}
+
+model Campaign {
+  id                 String              @id @default(cuid())
+  organizationId     String
+  name               String              @db.VarChar(255)
+  description        String?
+  status             CampaignStatus      @default(DRAFT)
+  whatsappAccountId  String?
+  whatsappTemplateId String?
+  scheduledAt        DateTime?
+  startedAt          DateTime?
+  finishedAt         DateTime?
+  totalContacts      Int                 @default(0)
+  totalQueued        Int                 @default(0)
+  totalSent          Int                 @default(0)
+  totalDelivered     Int                 @default(0)
+  totalRead          Int                 @default(0)
+  totalFailed        Int                 @default(0)
+  totalClicked       Int                 @default(0)
+  createdById        String
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  deletedAt          DateTime?
+  organization       Organization        @relation(fields: [organizationId], references: [id])
+  createdBy          User                @relation("CampaignCreatedBy", fields: [createdById], references: [id])
+  whatsappAccount    WhatsappAccount?    @relation(fields: [whatsappAccountId], references: [id])
+  whatsappTemplate   WhatsappTemplate?   @relation(fields: [whatsappTemplateId], references: [id])
+  recipients         CampaignRecipient[]
+
+  @@index([organizationId])
+  @@index([status])
+  @@index([scheduledAt])
+  @@index([deletedAt])
+  @@index([whatsappAccountId])
+  @@index([whatsappTemplateId])
+  @@index([createdById])
+}
+
+model CampaignRecipient {
+  id             String                  @id @default(cuid())
+  campaignId     String
+  leadId         String?
+  phone          String                  @db.VarChar(32)
+  name           String?                 @db.VarChar(255)
+  status         CampaignRecipientStatus @default(PENDING)
+  errorMessage   String?
+  messageId      String?                 @db.VarChar(255)
+  assignedUserId String?
+  queuedAt       DateTime?
+  sentAt         DateTime?
+  deliveredAt    DateTime?
+  readAt         DateTime?
+  clickedAt      DateTime?
+  failedAt       DateTime?
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+  campaign       Campaign                @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  lead           Lead?                   @relation(fields: [leadId], references: [id])
+  assignedUser   User?                   @relation(fields: [assignedUserId], references: [id])
+
+  @@unique([campaignId, leadId])
+  @@index([campaignId])
+  @@index([leadId])
+  @@index([status])
+  @@index([assignedUserId])
 }
