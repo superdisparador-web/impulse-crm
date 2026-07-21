@@ -1,13 +1,8 @@
 import { api } from './api';
-import { Organization, OrganizationFormData, OrganizationListResponse } from '@/types/organization';
+import { Organization, OrganizationFormData, OrganizationListParams, OrganizationListResponse } from '@/types/organization';
 
-interface ListOrganizationsParams {
-  page?: number;
-  limit?: number;
-  search?: string;
-}
 
-function toQueryString(params: ListOrganizationsParams) {
+function toQueryString(params: OrganizationListParams) {
   const searchParams = new URLSearchParams();
 
   Object.entries(params).forEach(([key, value]) => {
@@ -21,7 +16,7 @@ function toQueryString(params: ListOrganizationsParams) {
 }
 
 class OrganizationService {
-  async getAll(params: ListOrganizationsParams = {}): Promise<OrganizationListResponse> {
+  async getAll(params: OrganizationListParams = {}): Promise<OrganizationListResponse> {
     return api.get<OrganizationListResponse>(`/organizations${toQueryString(params)}`);
   }
 
@@ -29,10 +24,17 @@ class OrganizationService {
     return api.post<Organization>('/organizations', data);
   }
 
-  async update(id: string, data: OrganizationFormData): Promise<Organization> {
+  async update(id: string, data: Partial<OrganizationFormData>): Promise<Organization> {
     return api<Organization>(`/organizations/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(data),
+    });
+  }
+
+  async updateStatus(id: string, active: boolean): Promise<Organization> {
+    return api<Organization>(`/organizations/${id}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ active }),
     });
   }
 

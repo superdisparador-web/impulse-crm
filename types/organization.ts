@@ -1,3 +1,11 @@
+export interface OrganizationUsageCounts {
+  users: number;
+  leads: number;
+  whatsappAccounts: number;
+  campaigns: number;
+  messageQueues: number;
+}
+
 export interface Organization {
   id: string;
   name: string;
@@ -8,6 +16,7 @@ export interface Organization {
   createdAt: string;
   updatedAt: string;
   deletedAt?: string | null;
+  _count?: OrganizationUsageCounts;
 }
 
 export interface OrganizationFormData {
@@ -16,6 +25,13 @@ export interface OrganizationFormData {
   email?: string;
   phone?: string;
   active?: boolean;
+}
+
+export interface OrganizationListParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  active?: boolean | '';
 }
 
 export interface OrganizationListResponse {
