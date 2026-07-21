@@ -12,13 +12,10 @@ const pipelineSelect = {
   id: true,
   name: true,
   active: true,
-  organizationId: true,
-  createdAt: true,
-  updatedAt: true,
   stages: { where: { deletedAt: null }, orderBy: { order: 'asc' as const }, select: { id: true, name: true, order: true, color: true, active: true, pipelineId: true } },
 } satisfies Prisma.PipelineSelect;
 
-const stageSelect = { id: true, name: true, order: true, color: true, active: true, pipelineId: true, createdAt: true, updatedAt: true } satisfies Prisma.PipelineStageSelect;
+const stageSelect = { id: true, name: true, order: true, color: true, active: true, pipelineId: true } satisfies Prisma.PipelineStageSelect;
 
 @Injectable()
 export class PipelinesService {
@@ -80,7 +77,7 @@ export class PipelinesService {
   }
 
   private async ensurePipeline(organizationId: string, id: string) {
-    const pipeline = await this.prisma.pipeline.findFirst({ where: { id, organizationId, deletedAt: null }, select: { id: true, organizationId: true } });
+    const pipeline = await this.prisma.pipeline.findFirst({ where: { id, organizationId, deletedAt: null }, select: { id: true } });
     if (!pipeline) throw new NotFoundException('Pipeline não encontrado');
     return pipeline;
   }
