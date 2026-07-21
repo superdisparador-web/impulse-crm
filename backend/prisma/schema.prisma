@@ -755,14 +755,14 @@ enum TriggerType {
 }
 
 model Organization {
-  id                String             @id @default(cuid())
-  name              String             @db.VarChar(255)
-  document          String?            @db.VarChar(32)
-  email             String?            @db.VarChar(255)
-  phone             String?            @db.VarChar(32)
-  active            Boolean            @default(true)
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
+  id                String               @id @default(cuid())
+  name              String               @db.VarChar(255)
+  document          String?              @db.VarChar(32)
+  email             String?              @db.VarChar(255)
+  phone             String?              @db.VarChar(32)
+  active            Boolean              @default(true)
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
   deletedAt         DateTime?
   users             User[]
   leads             Lead[]
@@ -770,33 +770,55 @@ model Organization {
   whatsappTemplates WhatsappTemplate[]
   campaigns         Campaign[]
   messageQueues     MessageQueue[]
+  pipelines         Pipeline[]
+  pipelineStages    PipelineStage[]
+  stageChecklists   StageChecklist[]
+  lossReasons       PipelineLossReason[]
+  deals             Deal[]
+  dealMovements     DealStageMovement[]
+  dealEvents        DealEvent[]
+  dealAssignments   DealAssignment[]
+  tags              Tag[]
+  dealTags          DealTag[]
+  dealActivities    DealActivity[]
+  auditLogs         AuditLog[]
 
   @@index([name])
   @@index([deletedAt])
 }
 
 model User {
-  id                 String              @id @default(cuid())
-  name               String
-  email              String              @unique
-  password           String
-  phone              String?             @db.VarChar(32)
-  role               Role                @default(ADMIN)
-  active             Boolean             @default(true)
-  organizationId     String?
-  organization       Organization?       @relation(fields: [organizationId], references: [id])
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
-  deletedAt          DateTime?
-  assignedLeads      Lead[]
-  managedLeads       Lead[]              @relation("LeadManager")
-  createdLeads       Lead[]              @relation("LeadCreatedBy")
-  leadHistory        LeadHistory[]
-  leadEvents         LeadEvent[]
-  leadActivities     LeadActivity[]      @relation("LeadActivityResponsible")
-  createdActivities  LeadActivity[]      @relation("LeadActivityCreatedBy")
-  createdCampaigns   Campaign[]          @relation("CampaignCreatedBy")
-  campaignRecipients CampaignRecipient[]
+  id                     String              @id @default(cuid())
+  name                   String
+  email                  String              @unique
+  password               String
+  phone                  String?             @db.VarChar(32)
+  role                   Role                @default(ADMIN)
+  active                 Boolean             @default(true)
+  organizationId         String?
+  organization           Organization?       @relation(fields: [organizationId], references: [id])
+  createdAt              DateTime            @default(now())
+  updatedAt              DateTime            @updatedAt
+  deletedAt              DateTime?
+  assignedLeads          Lead[]
+  managedLeads           Lead[]              @relation("LeadManager")
+  createdLeads           Lead[]              @relation("LeadCreatedBy")
+  leadHistory            LeadHistory[]
+  leadEvents             LeadEvent[]
+  leadActivities         LeadActivity[]      @relation("LeadActivityResponsible")
+  createdActivities      LeadActivity[]      @relation("LeadActivityCreatedBy")
+  createdCampaigns       Campaign[]          @relation("CampaignCreatedBy")
+  campaignRecipients     CampaignRecipient[]
+  ownedDeals             Deal[]              @relation("DealOwner")
+  dealAssignmentsFrom    DealAssignment[]    @relation("DealAssignmentFromUser")
+  dealAssignmentsTo      DealAssignment[]    @relation("DealAssignmentToUser")
+  dealAssignmentsMade    DealAssignment[]    @relation("DealAssignmentAssignedBy")
+  movedDeals             DealStageMovement[] @relation("DealMovedBy")
+  dealEvents             DealEvent[]         @relation("DealEventActor")
+  createdDealTags        DealTag[]           @relation("DealTagCreatedBy")
+  assignedDealActivities DealActivity[]      @relation("DealActivityAssignedTo")
+  createdDealActivities  DealActivity[]      @relation("DealActivityCreatedBy")
+  auditLogs              AuditLog[]
 
   @@index([organizationId])
   @@index([deletedAt])
@@ -971,6 +993,8 @@ model Lead {
   externalIdentities LeadExternalIdentity[]
   activities         LeadActivity[]
   campaignRecipients CampaignRecipient[]
+  deals              Deal[]
+  dealActivities     DealActivity[]
 
   @@index([organizationId, createdAt])
   @@index([organizationId, updatedAt])
@@ -1223,4 +1247,357 @@ model MessageLog {
   @@index([recipientId])
   @@index([status])
   @@index([createdAt])
+}
+
+enum DealStatus {
+  OPEN
+  WON
+  LOST
+  REOPENED
+  ARCHIVED
+}
+
+enum DealMovementType {
+  CREATED
+  STAGE_CHANGED
+  PIPELINE_CHANGED
+  REOPENED
+}
+
+enum DealActivityType {
+  TASK
+  CALL
+  MEETING
+  EMAIL
+  WHATSAPP
+  NOTE
+  FOLLOW_UP
+}
+
+enum DealActivityStatus {
+  OPEN
+  DONE
+  CANCELED
+  OVERDUE
+}
+
+enum StageChecklistType {
+  DOCUMENT
+  FIELD
+  TASK
+  APPROVAL
+  CUSTOM
+}
+
+model Pipeline {
+  id             String               @id @default(cuid())
+  organizationId String
+  name           String               @db.VarChar(255)
+  description    String?
+  isDefault      Boolean              @default(false)
+  isActive       Boolean              @default(true)
+  currency       String               @default("BRL") @db.VarChar(8)
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  archivedAt     DateTime?
+  organization   Organization         @relation(fields: [organizationId], references: [id])
+  stages         PipelineStage[]
+  deals          Deal[]
+  lossReasons    PipelineLossReason[]
+
+  @@index([organizationId])
+  @@index([organizationId, isActive])
+  @@index([organizationId, isDefault])
+}
+
+model PipelineStage {
+  id             String              @id @default(cuid())
+  organizationId String
+  pipelineId     String
+  name           String              @db.VarChar(255)
+  description    String?
+  position       Int
+  probability    Int                 @default(0)
+  slaHours       Int?
+  isInitial      Boolean             @default(false)
+  isActive       Boolean             @default(true)
+  color          String?             @db.VarChar(32)
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  archivedAt     DateTime?
+  organization   Organization        @relation(fields: [organizationId], references: [id])
+  pipeline       Pipeline            @relation(fields: [pipelineId], references: [id])
+  deals          Deal[]
+  checklists     StageChecklist[]
+  movementsFrom  DealStageMovement[] @relation("MovementFromStage")
+  movementsTo    DealStageMovement[] @relation("MovementToStage")
+
+  @@index([organizationId])
+  @@index([pipelineId])
+  @@index([organizationId, pipelineId, position])
+  @@index([organizationId, pipelineId, isActive])
+}
+
+model StageChecklist {
+  id             String             @id @default(cuid())
+  organizationId String
+  stageId        String
+  title          String             @db.VarChar(255)
+  description    String?
+  type           StageChecklistType @default(CUSTOM)
+  isRequired     Boolean            @default(true)
+  position       Int                @default(0)
+  isActive       Boolean            @default(true)
+  metadata       Json?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  archivedAt     DateTime?
+  organization   Organization       @relation(fields: [organizationId], references: [id])
+  stage          PipelineStage      @relation(fields: [stageId], references: [id])
+
+  @@index([organizationId])
+  @@index([organizationId, stageId])
+  @@index([organizationId, stageId, position])
+  @@index([organizationId, stageId, isActive])
+}
+
+model PipelineLossReason {
+  id             String       @id @default(cuid())
+  organizationId String
+  pipelineId     String?
+  name           String       @db.VarChar(255)
+  description    String?
+  isActive       Boolean      @default(true)
+  position       Int          @default(0)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  archivedAt     DateTime?
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  pipeline       Pipeline?    @relation(fields: [pipelineId], references: [id])
+  deals          Deal[]
+
+  @@index([organizationId])
+  @@index([organizationId, pipelineId])
+  @@index([organizationId, isActive])
+}
+
+model Deal {
+  id                    String              @id @default(cuid())
+  organizationId        String
+  leadId                String
+  pipelineId            String
+  stageId               String
+  ownerId               String?
+  title                 String              @db.VarChar(255)
+  description           String?
+  status                DealStatus          @default(OPEN)
+  estimatedValue        Decimal             @default(0) @db.Decimal(18, 2)
+  closedValue           Decimal?            @db.Decimal(18, 2)
+  currency              String              @default("BRL") @db.VarChar(8)
+  expectedCloseDate     DateTime?
+  closedAt              DateTime?
+  wonAt                 DateTime?
+  lostAt                DateTime?
+  lossReasonId          String?
+  currentStageEnteredAt DateTime            @default(now())
+  lastMovementAt        DateTime?
+  probabilityOverride   Int?
+  source                String?             @db.VarChar(128)
+  metadata              Json?
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  archivedAt            DateTime?
+  organization          Organization        @relation(fields: [organizationId], references: [id])
+  lead                  Lead                @relation(fields: [leadId], references: [id])
+  pipeline              Pipeline            @relation(fields: [pipelineId], references: [id])
+  stage                 PipelineStage       @relation(fields: [stageId], references: [id])
+  owner                 User?               @relation("DealOwner", fields: [ownerId], references: [id])
+  lossReason            PipelineLossReason? @relation(fields: [lossReasonId], references: [id])
+  movements             DealStageMovement[]
+  events                DealEvent[]
+  activities            DealActivity[]
+  assignments           DealAssignment[]
+  tags                  DealTag[]
+
+  @@index([organizationId])
+  @@index([organizationId, leadId])
+  @@index([organizationId, pipelineId])
+  @@index([organizationId, pipelineId, stageId])
+  @@index([organizationId, status])
+  @@index([organizationId, ownerId])
+  @@index([organizationId, expectedCloseDate])
+  @@index([organizationId, createdAt])
+  @@index([organizationId, closedAt])
+  @@index([organizationId, wonAt])
+  @@index([organizationId, lostAt])
+  @@index([organizationId, lossReasonId])
+  @@index([organizationId, pipelineId, stageId, status])
+}
+
+model DealStageMovement {
+  id             String           @id @default(cuid())
+  organizationId String
+  dealId         String
+  pipelineId     String
+  fromStageId    String?
+  toStageId      String
+  movedByUserId  String?
+  movementType   DealMovementType
+  reason         String?
+  metadata       Json?
+  occurredAt     DateTime         @default(now())
+  organization   Organization     @relation(fields: [organizationId], references: [id])
+  deal           Deal             @relation(fields: [dealId], references: [id])
+  fromStage      PipelineStage?   @relation("MovementFromStage", fields: [fromStageId], references: [id])
+  toStage        PipelineStage    @relation("MovementToStage", fields: [toStageId], references: [id])
+  movedByUser    User?            @relation("DealMovedBy", fields: [movedByUserId], references: [id])
+
+  @@index([organizationId])
+  @@index([organizationId, dealId])
+  @@index([organizationId, pipelineId])
+  @@index([organizationId, fromStageId])
+  @@index([organizationId, toStageId])
+  @@index([organizationId, occurredAt])
+  @@index([organizationId, pipelineId, toStageId, occurredAt])
+}
+
+model DealEvent {
+  id             String       @id @default(cuid())
+  organizationId String
+  dealId         String?
+  eventType      String       @db.VarChar(100)
+  actorUserId    String?
+  payload        Json
+  occurredAt     DateTime     @default(now())
+  createdAt      DateTime     @default(now())
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  deal           Deal?        @relation(fields: [dealId], references: [id])
+  actorUser      User?        @relation("DealEventActor", fields: [actorUserId], references: [id])
+
+  @@index([organizationId])
+  @@index([organizationId, dealId])
+  @@index([organizationId, eventType])
+  @@index([organizationId, occurredAt])
+  @@index([organizationId, eventType, occurredAt])
+}
+
+model DealAssignment {
+  id               String       @id @default(cuid())
+  organizationId   String
+  dealId           String
+  fromUserId       String?
+  toUserId         String?
+  assignedByUserId String?
+  reason           String?
+  metadata         Json?
+  occurredAt       DateTime     @default(now())
+  organization     Organization @relation(fields: [organizationId], references: [id])
+  deal             Deal         @relation(fields: [dealId], references: [id])
+  fromUser         User?        @relation("DealAssignmentFromUser", fields: [fromUserId], references: [id])
+  toUser           User?        @relation("DealAssignmentToUser", fields: [toUserId], references: [id])
+  assignedByUser   User?        @relation("DealAssignmentAssignedBy", fields: [assignedByUserId], references: [id])
+
+  @@index([organizationId])
+  @@index([organizationId, dealId])
+  @@index([organizationId, fromUserId])
+  @@index([organizationId, toUserId])
+  @@index([organizationId, assignedByUserId])
+  @@index([organizationId, occurredAt])
+}
+
+model Tag {
+  id             String       @id @default(cuid())
+  organizationId String
+  name           String       @db.VarChar(120)
+  slug           String       @db.VarChar(140)
+  color          String?      @db.VarChar(32)
+  description    String?
+  isActive       Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  archivedAt     DateTime?
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  deals          DealTag[]
+
+  @@unique([organizationId, slug])
+  @@index([organizationId])
+  @@index([organizationId, isActive])
+}
+
+model DealTag {
+  id              String       @id @default(cuid())
+  organizationId  String
+  dealId          String
+  tagId           String
+  createdByUserId String?
+  createdAt       DateTime     @default(now())
+  organization    Organization @relation(fields: [organizationId], references: [id])
+  deal            Deal         @relation(fields: [dealId], references: [id])
+  tag             Tag          @relation(fields: [tagId], references: [id])
+  createdByUser   User?        @relation("DealTagCreatedBy", fields: [createdByUserId], references: [id])
+
+  @@unique([dealId, tagId])
+  @@index([organizationId])
+  @@index([organizationId, dealId])
+  @@index([organizationId, tagId])
+}
+
+model DealActivity {
+  id                      String             @id @default(cuid())
+  organizationId          String
+  dealId                  String
+  leadId                  String?
+  assignedToUserId        String?
+  createdByUserId         String?
+  type                    DealActivityType
+  status                  DealActivityStatus @default(OPEN)
+  title                   String             @db.VarChar(255)
+  description             String?
+  dueAt                   DateTime?
+  completedAt             DateTime?
+  externalCalendarEventId String?
+  externalMessageId       String?
+  metadata                Json?
+  createdAt               DateTime           @default(now())
+  updatedAt               DateTime           @updatedAt
+  archivedAt              DateTime?
+  organization            Organization       @relation(fields: [organizationId], references: [id])
+  deal                    Deal               @relation(fields: [dealId], references: [id])
+  lead                    Lead?              @relation(fields: [leadId], references: [id])
+  assignedToUser          User?              @relation("DealActivityAssignedTo", fields: [assignedToUserId], references: [id])
+  createdByUser           User?              @relation("DealActivityCreatedBy", fields: [createdByUserId], references: [id])
+
+  @@index([organizationId])
+  @@index([organizationId, dealId])
+  @@index([organizationId, leadId])
+  @@index([organizationId, assignedToUserId])
+  @@index([organizationId, status])
+  @@index([organizationId, dueAt])
+}
+
+model AuditLog {
+  id             String        @id @default(cuid())
+  organizationId String?
+  module         String        @db.VarChar(80)
+  entityType     String        @db.VarChar(120)
+  entityId       String
+  action         String        @db.VarChar(160)
+  actorUserId    String?
+  before         Json?
+  after          Json?
+  metadata       Json?
+  ipAddress      String?       @db.VarChar(64)
+  userAgent      String?
+  occurredAt     DateTime      @default(now())
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+  actorUser      User?         @relation(fields: [actorUserId], references: [id])
+
+  @@index([organizationId])
+  @@index([module])
+  @@index([module, entityType])
+  @@index([entityType, entityId])
+  @@index([organizationId, module])
+  @@index([organizationId, module, entityType])
+  @@index([organizationId, occurredAt])
+  @@index([action])
 }
