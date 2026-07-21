@@ -7,8 +7,25 @@ import PipelineFilters from "@/components/pipeline/PipelineFilters";
 import PipelineHeader from "@/components/pipeline/PipelineHeader";
 import { leadService } from "@/services/lead.service";
 import { pipelineService } from "@/services/pipeline.service";
-import { Lead } from "@/types/lead";
+import { Lead, LeadListParams } from "@/types/lead";
 import { Pipeline } from "@/types/pipeline";
+
+const PIPELINE_LEADS_PAGE_SIZE = 50;
+
+async function loadPipelineLeads(params: Omit<LeadListParams, "page" | "limit">) {
+  const items: Lead[] = [];
+  let page = 1;
+  let totalPages = 1;
+
+  do {
+    const response = await leadService.getAll({ ...params, page, limit: PIPELINE_LEADS_PAGE_SIZE });
+    items.push(...response.items);
+    totalPages = response.meta.totalPages || 1;
+    page += 1;
+  } while (page <= totalPages);
+
+  return items;
+}
 
 export default function PipelinePage() {
   const [pipelines, setPipelines] = useState<Pipeline[]>([]);
@@ -49,8 +66,8 @@ export default function PipelinePage() {
     async function loadLeads() {
       setLoadingLeads(true);
       try {
-        const leadData = await leadService.getAll({ limit: 100, pipelineId, search });
-        if (!ignore) setLeads(leadData.items);
+        const leadItems = await loadPipelineLeads({ pipelineId, search });
+        if (!ignore) setLeads(leadItems);
       } catch (err) {
         if (!ignore) setError(err instanceof Error ? err.message : "Erro ao carregar leads do pipeline.");
       } finally {
