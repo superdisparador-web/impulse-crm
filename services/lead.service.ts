@@ -16,6 +16,7 @@ class LeadService {
   assign(id: string, assignedUserId: string | null) { return api<Lead>(`/leads/${id}/assign`, { method: 'PATCH', body: JSON.stringify({ assignedUserId }) }); }
   updateStatus(id: string, status: LeadStatus) { return api<Lead>(`/leads/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }); }
   updateTemperature(id: string, temperature: LeadTemperature) { return api<Lead>(`/leads/${id}/temperature`, { method: 'PATCH', body: JSON.stringify({ temperature }) }); }
+  move(id: string, stageId: string) { return api<Lead>(`/leads/${id}/move`, { method: 'PATCH', body: JSON.stringify({ stageId }) }); }
   async delete(id: string) { await api.delete<void>(`/leads/${id}`); }
 }
 export const leadService = new LeadService();

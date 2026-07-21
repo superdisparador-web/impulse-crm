@@ -8,11 +8,13 @@ import { AuthService } from './auth.service';
 import { getJwtAccessSecret } from './jwt-env';
 import { JwtStrategy } from './jwt.strategy';
 
+import { PrismaModule } from '../prisma/prisma.module';
 import { UsersModule } from '../users/users.module';
 
 @Module({
   imports: [
     UsersModule,
+    PrismaModule,
     PassportModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],

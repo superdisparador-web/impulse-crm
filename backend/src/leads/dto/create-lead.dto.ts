@@ -41,4 +41,12 @@ export class CreateLeadDto {
   @IsOptional()
   @IsString()
   assignedUserId?: string | null;
+
+  @IsOptional()
+  @IsString()
+  pipelineId?: string | null;
+
+  @IsOptional()
+  @IsString()
+  stageId?: string | null;
 }

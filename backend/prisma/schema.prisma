@@ -755,37 +755,39 @@ enum TriggerType {
 }
 
 model Organization {
-  id        String    @id @default(cuid())
-  name      String    @db.VarChar(255)
-  document  String?   @db.VarChar(32)
-  email     String?   @db.VarChar(255)
-  phone     String?   @db.VarChar(32)
-  active    Boolean   @default(true)
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id        String     @id @default(cuid())
+  name      String     @db.VarChar(255)
+  document  String?    @db.VarChar(32)
+  email     String?    @db.VarChar(255)
+  phone     String?    @db.VarChar(32)
+  active    Boolean    @default(true)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
   deletedAt DateTime?
   users     User[]
   leads     Lead[]
+  pipelines Pipeline[]
 
   @@index([name])
   @@index([deletedAt])
 }
 
 model User {
-  id             String        @id @default(cuid())
-  name           String
-  email          String        @unique
-  password       String
-  phone          String?       @db.VarChar(32)
-  role           Role          @default(ADMIN)
-  active         Boolean       @default(true)
-  organizationId String?
-  organization   Organization? @relation(fields: [organizationId], references: [id])
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
-  deletedAt      DateTime?
-  assignedLeads  Lead[]
-  leadHistory    LeadHistory[]
+  id              String            @id @default(cuid())
+  name            String
+  email           String            @unique
+  password        String
+  phone           String?           @db.VarChar(32)
+  role            Role              @default(ADMIN)
+  active          Boolean           @default(true)
+  organizationId  String?
+  organization    Organization?     @relation(fields: [organizationId], references: [id])
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  deletedAt       DateTime?
+  assignedLeads   Lead[]
+  leadHistory     LeadHistory[]
+  pipelineHistory PipelineHistory[]
 
   @@index([organizationId])
   @@index([deletedAt])
@@ -832,30 +834,100 @@ enum LeadHistoryAction {
   ASSIGNED
   UNASSIGNED
   DELETED
+  MOVED
+}
+
+model Pipeline {
+  id             String            @id @default(cuid())
+  name           String            @db.VarChar(255)
+  active         Boolean           @default(true)
+  organizationId String
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  deletedAt      DateTime?
+  organization   Organization      @relation(fields: [organizationId], references: [id])
+  stages         PipelineStage[]
+  leads          Lead[]
+  history        PipelineHistory[]
+
+  @@index([organizationId])
+  @@index([active])
+  @@index([deletedAt])
+}
+
+model PipelineStage {
+  id          String            @id @default(cuid())
+  name        String            @db.VarChar(255)
+  order       Int               @default(0)
+  color       String            @default("#2563eb") @db.VarChar(16)
+  active      Boolean           @default(true)
+  pipelineId  String
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  deletedAt   DateTime?
+  pipeline    Pipeline          @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+  leads       Lead[]
+  historyFrom PipelineHistory[] @relation("PipelineHistoryFromStage")
+  historyTo   PipelineHistory[] @relation("PipelineHistoryToStage")
+
+  @@index([pipelineId])
+  @@index([order])
+  @@index([active])
+  @@index([deletedAt])
+}
+
+model PipelineHistory {
+  id                String         @id @default(cuid())
+  leadId            String
+  pipelineId        String
+  fromStageId       String?
+  toStageId         String
+  performedByUserId String?
+  metadata          Json?
+  createdAt         DateTime       @default(now())
+  lead              Lead           @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  pipeline          Pipeline       @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+  fromStage         PipelineStage? @relation("PipelineHistoryFromStage", fields: [fromStageId], references: [id])
+  toStage           PipelineStage  @relation("PipelineHistoryToStage", fields: [toStageId], references: [id])
+  performedByUser   User?          @relation(fields: [performedByUserId], references: [id])
+
+  @@index([leadId])
+  @@index([pipelineId])
+  @@index([fromStageId])
+  @@index([toStageId])
+  @@index([performedByUserId])
+  @@index([createdAt])
 }
 
 model Lead {
-  id              String          @id @default(cuid())
-  name            String          @db.VarChar(255)
-  phone           String          @db.VarChar(32)
-  normalizedPhone String          @db.VarChar(32)
-  email           String?         @db.VarChar(255)
-  document        String?         @db.VarChar(64)
-  source          LeadSource      @default(MANUAL)
-  status          LeadStatus      @default(NEW)
-  temperature     LeadTemperature @default(COLD)
+  id              String            @id @default(cuid())
+  name            String            @db.VarChar(255)
+  phone           String            @db.VarChar(32)
+  normalizedPhone String            @db.VarChar(32)
+  email           String?           @db.VarChar(255)
+  document        String?           @db.VarChar(64)
+  source          LeadSource        @default(MANUAL)
+  status          LeadStatus        @default(NEW)
+  temperature     LeadTemperature   @default(COLD)
   notes           String?
   organizationId  String
   assignedUserId  String?
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
+  pipelineId      String?
+  stageId         String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
   deletedAt       DateTime?
-  organization    Organization    @relation(fields: [organizationId], references: [id])
-  assignedUser    User?           @relation(fields: [assignedUserId], references: [id])
+  organization    Organization      @relation(fields: [organizationId], references: [id])
+  assignedUser    User?             @relation(fields: [assignedUserId], references: [id])
+  pipeline        Pipeline?         @relation(fields: [pipelineId], references: [id])
+  stage           PipelineStage?    @relation(fields: [stageId], references: [id])
   history         LeadHistory[]
+  pipelineHistory PipelineHistory[]
 
   @@index([organizationId])
   @@index([assignedUserId])
+  @@index([pipelineId])
+  @@index([stageId])
   @@index([normalizedPhone])
   @@index([status])
   @@index([temperature])

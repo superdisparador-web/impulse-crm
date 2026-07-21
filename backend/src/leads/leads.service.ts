@@ -9,6 +9,8 @@ const safeUserSelect = { id: true, name: true, email: true, phone: true, role: t
 const leadInclude = {
   organization: { select: { id: true, name: true, active: true } },
   assignedUser: { select: safeUserSelect },
+  pipeline: { select: { id: true, name: true, active: true, organizationId: true } },
+  stage: { select: { id: true, name: true, order: true, color: true, active: true, pipelineId: true } },
 } satisfies Prisma.LeadInclude;
 const leadDetailInclude = {
   ...leadInclude,
@@ -38,6 +40,8 @@ export class LeadsService {
       ...(query.source ? { source: query.source } : {}),
       ...(query.organizationId ? { organizationId: query.organizationId } : {}),
       ...(query.assignedUserId ? { assignedUserId: query.assignedUserId } : {}),
+      ...(query.pipelineId ? { pipelineId: query.pipelineId } : {}),
+      ...(query.stageId ? { stageId: query.stageId } : {}),
       ...(query.assigned !== undefined ? { assignedUserId: query.assigned ? { not: null } : null } : {}),
       ...(query.createdFrom || query.createdTo ? { createdAt: { ...(query.createdFrom ? { gte: new Date(query.createdFrom) } : {}), ...(query.createdTo ? { lte: new Date(query.createdTo) } : {}) } } : {}),
     };
@@ -59,6 +63,7 @@ export class LeadsService {
     if (!normalizedPhone) throw new BadRequestException('Telefone inválido');
     await this.ensureOrganization(data.organizationId);
     await this.ensureAssignedUser(data.organizationId, data.assignedUserId ?? null);
+    await this.ensurePipelineStage(data.organizationId, data.pipelineId ?? null, data.stageId ?? null);
     await this.ensurePhoneAvailable(data.organizationId, normalizedPhone);
     const lead = await this.prisma.lead.create({
       data: { ...data, email: this.normalizeEmail(data.email), normalizedPhone, source: data.source ?? 'MANUAL', status: data.status ?? 'NEW', temperature: data.temperature ?? 'COLD' },
@@ -73,6 +78,7 @@ export class LeadsService {
     const organizationId = data.organizationId ?? current.organizationId;
     await this.ensureOrganization(organizationId);
     await this.ensureAssignedUser(organizationId, data.assignedUserId === undefined ? current.assignedUserId : data.assignedUserId);
+    await this.ensurePipelineStage(organizationId, data.pipelineId === undefined ? current.pipelineId : data.pipelineId, data.stageId === undefined ? current.stageId : data.stageId);
     const normalizedPhone = data.phone !== undefined ? this.normalizePhone(data.phone) : current.normalizedPhone;
     if (!normalizedPhone) throw new BadRequestException('Telefone inválido');
     await this.ensurePhoneAvailable(organizationId, normalizedPhone, id);
@@ -103,6 +109,23 @@ export class LeadsService {
     return this.findOne(id);
   }
 
+  async move(id: string, organizationId: string, stageId: string, performedByUserId?: string) {
+    const lead = await this.prisma.lead.findFirst({ where: { id, organizationId, deletedAt: null }, select: { id: true, organizationId: true, pipelineId: true, stageId: true } });
+    if (!lead) throw new NotFoundException('Lead não encontrado');
+    const stage = await this.prisma.pipelineStage.findFirst({
+      where: { id: stageId, active: true, deletedAt: null, pipeline: { active: true, deletedAt: null, organizationId } },
+      include: { pipeline: true },
+    });
+    if (!stage) throw new NotFoundException('Etapa ativa não encontrada para a organização do lead');
+
+    await this.prisma.$transaction([
+      this.prisma.lead.update({ where: { id }, data: { pipelineId: stage.pipelineId, stageId } }),
+      this.prisma.pipelineHistory.create({ data: { leadId: id, pipelineId: stage.pipelineId, fromStageId: lead.stageId, toStageId: stageId, performedByUserId, metadata: { previousPipelineId: lead.pipelineId } } }),
+      this.prisma.leadHistory.create({ data: { leadId: id, action: 'MOVED', description: 'Lead movido no pipeline', performedByUserId, metadata: { fromStageId: lead.stageId, toStageId: stageId, pipelineId: stage.pipelineId } } }),
+    ]);
+    return this.findOne(id);
+  }
+
   async remove(id: string, performedByUserId?: string) {
     await this.findOne(id);
     await this.prisma.lead.update({ where: { id }, data: { deletedAt: new Date() } });
@@ -120,6 +143,18 @@ export class LeadsService {
     const user = await this.prisma.user.findFirst({ where: { id: assignedUserId, active: true, deletedAt: null } });
     if (!user) throw new NotFoundException('Usuário responsável ativo não encontrado');
     if (user.organizationId && user.organizationId !== organizationId) throw new BadRequestException('Responsável deve pertencer à mesma organização do lead');
+  }
+
+  private async ensurePipelineStage(organizationId: string, pipelineId?: string | null, stageId?: string | null) {
+    if (!pipelineId && !stageId) return;
+    if (stageId) {
+      const stage = await this.prisma.pipelineStage.findFirst({ where: { id: stageId, active: true, deletedAt: null, pipeline: { active: true, deletedAt: null, organizationId } } });
+      if (!stage) throw new NotFoundException('Etapa ativa não encontrada para esta organização');
+      if (pipelineId && stage.pipelineId !== pipelineId) throw new BadRequestException('Etapa não pertence ao pipeline informado');
+      return;
+    }
+    const pipeline = await this.prisma.pipeline.findFirst({ where: { id: pipelineId ?? undefined, organizationId, active: true, deletedAt: null } });
+    if (!pipeline) throw new NotFoundException('Pipeline ativo não encontrado para esta organização');
   }
 
   private async ensurePhoneAvailable(organizationId: string, normalizedPhone: string, ignoreId?: string) {
