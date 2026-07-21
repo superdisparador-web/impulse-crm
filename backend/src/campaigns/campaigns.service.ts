@@ -201,8 +201,8 @@ export class CampaignsService {
       .map((lead) => ({
         campaignId: id,
         leadId: lead.id,
-        phone: lead.normalizedPhone,
-        name: lead.name,
+        phone: lead.normalizedPhone!,
+        name: lead.name ?? null,
         assignedUserId: lead.assignedUserId,
       }));
 

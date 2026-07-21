@@ -78,7 +78,7 @@ export default function LeadsPage() {
   }
 
   async function remove(lead: Lead) {
-    if (!window.confirm(`Excluir o lead ${lead.name}?`)) return;
+    if (!window.confirm(`Excluir o lead ${lead.name || "lead sem nome"}?`)) return;
 
     await leadService.delete(lead.id);
     await refresh("Lead excluído com sucesso.");
@@ -130,7 +130,7 @@ export default function LeadsPage() {
 
       <input
         className="w-full rounded-xl border border-slate-700 bg-slate-900 p-4 outline-none focus:border-blue-500"
-        placeholder="Buscar por nome, telefone ou e-mail..."
+        placeholder="Buscar por nome, telefone, e-mail ou documento..."
         value={filters.search ?? ""}
         onChange={(e) =>
           setFilters({ ...filters, page: 1, search: e.target.value })

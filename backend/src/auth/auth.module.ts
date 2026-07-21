@@ -7,6 +7,7 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { getJwtAccessSecret } from './jwt-env';
 import { JwtStrategy } from './jwt.strategy';
+import { AccessContextService } from './access-context.service';
 
 import { UsersModule } from '../users/users.module';
 
@@ -29,7 +30,7 @@ import { UsersModule } from '../users/users.module';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy],
-  exports: [AuthService],
+  providers: [AuthService, JwtStrategy, AccessContextService],
+  exports: [AuthService, AccessContextService],
 })
 export class AuthModule {}
