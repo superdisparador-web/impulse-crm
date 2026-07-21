@@ -755,39 +755,43 @@ enum TriggerType {
 }
 
 model Organization {
-  id        String     @id @default(cuid())
-  name      String     @db.VarChar(255)
-  document  String?    @db.VarChar(32)
-  email     String?    @db.VarChar(255)
-  phone     String?    @db.VarChar(32)
-  active    Boolean    @default(true)
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
-  deletedAt DateTime?
-  users     User[]
-  leads     Lead[]
-  pipelines Pipeline[]
+  id                String             @id @default(cuid())
+  name              String             @db.VarChar(255)
+  document          String?            @db.VarChar(32)
+  email             String?            @db.VarChar(255)
+  phone             String?            @db.VarChar(32)
+  active            Boolean            @default(true)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  deletedAt         DateTime?
+  users             User[]
+  leads             Lead[]
+  pipelines         Pipeline[]
+  campaigns         Campaign[]
+  whatsappAccounts  WhatsappAccount[]
+  whatsappTemplates WhatsappTemplate[]
 
   @@index([name])
   @@index([deletedAt])
 }
 
 model User {
-  id              String            @id @default(cuid())
-  name            String
-  email           String            @unique
-  password        String
-  phone           String?           @db.VarChar(32)
-  role            Role              @default(ADMIN)
-  active          Boolean           @default(true)
-  organizationId  String?
-  organization    Organization?     @relation(fields: [organizationId], references: [id])
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
-  deletedAt       DateTime?
-  assignedLeads   Lead[]
-  leadHistory     LeadHistory[]
-  pipelineHistory PipelineHistory[]
+  id               String            @id @default(cuid())
+  name             String
+  email            String            @unique
+  password         String
+  phone            String?           @db.VarChar(32)
+  role             Role              @default(ADMIN)
+  active           Boolean           @default(true)
+  organizationId   String?
+  organization     Organization?     @relation(fields: [organizationId], references: [id])
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  deletedAt        DateTime?
+  assignedLeads    Lead[]
+  leadHistory      LeadHistory[]
+  pipelineHistory  PipelineHistory[]
+  createdCampaigns Campaign[]
 
   @@index([organizationId])
   @@index([deletedAt])
@@ -835,6 +839,124 @@ enum LeadHistoryAction {
   UNASSIGNED
   DELETED
   MOVED
+}
+
+enum CampaignStatus {
+  DRAFT
+  SCHEDULED
+  RUNNING
+  PAUSED
+  COMPLETED
+  CANCELED
+}
+
+enum CampaignRecipientStatus {
+  PENDING
+  SENT
+  DELIVERED
+  READ
+  FAILED
+}
+
+enum WhatsappAccountStatus {
+  DISCONNECTED
+  CONNECTING
+  CONNECTED
+  ERROR
+}
+
+model WhatsappAccount {
+  id             String                @id @default(cuid())
+  name           String                @db.VarChar(255)
+  phone          String?               @db.VarChar(32)
+  status         WhatsappAccountStatus @default(DISCONNECTED)
+  externalId     String?               @db.VarChar(255)
+  active         Boolean               @default(true)
+  organizationId String
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+  deletedAt      DateTime?
+  organization   Organization          @relation(fields: [organizationId], references: [id])
+  campaigns      Campaign[]
+  templates      WhatsappTemplate[]
+
+  @@index([organizationId])
+  @@index([status])
+  @@index([active])
+  @@index([deletedAt])
+}
+
+model WhatsappTemplate {
+  id                String           @id @default(cuid())
+  name              String           @db.VarChar(255)
+  content           String
+  variables         Json?
+  active            Boolean          @default(true)
+  organizationId    String
+  whatsappAccountId String?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  deletedAt         DateTime?
+  organization      Organization     @relation(fields: [organizationId], references: [id])
+  whatsappAccount   WhatsappAccount? @relation(fields: [whatsappAccountId], references: [id])
+  campaigns         Campaign[]
+
+  @@index([organizationId])
+  @@index([whatsappAccountId])
+  @@index([active])
+  @@index([deletedAt])
+}
+
+model Campaign {
+  id                 String              @id @default(cuid())
+  name               String              @db.VarChar(255)
+  description        String?
+  status             CampaignStatus      @default(DRAFT)
+  scheduledAt        DateTime?
+  startedAt          DateTime?
+  finishedAt         DateTime?
+  organizationId     String
+  createdByUserId    String?
+  whatsappAccountId  String?
+  whatsappTemplateId String?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  deletedAt          DateTime?
+  organization       Organization        @relation(fields: [organizationId], references: [id])
+  createdByUser      User?               @relation(fields: [createdByUserId], references: [id])
+  whatsappAccount    WhatsappAccount?    @relation(fields: [whatsappAccountId], references: [id])
+  whatsappTemplate   WhatsappTemplate?   @relation(fields: [whatsappTemplateId], references: [id])
+  recipients         CampaignRecipient[]
+
+  @@index([organizationId])
+  @@index([createdByUserId])
+  @@index([whatsappAccountId])
+  @@index([whatsappTemplateId])
+  @@index([status])
+  @@index([scheduledAt])
+  @@index([deletedAt])
+}
+
+model CampaignRecipient {
+  id          String                  @id @default(cuid())
+  campaignId  String
+  leadId      String?
+  name        String?                 @db.VarChar(255)
+  phone       String                  @db.VarChar(32)
+  status      CampaignRecipientStatus @default(PENDING)
+  error       String?
+  sentAt      DateTime?
+  deliveredAt DateTime?
+  readAt      DateTime?
+  createdAt   DateTime                @default(now())
+  updatedAt   DateTime                @updatedAt
+  campaign    Campaign                @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  lead        Lead?                   @relation(fields: [leadId], references: [id])
+
+  @@index([campaignId])
+  @@index([leadId])
+  @@index([phone])
+  @@index([status])
 }
 
 model Pipeline {
@@ -900,29 +1022,30 @@ model PipelineHistory {
 }
 
 model Lead {
-  id              String            @id @default(cuid())
-  name            String            @db.VarChar(255)
-  phone           String            @db.VarChar(32)
-  normalizedPhone String            @db.VarChar(32)
-  email           String?           @db.VarChar(255)
-  document        String?           @db.VarChar(64)
-  source          LeadSource        @default(MANUAL)
-  status          LeadStatus        @default(NEW)
-  temperature     LeadTemperature   @default(COLD)
-  notes           String?
-  organizationId  String
-  assignedUserId  String?
-  pipelineId      String?
-  stageId         String?
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
-  deletedAt       DateTime?
-  organization    Organization      @relation(fields: [organizationId], references: [id])
-  assignedUser    User?             @relation(fields: [assignedUserId], references: [id])
-  pipeline        Pipeline?         @relation(fields: [pipelineId], references: [id])
-  stage           PipelineStage?    @relation(fields: [stageId], references: [id])
-  history         LeadHistory[]
-  pipelineHistory PipelineHistory[]
+  id                 String              @id @default(cuid())
+  name               String              @db.VarChar(255)
+  phone              String              @db.VarChar(32)
+  normalizedPhone    String              @db.VarChar(32)
+  email              String?             @db.VarChar(255)
+  document           String?             @db.VarChar(64)
+  source             LeadSource          @default(MANUAL)
+  status             LeadStatus          @default(NEW)
+  temperature        LeadTemperature     @default(COLD)
+  notes              String?
+  organizationId     String
+  assignedUserId     String?
+  pipelineId         String?
+  stageId            String?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  deletedAt          DateTime?
+  organization       Organization        @relation(fields: [organizationId], references: [id])
+  assignedUser       User?               @relation(fields: [assignedUserId], references: [id])
+  pipeline           Pipeline?           @relation(fields: [pipelineId], references: [id])
+  stage              PipelineStage?      @relation(fields: [stageId], references: [id])
+  history            LeadHistory[]
+  pipelineHistory    PipelineHistory[]
+  campaignRecipients CampaignRecipient[]
 
   @@index([organizationId])
   @@index([assignedUserId])
