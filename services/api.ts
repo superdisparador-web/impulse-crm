@@ -21,7 +21,15 @@ export async function api<T>(
   });
 
   if (!response.ok) {
-    throw new Error(await response.text());
+    const errorText = await response.text();
+    let parsedError: { message?: string | string[]; error?: string } | null = null;
+    try {
+      parsedError = JSON.parse(errorText) as { message?: string | string[]; error?: string };
+    } catch {
+      parsedError = null;
+    }
+    const message = Array.isArray(parsedError?.message) ? parsedError.message.join(" ") : parsedError?.message;
+    throw new Error(message || parsedError?.error || errorText);
   }
 
   return response.json();
