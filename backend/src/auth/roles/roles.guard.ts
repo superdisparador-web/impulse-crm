@@ -16,7 +16,7 @@ export class RolesGuard implements CanActivate {
     const request = context.switchToHttp().getRequest<AuthRequest>();
     const userId = request.user?.id;
     if (!userId) throw new ForbiddenException('Usuário não autenticado');
-    const user = await this.prisma.user.findFirst({ where: { id: userId, active: true, deletedAt: null }, select: { role: true, organizationId: true } });
+    const user = await this.prisma.user.findFirst({ where: { id: userId, status: 'ACTIVE', deletedAt: null }, select: { role: true, organizationId: true } });
     if (!user || !roles.includes(user.role)) throw new ForbiddenException('Permissão insuficiente');
     return true;
   }

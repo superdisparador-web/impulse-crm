@@ -7,7 +7,7 @@ const { Role } = require('@prisma/client');
 const { OrganizationsController } = require('../dist/src/organizations/organizations.controller');
 const { OrganizationsService } = require('../dist/src/organizations/organizations.service');
 const { JwtAuthGuard } = require('../dist/src/auth/jwt-auth.guard');
-const { RolesGuard } = require('../dist/src/auth/roles/roles.guard');
+const { PermissionsGuard } = require('../dist/src/auth/guards/permissions.guard');
 
 const globalUser = { id: 'global-admin', role: Role.ADMIN };
 const commonUser = { id: 'common-user', role: Role.CORRETOR };
@@ -20,9 +20,13 @@ function makePrisma(overrides = {}) {
       findMany: async (args) => { state.listWhere = args.where; return [{ id: args.where.id || 'org-1', name: 'Org' }]; },
       count: async () => 1,
       findFirst: async (args) => {
-        if (args.select?.document || args.select?.email) return null;
+        if (args.where.slug) return null;
+        if (args.select?.document || args.select?.email || args.select?.slug) {
+          if (args.select.name) return { id: args.where.id || 'org-1', name: 'Org', active: true, status: 'ACTIVE', deletedAt: null };
+          return null;
+        }
         state.oneWhere = args.where;
-        return { id: args.where.id || 'org-1', name: 'Org' };
+        return { id: args.where.id || 'org-1', name: 'Org', active: true, status: 'ACTIVE', deletedAt: null };
       },
       update: async (args) => { state.updated = args; return { id: args.where.id, ...args.data }; },
     },
@@ -40,21 +44,20 @@ function makePrisma(overrides = {}) {
   };
   function userForArgs(args) {
     if (args.where.id === globalUser.id && (args.where.role === undefined || args.where.role === Role.ADMIN) && (args.where.organizationId === undefined || args.where.organizationId === null)) return { id: globalUser.id, role: Role.ADMIN, organizationId: null, organization: null };
-    if (args.where.id === commonUser.id && args.where.role === undefined && args.where.organizationId === undefined) return { id: commonUser.id, role: Role.CORRETOR, organizationId: 'org-owned', organization: { active: true, deletedAt: null } };
+    if (args.where.id === commonUser.id && args.where.role === undefined && args.where.organizationId === undefined) return { id: commonUser.id, role: Role.CORRETOR, organizationId: 'org-owned', organization: { active: true, status: 'ACTIVE', deletedAt: null } };
     return null;
   }
   return Object.assign(prisma, overrides);
 }
 
-test('protects organization routes with JwtAuthGuard and mutation roles guard', () => {
+test('protects organization routes with JwtAuthGuard and mutation permissions guard', () => {
   const classGuards = Reflect.getMetadata('__guards__', OrganizationsController) || [];
   assert.ok(classGuards.includes(JwtAuthGuard), 'class must require JWT');
   for (const name of ['create', 'update', 'updateStatus', 'remove']) {
     const handler = OrganizationsController.prototype[name];
     const guards = Reflect.getMetadata('__guards__', handler) || [];
     const roles = Reflect.getMetadata('roles', handler) || [];
-    assert.ok(guards.includes(RolesGuard), `${name} must use RolesGuard`);
-    assert.deepEqual(roles, [Role.ADMIN], `${name} must require ADMIN role`);
+    assert.ok(guards.includes(PermissionsGuard), `${name} must use PermissionsGuard`);
   }
 });
 
@@ -97,7 +100,7 @@ test('lists all organizations for global admin and filters active status', async
   const service = new OrganizationsService(prisma);
   const result = await service.findAll({ active: false, page: 1, limit: 10 }, globalUser);
   assert.equal(result.meta.total, 1);
-  assert.equal(prisma.__state.listWhere.active, false);
+  assert.deepEqual(prisma.__state.listWhere.status, { not: 'ACTIVE' });
   assert.equal(prisma.__state.listWhere.id, undefined);
 });
 
@@ -126,9 +129,12 @@ test('returns not found on cross-tenant access attempt', async () => {
   assert.equal(prisma.__state.oneWhere.id, 'org-owned');
 });
 
-test('rejects mutation with non-global role', async () => {
+test('allows organization admin to update only own non-reserved fields', async () => {
   const service = new OrganizationsService(makePrisma());
-  await assert.rejects(() => service.update('org-owned', { name: 'X' }, commonUser), ForbiddenException);
+  const result = await service.update('org-owned', { name: 'X' }, commonUser);
+  assert.equal(result.name, 'X');
+  await assert.rejects(() => service.update('other-org', { name: 'X' }, commonUser), ForbiddenException);
+  await assert.rejects(() => service.update('org-owned', { slug: 'reserved' }, commonUser), ForbiddenException);
 });
 
 test('soft deletes organization transactionally', async () => {

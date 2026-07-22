@@ -1,5 +1,6 @@
+import { Role } from '@prisma/client';
 import { Transform } from 'class-transformer';
-import { IsBoolean, IsOptional, IsString, IsInt, Min, Max } from 'class-validator';
+import { IsBoolean, IsEnum, IsOptional, IsString, IsInt, Min, Max } from 'class-validator';
 
 function toOptionalBoolean(value: unknown) {
   if (value === undefined || value === null || value === '') return undefined;
@@ -34,4 +35,11 @@ export class ListUsersDto {
   @IsOptional()
   @IsString()
   organizationId?: string;
+
+  @IsOptional()
+  @IsEnum(Role)
+  role?: Role;
 }
+
+
+declare module './list-users.dto' {}

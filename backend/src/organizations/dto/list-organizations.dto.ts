@@ -1,5 +1,6 @@
+import { OrganizationStatus } from '@prisma/client';
 import { Transform, Type } from 'class-transformer';
-import { IsBoolean, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import { IsBoolean, IsEnum, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
 
 export class ListOrganizationsDto {
   @IsOptional()
@@ -16,6 +17,10 @@ export class ListOrganizationsDto {
   active?: boolean;
 
   @IsOptional()
+  @IsEnum(OrganizationStatus)
+  status?: OrganizationStatus;
+
+  @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)
@@ -27,4 +32,11 @@ export class ListOrganizationsDto {
   @Min(1)
   @Max(100)
   limit?: number = 10;
+}
+
+
+export class OrganizationStatusFilterDto {
+  @IsOptional()
+  @IsEnum(OrganizationStatus)
+  status?: OrganizationStatus;
 }
