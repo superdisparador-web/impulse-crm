@@ -7,6 +7,7 @@ export const STABLE_PERMISSIONS = [
   'organizations:create', 'organizations:read', 'organizations:update', 'organizations:suspend', 'organizations:archive',
   'users:create', 'users:read', 'users:update', 'users:activate', 'users:deactivate', 'users:archive', 'users:reset-password',
   'roles:read', 'roles:manage', 'auth:session:read', 'auth:password:change',
+  'leads:create', 'leads:read', 'leads:read-all', 'leads:update', 'leads:assign', 'leads:unassign', 'leads:archive', 'leads:restore', 'leads:manage-duplicates', 'leads:history:read',
 ] as const;
 
 @Injectable()

@@ -1,5 +1,5 @@
 import { LeadSource, LeadStatus, LeadTemperature } from '@prisma/client';
-import { IsEmail, IsEnum, IsObject, IsOptional, IsString } from 'class-validator';
+import { IsDateString, IsEmail, IsEnum, IsObject, IsOptional, IsString } from 'class-validator';
 
 export class UpdateLeadDto {
   @IsOptional() @IsString() name?: string | null;
@@ -10,8 +10,8 @@ export class UpdateLeadDto {
   @IsOptional() @IsEnum(LeadStatus) status?: LeadStatus;
   @IsOptional() @IsEnum(LeadTemperature) temperature?: LeadTemperature;
   @IsOptional() @IsString() notes?: string | null;
-  @IsOptional() @IsString() organizationId?: string;
   @IsOptional() @IsString() assignedUserId?: string | null;
   @IsOptional() @IsString() managerUserId?: string | null;
   @IsOptional() @IsObject() metadata?: Record<string, unknown>;
+  @IsOptional() @IsDateString() lastContactAt?: string | null;
 }
