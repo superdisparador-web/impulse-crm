@@ -939,6 +939,7 @@ enum LeadStatus {
   ASSIGNED
   CONTACT_PENDING
   IN_CONTACT
+  CONTACTED
   QUALIFIED
   UNQUALIFIED
   CONVERTED
@@ -961,6 +962,8 @@ enum LeadEventType {
   LEAD_STATUS_CHANGED
   LEAD_TEMPERATURE_CHANGED
   LEAD_ARCHIVED
+  LEAD_RESTORED
+  LEAD_MANAGER_CHANGED
   LEAD_CONVERTED
   LEAD_LOST
   LEAD_DUPLICATE_DETECTED
@@ -991,6 +994,10 @@ enum LeadHistoryAction {
   ASSIGNED
   UNASSIGNED
   DELETED
+  ARCHIVED
+  RESTORED
+  MANAGER_CHANGED
+  DUPLICATE_DETECTED
 }
 
 enum WhatsappAccountStatus {
@@ -1063,6 +1070,7 @@ model Lead {
   createdByUserId    String?
   lastAssignedAt     DateTime?
   lastInteractionAt  DateTime?
+  lastContactAt      DateTime?
   convertedAt        DateTime?
   lostAt             DateTime?
   archivedAt         DateTime?
@@ -1159,15 +1167,19 @@ model LeadActivity {
 
 model LeadHistory {
   id                String            @id @default(cuid())
+  organizationId    String
   leadId            String
   action            LeadHistoryAction
   description       String            @db.VarChar(500)
+  before            Json?
+  after             Json?
   metadata          Json?
   performedByUserId String?
   createdAt         DateTime          @default(now())
   lead              Lead              @relation(fields: [leadId], references: [id], onDelete: Cascade)
   performedByUser   User?             @relation(fields: [performedByUserId], references: [id])
 
+  @@index([organizationId, leadId, createdAt])
   @@index([leadId])
   @@index([performedByUserId])
   @@index([action])
