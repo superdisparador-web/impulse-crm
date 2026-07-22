@@ -82,12 +82,12 @@ test('common user can read own profile only', async () => {
 });
 
 test('common user cannot manage users', async () => {
-  await assert.rejects(() => new UsersService(makePrisma(), new AccessContextService(makePrisma())).create({ name: 'X', email: 'x@example.com', password: '123456' }, commonUser), ForbiddenException);
+  await assert.rejects(() => new UsersService(makePrisma(), new AccessContextService(makePrisma())).create({ name: 'X', email: 'x@example.com', password: 'Senha123' }, commonUser), ForbiddenException);
 });
 
 test('creates org user from authenticated org and normalizes email', async () => {
   const prisma = makePrisma();
-  await new UsersService(prisma, new AccessContextService(prisma)).create({ name: ' New ', email: 'NEW@EXAMPLE.COM', password: '123456', role: Role.ADMIN, organizationId: 'org-2' }, orgAdmin);
+  await new UsersService(prisma, new AccessContextService(prisma)).create({ name: ' New ', email: 'NEW@EXAMPLE.COM', password: 'Senha123', role: Role.ADMIN, organizationId: 'org-2' }, orgAdmin);
   assert.equal(prisma.__state.created.data.email, 'new@example.com');
   assert.equal(prisma.__state.created.data.organizationId, 'org-1');
   assert.equal(prisma.__state.created.data.role, Role.CORRETOR);
@@ -95,8 +95,8 @@ test('creates org user from authenticated org and normalizes email', async () =>
 
 test('rejects duplicated email and empty name', async () => {
   const service = new UsersService(makePrisma(), new AccessContextService(makePrisma()));
-  await assert.rejects(() => service.create({ name: 'X', email: 'duplicado@example.com', password: '123456' }, orgAdmin), ConflictException);
-  await assert.rejects(() => service.create({ name: '   ', email: 'ok@example.com', password: '123456' }, orgAdmin), BadRequestException);
+  await assert.rejects(() => service.create({ name: 'X', email: 'duplicado@example.com', password: 'Senha123' }, orgAdmin), ConflictException);
+  await assert.rejects(() => service.create({ name: '   ', email: 'ok@example.com', password: 'Senha123' }, orgAdmin), BadRequestException);
 });
 
 test('blocks privilege escalation and cross-tenant updates', async () => {
@@ -111,6 +111,6 @@ test('soft deletes and resets password administratively', async () => {
   assert.deepEqual(await service.remove('common-user', orgAdmin), { success: true });
   assert.equal(prisma.__state.updated.data.active, false);
   assert.ok(prisma.__state.updated.data.deletedAt);
-  await service.resetPassword('common-user', 'abcdef', orgAdmin);
+  await service.resetPassword('common-user', 'Senha123', orgAdmin);
   assert.ok(prisma.__state.updated.data.password.startsWith('$2'));
 });

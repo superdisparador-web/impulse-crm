@@ -1,12 +1,12 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma, Role } from '@prisma/client';
-import * as bcrypt from 'bcrypt';
 import { AccessContext, AccessContextService, AuthenticatedUserRef } from '../auth/access-context.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { ListUsersDto } from './dto/list-users.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { USER_PASSWORD_RESET_SECURITY_NOTES } from './constants/password-reset-security';
+import { PasswordService } from '../auth/security/password.service';
 
 const userSelect = {
   id: true,
@@ -26,7 +26,7 @@ type UserPayload = { name?: string; email?: string; password?: string; phone?: s
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly prisma: PrismaService, private readonly accessContext: AccessContextService) {}
+  constructor(private readonly prisma: PrismaService, private readonly accessContext: AccessContextService, private readonly passwords: PasswordService = new PasswordService()) {}
 
   async findAll(query: ListUsersDto = {}, user?: AuthenticatedUserRef) {
     const actor = await this.accessContext.resolve(user);
@@ -100,7 +100,7 @@ export class UsersService {
     this.ensureCanManage(actor);
     const target = await this.findExisting(id);
     this.ensureCanManageTarget(actor, target);
-    const updated = await this.prisma.user.update({ where: { id }, data: { password: await bcrypt.hash(password, 10) }, select: userSelect });
+    const updated = await this.prisma.user.update({ where: { id }, data: { password: await this.passwords.hash(password) }, select: userSelect });
     return { ...updated, security: { tokenInvalidation: USER_PASSWORD_RESET_SECURITY_NOTES } };
   }
 
@@ -120,7 +120,7 @@ export class UsersService {
     if (data.email !== undefined) payload.email = data.email.trim().toLowerCase();
     if ('phone' in data && data.phone !== undefined) payload.phone = data.phone.trim() || null;
     if ('active' in data && data.active !== undefined) payload.active = data.active;
-    if ('password' in data && data.password) payload.password = data.password.startsWith('$2') ? data.password : await bcrypt.hash(data.password, 10);
+    if ('password' in data && data.password) payload.password = data.password.startsWith('$2') ? data.password : await this.passwords.hash(data.password);
     if (!partial && payload.active === undefined) payload.active = true;
 
     const requestedRole = 'role' in data && data.role ? data.role as Role : undefined;
