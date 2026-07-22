@@ -8,6 +8,9 @@ export const STABLE_PERMISSIONS = [
   'users:create', 'users:read', 'users:update', 'users:activate', 'users:deactivate', 'users:archive', 'users:reset-password',
   'roles:read', 'roles:manage', 'auth:session:read', 'auth:password:change',
   'leads:create', 'leads:read', 'leads:read-all', 'leads:update', 'leads:assign', 'leads:unassign', 'leads:archive', 'leads:restore', 'leads:manage-duplicates', 'leads:history:read',
+  'whatsapp:accounts:create', 'whatsapp:accounts:read', 'whatsapp:accounts:update', 'whatsapp:accounts:archive', 'whatsapp:accounts:test',
+  'whatsapp:conversations:read', 'whatsapp:conversations:read-all', 'whatsapp:conversations:update', 'whatsapp:conversations:assign',
+  'whatsapp:messages:read', 'whatsapp:messages:send', 'whatsapp:templates:read', 'whatsapp:templates:sync', 'whatsapp:templates:manage',
 ] as const;
 
 @Injectable()
