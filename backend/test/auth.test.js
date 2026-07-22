@@ -17,12 +17,11 @@ test('PasswordService enforces minimum password policy', async () => {
   await assert.rejects(() => service.hash('weak'), BadRequestException);
 });
 
-test('PermissionsGuard allows admin wildcard and denies missing permissions', () => {
+test('PermissionsGuard requires IAM and denies missing permissions', async () => {
   const reflector = { getAllAndOverride: () => ['auth:password:change'] };
-  const makeContext = (role) => ({ getHandler: () => null, getClass: () => null, switchToHttp: () => ({ getRequest: () => ({ user: { role } }) }) });
-  const guard = new PermissionsGuard(reflector);
-  assert.equal(guard.canActivate(makeContext('ADMIN')), true);
-  assert.equal(guard.canActivate(makeContext('CORRETOR')), true);
-  reflector.getAllAndOverride = () => ['admin:only'];
-  assert.throws(() => guard.canActivate(makeContext('CORRETOR')));
+  const makeContext = (id) => ({ getHandler: () => null, getClass: () => null, switchToHttp: () => ({ getRequest: () => ({ user: { id } }) }) });
+  const iam = { permissionsForUser: async (id) => id === 'allowed' ? ['auth:password:change'] : [] };
+  const guard = new PermissionsGuard(reflector, iam);
+  assert.equal(await guard.canActivate(makeContext('allowed')), true);
+  await assert.rejects(() => guard.canActivate(makeContext('denied')));
 });

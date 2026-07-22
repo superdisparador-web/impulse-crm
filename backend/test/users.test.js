@@ -9,12 +9,13 @@ const { UsersService } = require('../dist/src/users/users.service');
 const { AccessContextService } = require('../dist/src/auth/access-context.service');
 const { JwtAuthGuard } = require('../dist/src/auth/jwt-auth.guard');
 const { RolesGuard } = require('../dist/src/auth/roles/roles.guard');
+const { PermissionsGuard } = require('../dist/src/auth/guards/permissions.guard');
 
 const globalAdmin = { id: 'global-admin', role: Role.ADMIN };
 const orgAdmin = { id: 'org-admin', role: Role.ADMIN };
 const commonUser = { id: 'common-user', role: Role.CORRETOR };
 
-function user(id, role = Role.CORRETOR, organizationId = 'org-1') { return { id, name: id, email: `${id}@example.com`, phone: null, role, active: true, organizationId, organization: organizationId ? { id: organizationId, name: organizationId, active: true, deletedAt: null } : null, createdAt: new Date(), updatedAt: new Date(), deletedAt: null }; }
+function user(id, role = Role.CORRETOR, organizationId = 'org-1') { return { id, name: id, email: `${id}@example.com`, phone: null, role, active: true, organizationId, organization: organizationId ? { id: organizationId, name: organizationId, active: true, status: 'ACTIVE', deletedAt: null } : null, createdAt: new Date(), updatedAt: new Date(), deletedAt: null }; }
 
 function makePrisma() {
   const state = { listWhere: null, created: null, updated: null };
@@ -41,11 +42,10 @@ function makePrisma() {
   return prisma;
 }
 
-test('protects user routes with JWT, RolesGuard and ADMIN metadata', () => {
+test('protects user routes with JWT and PermissionsGuard metadata', () => {
   assert.ok((Reflect.getMetadata('__guards__', UsersController) || []).includes(JwtAuthGuard));
   for (const name of ['findAll', 'create', 'update', 'updateStatus', 'resetPassword', 'remove']) {
-    assert.ok((Reflect.getMetadata('__guards__', UsersController.prototype[name]) || []).includes(RolesGuard));
-    assert.deepEqual(Reflect.getMetadata('roles', UsersController.prototype[name]), [Role.ADMIN]);
+    assert.ok((Reflect.getMetadata('__guards__', UsersController.prototype[name]) || []).includes(PermissionsGuard));
   }
 });
 

@@ -8,7 +8,6 @@ import { AuthService } from './auth.service';
 import { getJwtAccessSecret } from './jwt-env';
 import { JwtStrategy } from './jwt.strategy';
 import { AuthThrottlerGuard, AUTH_THROTTLER_GUARD } from './guards/auth-throttler.guard';
-import { PermissionsGuard } from './guards/permissions.guard';
 import { LocalStrategy } from './strategies/local.strategy';
 import { PasswordService } from './security/password.service';
 import { UsersModule } from '../users/users.module';
@@ -17,7 +16,7 @@ type ThrottlerPackage = { ThrottlerModule: { forRoot: (options: unknown) => Dyna
 
 function resolveThrottlerImports(): DynamicModule[] {
   try {
-    const throttler = require('@nestjs/throttler') as ThrottlerPackage;
+    const throttler = (module.require('@nestjs/throttler')) as ThrottlerPackage;
     return [throttler.ThrottlerModule.forRoot([{ ttl: 60_000, limit: 10 }])];
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== 'MODULE_NOT_FOUND') throw error;
@@ -27,7 +26,7 @@ function resolveThrottlerImports(): DynamicModule[] {
 
 function resolveThrottlerProviders(): Provider[] {
   try {
-    const throttler = require('@nestjs/throttler') as ThrottlerPackage;
+    const throttler = (module.require('@nestjs/throttler')) as ThrottlerPackage;
     return [{ provide: AUTH_THROTTLER_GUARD, useClass: throttler.ThrottlerGuard }];
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== 'MODULE_NOT_FOUND') throw error;
@@ -35,12 +34,12 @@ function resolveThrottlerProviders(): Provider[] {
   }
 }
 
-const authProviders: Provider[] = [AuthService, JwtStrategy, LocalStrategy, AccessContextService, PermissionsGuard, PasswordService, AuthThrottlerGuard, ...resolveThrottlerProviders()];
+const authProviders: Provider[] = [AuthService, JwtStrategy, LocalStrategy, AccessContextService, PasswordService, AuthThrottlerGuard, ...resolveThrottlerProviders()];
 
 @Module({
   imports: [UsersModule, ...resolveThrottlerImports(), PassportModule, JwtModule.registerAsync({ imports: [ConfigModule], inject: [ConfigService], useFactory: (configService: ConfigService) => ({ secret: getJwtAccessSecret({ JWT_ACCESS_SECRET: configService.get<string>('JWT_ACCESS_SECRET'), JWT_REFRESH_SECRET: configService.get<string>('JWT_REFRESH_SECRET') }), signOptions: { expiresIn: configService.get('JWT_ACCESS_TTL') ?? '15m' } }) })],
   controllers: [AuthController],
   providers: authProviders,
-  exports: [AuthService, AccessContextService, PermissionsGuard, PasswordService],
+  exports: [AuthService, AccessContextService, PasswordService],
 })
 export class AuthModule {}

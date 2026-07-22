@@ -757,7 +757,12 @@ enum TriggerType {
 model Organization {
   id                String               @id @default(cuid())
   name              String               @db.VarChar(255)
+  legalName         String?              @db.VarChar(255)
   document          String?              @db.VarChar(32)
+  slug              String               @db.VarChar(120)
+  status            OrganizationStatus   @default(ACTIVE)
+  timezone          String               @default("America/Sao_Paulo") @db.VarChar(80)
+  locale            String               @default("pt-BR") @db.VarChar(16)
   email             String?              @db.VarChar(255)
   phone             String?              @db.VarChar(32)
   active            Boolean              @default(true)
@@ -782,8 +787,11 @@ model Organization {
   dealTags          DealTag[]
   dealActivities    DealActivity[]
   auditLogs         AuditLog[]
+  rbacRoles         RbacRole[]
 
   @@index([name])
+  @@index([document])
+  @@index([status])
   @@index([deletedAt])
 }
 
@@ -795,6 +803,7 @@ model User {
   phone                  String?             @db.VarChar(32)
   role                   Role                @default(ADMIN)
   active                 Boolean             @default(true)
+  status                 UserStatus          @default(ACTIVE)
   organizationId         String?
   organization           Organization?       @relation(fields: [organizationId], references: [id])
   createdAt              DateTime            @default(now())
@@ -822,14 +831,88 @@ model User {
   authSessions           AuthSession[]
   refreshTokens          RefreshToken[]
   authAuditLogs          AuthAuditLog[]
+  userRoles              UserRole[]
 
   @@index([organizationId])
+  @@index([organizationId, status])
+  @@index([role])
   @@index([deletedAt])
 }
 
 enum Role {
   ADMIN
   CORRETOR
+  GLOBAL_ADMIN
+  ORG_ADMIN
+  MANAGER
+  BROKER
+}
+
+enum OrganizationStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  ARCHIVED
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+model RbacRole {
+  id             String           @id @default(cuid())
+  organizationId String?
+  code           String           @db.VarChar(80)
+  name           String           @db.VarChar(120)
+  description    String?          @db.VarChar(255)
+  system         Boolean          @default(false)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  deletedAt      DateTime?
+  organization   Organization?    @relation(fields: [organizationId], references: [id])
+  permissions    RolePermission[]
+  users          UserRole[]
+
+  @@unique([organizationId, code])
+  @@index([organizationId])
+  @@index([deletedAt])
+}
+
+model Permission {
+  id          String           @id @default(cuid())
+  code        String           @unique @db.VarChar(120)
+  description String?          @db.VarChar(255)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  roles       RolePermission[]
+
+  @@index([code])
+}
+
+model RolePermission {
+  id           String     @id @default(cuid())
+  roleId       String
+  permissionId String
+  createdAt    DateTime   @default(now())
+  role         RbacRole   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+  @@index([permissionId])
+}
+
+model UserRole {
+  id        String   @id @default(cuid())
+  userId    String
+  roleId    String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      RbacRole @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roleId])
+  @@index([roleId])
 }
 
 enum LeadSource {
@@ -1640,18 +1723,18 @@ model AuthSession {
 }
 
 model RefreshToken {
-  id               String             @id @default(cuid())
-  sessionId        String
-  session          AuthSession        @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  userId           String
-  user             User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  tokenHash        String             @unique
-  status           RefreshTokenStatus @default(ACTIVE)
+  id                String             @id @default(cuid())
+  sessionId         String
+  session           AuthSession        @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  userId            String
+  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash         String             @unique
+  status            RefreshTokenStatus @default(ACTIVE)
   replacedByTokenId String?
-  expiresAt        DateTime
-  createdAt        DateTime           @default(now())
-  lastUsedAt       DateTime?
-  revokedAt        DateTime?
+  expiresAt         DateTime
+  createdAt         DateTime           @default(now())
+  lastUsedAt        DateTime?
+  revokedAt         DateTime?
 
   @@index([userId, status, expiresAt])
   @@index([sessionId, status])
