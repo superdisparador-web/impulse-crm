@@ -343,6 +343,11 @@ Complementos incrementais:
 13. WebSocket notifica atendentes conectados.
 14. `WebhookEvent` é marcado como `PROCESSED`.
 
+Complemento para respostas de botão de campanha:
+
+- Mensagens interativas de botão devem ser normalizadas com identificador, título e contexto de resposta em `Message.payload`, preservando dados suficientes para Campanhas identificar a campanha e o botão configurado.
+- O módulo WhatsApp apenas publica o evento inbound normalizado; a decisão de acionar Round Robin e compartilhar o corretor permanece nos módulos de Campanhas, Distribuição ou Automações, por meio das portas existentes.
+
 ## 10. Fluxo de sincronização
 
 - Sincronização manual ou agendada deve consultar provider para números, templates, qualidade, status de conexão e metadados.
@@ -429,6 +434,16 @@ Complementos incrementais:
 - Persistir vCards normalizados no payload.
 - Permitir criar Lead a partir de contato compartilhado apenas por ação explícita ou automação configurada.
 - Deduplicar telefones normalizados em E.164.
+
+### 21.1 Envio de contato de corretor pela distribuição automática
+
+- O WhatsApp deve expor no contrato outbound provider-agnostic a capacidade de enviar `CONTACTS`/vCard como mensagem ativa dentro de uma conversa, para que Campanhas, Distribuição ou Automações solicitem compartilhamento de contato sem conhecer payloads da Meta.
+- A entrada mínima do contrato deve aceitar `displayName`, `phoneE164` e `idempotencyKey`; campos opcionais como foto, cargo, equipe, gerente e observações devem ficar preparados como metadados extensíveis, sem bloquear o envio inicial.
+- O adapter da Meta é responsável por transformar o contrato interno no contact message oficial do WhatsApp, preservando o número normalizado e o nome do corretor.
+- O envio automático após distribuição deve registrar uma `Message` do tipo `CONTACTS`, associada à `Conversation` e ao `Lead` quando aplicável, mantendo status, retries, rate limits, auditoria e webhooks de status no fluxo já existente.
+- O link `wa.me` deve ser tratado como mensagem de texto opcional e gerado por helper a partir do telefone normalizado no momento do envio; o módulo não deve persistir links importados ou derivados como fonte de verdade.
+- O helper de link deve aceitar texto inicial opcional já resolvido pelas regras de Campanhas ou Automações, aplicar codificação URL segura e retornar `https://wa.me/{phoneE164SemSinal}` ou `https://wa.me/{phoneE164SemSinal}?text={encodedText}` sem gravar o link completo no banco.
+- A resolução de variáveis do texto inicial pertence ao orquestrador solicitante; o WhatsApp apenas recebe texto final seguro para codificação e envio como mensagem opcional separada.
 
 ## 22. Estratégia para respostas rápidas
 

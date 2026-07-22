@@ -301,6 +301,34 @@ O filtro deve ser serializado em `CampaignSegment.filterDefinition` de forma pro
 5. Linhas válidas alimentam `CampaignAudienceMember` ou staging interno do import.
 6. Importações grandes devem ser chunked e idempotentes por hash de arquivo, linha e organização.
 
+### 14.1 Importação da lista de corretores para distribuição automática
+
+- A lista de corretores da distribuição automática continua sendo importada por planilha `.xlsx` ou `.csv`, sem alterar a arquitetura existente de Campanhas, Webhooks, Round Robin, Distribuição ou Automações.
+- No escopo inicial da distribuição de corretores, somente `Nome` e `Telefone` são campos obrigatórios. O import deve aceitar planilhas simples com cabeçalhos equivalentes a esses campos e rejeitar linhas sem nome ou telefone utilizável.
+- O telefone importado deve ser normalizado automaticamente pelo Impulse, seguindo a estratégia geral de normalização de telefones deste documento. O usuário não deve informar nem importar links do WhatsApp.
+- O link `https://wa.me/55XXXXXXXXXXX` é sempre derivado em tempo de uso a partir do telefone normalizado; não deve ser armazenado como campo persistente da lista.
+- A estrutura deve permanecer extensível para campos opcionais futuros como `Foto`, `Gerente`, `Equipe`, `Cargo` e `Observações`, mantendo esses dados como metadados ou colunas mapeáveis sem tornar nenhum deles obrigatório no fluxo inicial.
+- A validação do import deve preservar idempotência, deduplicação por telefone normalizado e isolamento por `organizationId`, sem criar dependência direta entre a lista importada e payloads específicos da Meta.
+
+### 14.2 Limpeza automática da base importada para campanhas
+
+- Antes de criar a audiência definitiva e antes de qualquer envio, toda importação de clientes para campanha deve executar limpeza automática após a normalização dos telefones.
+- A deduplicação deve usar como chave principal `organizationId + campaignId + phoneE164`, garantindo que cada telefone normalizado gere no máximo um `CampaignAudienceMember` ou destinatário equivalente dentro da mesma campanha.
+- Formatos diferentes do mesmo número, como `(11) 99999-9999`, `11 99999-9999`, `+55 11 99999-9999` e `5511999999999`, devem convergir para a mesma chave depois da normalização.
+- A limpeza deve bloquear duplicidade entre linhas, páginas, chunks, lotes, reprocessamentos do mesmo import e jobs paralelos, preservando idempotência por hash de arquivo, linha, organização, campanha e telefone normalizado.
+- Quando houver duplicidade, manter apenas o primeiro registro válido encontrado. Se o primeiro registro estiver sem nome e um duplicado posterior trouxer nome válido, pode existir política explícita de enriquecimento, desde que o telefone permaneça único, nenhum segundo destinatário seja criado e a decisão apareça no relatório do import.
+- A limpeza atua apenas na audiência/importação da campanha e não deve apagar, mesclar ou modificar Leads globais do CRM fora das políticas próprias do módulo Leads.
+- A constraint lógica e, quando aplicável, persistente deve impedir envio de duas ou mais mensagens ao mesmo cliente dentro da mesma campanha, mantendo compatibilidade com `CampaignImport`, `CampaignAudienceMember` e `CampaignRecipient`.
+
+### 14.3 Relatório de limpeza da base
+
+- Ao finalizar a importação, o sistema deve apresentar uma mensagem clara com total de linhas recebidas, números duplicados retirados, números inválidos retirados e números aptos para envio.
+- A mensagem resumida obrigatória deve ser `Base limpa: {{duplicateCount}} números duplicados foram retirados.` quando houver duplicados, ou `Base limpa: nenhum número duplicado foi encontrado.` quando não houver duplicados.
+- A interface deve exibir pelo menos `totalRows`, `validPhones`, `invalidPhones`, `duplicatePhonesRemoved` e `finalEligibleRecipients`, derivados do processamento normalizado da importação.
+- Opcionalmente, o sistema pode disponibilizar arquivo de relatório contendo número original, telefone normalizado, número da linha, motivo da exclusão e tipo do erro.
+- Os tipos de erro previstos para linhas removidas são `DUPLICATE_PHONE`, `INVALID_PHONE`, `MISSING_PHONE` e `MISSING_REQUIRED_FIELD`.
+- Esses contadores devem ser registrados em `CampaignImport.errorSummary`, métricas ou metadados equivalentes, preservando auditoria, multi-tenancy, processamento em filas, chunks e reprocessamento idempotente.
+
 ## 15. Validação, normalização e deduplicação de telefones
 
 - Converter para E.164 usando país padrão da organização quando necessário.
@@ -541,6 +569,20 @@ Estratégia:
 - Atribuir por `campaignMessageId`, `leadId`, link token, phoneE164 e janela de atribuição.
 - Respostas inbound do WhatsApp devem ser associadas à campanha correta pela conversa, telefone, última `CampaignMessage` enviada, janela temporal e `messageId` quando houver reply context.
 - Resposta deve incrementar métrica, publicar evento de Timeline e opcionalmente atualizar Lead/Pipeline.
+
+### 41.1 Resposta a botão de template e distribuição de corretores
+
+- Quando o webhook da Meta indicar resposta do cliente a um botão configurado no template da campanha, o fluxo atual de inbound deve identificar a campanha pelo vínculo da conversa, telefone, última `CampaignMessage`, payload interativo e janela temporal já usada para atribuição de respostas.
+- O payload interativo deve preservar o identificador e o texto do botão clicado em metadados normalizados, permitindo que a regra de distribuição valide se aquele botão está configurado para acionar a distribuição automática.
+- Após identificar campanha e botão, o módulo deve executar o Round Robin existente sem alterar sua estratégia, ponteiros, critérios de elegibilidade ou integrações de Distribuição e Automações.
+- O próximo corretor selecionado deve vir da lista importada e normalizada com `Nome` e `Telefone`; campos opcionais futuros não devem ser exigidos para envio.
+- A resposta automática deve ser enfileirada pelo contrato outbound do WhatsApp em duas mensagens: primeiro um texto transacional informando `brokerName`, depois uma mensagem de contato compartilhado com o vCard/contact message do corretor.
+- Uma terceira mensagem com o link `wa.me` pode ser enviada apenas quando a configuração da campanha ou automação exigir; esse link deve ser gerado em tempo de envio a partir do telefone normalizado, nunca lido de campo importado.
+- A campanha ou automação pode configurar opcionalmente a `Mensagem inicial para o corretor`, persistindo somente o texto configurado e resolvendo variáveis permitidas como `{{leadName}}`, `{{brokerName}}`, `{{campaignName}}` e `{{distributionCode}}` no momento de gerar o link opcional.
+- Quando a mensagem inicial estiver configurada, o link opcional deve seguir o formato `https://wa.me/55XXXXXXXXXXX?text=MENSAGEM_CODIFICADA`, com texto codificado corretamente para URL; quando não estiver configurada, o link continua podendo ser gerado sem parâmetro `text`.
+- A mensagem inicial pré-preenchida complementa o link opcional e não substitui o envio obrigatório do contato compartilhado `CONTACTS`/vCard.
+- Todas as mensagens geradas por esse fluxo devem manter idempotência por webhook, campanha, destinatário, botão e corretor selecionado, evitando múltiplos compartilhamentos quando a Meta reenviar o mesmo evento.
+- Eventos e métricas devem ser publicados pelos canais atuais de Campanhas, WhatsApp, Timeline e Dashboard, sem criar relacionamento direto `Campaign -> Message` e sem refatorar `CampaignRecipient`, Webhook, Distribuição ou Automações.
 
 ## 42. Associação Lead, Conversation, Message e CampaignMessage
 
