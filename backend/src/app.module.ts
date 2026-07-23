@@ -18,6 +18,7 @@ import { MessagingModule } from './messaging/messaging.module';
 import { PipelineModule } from './pipeline/pipeline.module';
 import { IamModule } from './iam/iam.module';
 import { DistributionModule } from './distribution/distribution.module';
+import { AnalyticsModule } from './analytics/analytics.module';
 
 @Module({
   imports: [
@@ -40,6 +41,7 @@ import { DistributionModule } from './distribution/distribution.module';
     PipelineModule,
     IamModule,
     DistributionModule,
+    AnalyticsModule,
   ],
 })
 export class AppModule {}
