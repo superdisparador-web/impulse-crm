@@ -1,63 +1,100 @@
 "use client";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { pipelineService } from "@/services/pipeline.service";
-import { leadService } from "@/services/lead.service";
-import { userService } from "@/services/user.service";
-import { Deal, LossReason, Pipeline, PipelineStage, Tag } from "@/types/pipeline";
-import { Lead } from "@/types/lead";
-import { User } from "@/types/user";
 
-function money(value: string | number | null | undefined) { return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(value ?? 0)); }
-function daysSince(date?: string) { if (!date) return "—"; const days = Math.max(0, Math.floor((Date.now() - new Date(date).getTime()) / 86400000)); return `${days}d na etapa`; }
+import { useCallback, useEffect, useRef, useState } from "react";
+import { DropTarget } from "@/components/pipeline/KanbanBoard";
+import { PipelineBody } from "@/components/pipeline/PipelineBody";
+import { PipelineHeader } from "@/components/pipeline/PipelineHeader";
+import { findCardStage, getErrorMessage, isLatestBoardResponse, moveCard, selectInitialPipelineId, sortBoard } from "@/components/pipeline/pipeline-utils";
+import { getPipelineBoard, listPipelines, movePipelineCard } from "@/services/pipeline-board.service";
+import { PipelineBoard, PipelineSummary } from "@/types/pipeline-board";
 
 export default function PipelinePage() {
-  const [pipelines, setPipelines] = useState<Pipeline[]>([]);
+  const [pipelines, setPipelines] = useState<PipelineSummary[]>([]);
   const [selectedPipelineId, setSelectedPipelineId] = useState("");
-  const [stages, setStages] = useState<PipelineStage[]>([]);
-  const [leads, setLeads] = useState<Lead[]>([]);
-  const [users, setUsers] = useState<User[]>([]);
-  const [tags, setTags] = useState<Tag[]>([]);
-  const [lossReasons, setLossReasons] = useState<LossReason[]>([]);
-  const [selectedDeal, setSelectedDeal] = useState<Deal | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [board, setBoard] = useState<PipelineBoard | null>(null);
+  const [loadingPipelines, setLoadingPipelines] = useState(true);
+  const [loadingBoard, setLoadingBoard] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [movingCardId, setMovingCardId] = useState("");
+  const [activeCardId, setActiveCardId] = useState("");
   const [error, setError] = useState("");
-  const [message, setMessage] = useState("");
-  const [dealForm, setDealForm] = useState({ title: "", leadId: "", ownerId: "", estimatedValue: 0, expectedCloseDate: "" });
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [newPipeline, setNewPipeline] = useState("");
-  const [newStage, setNewStage] = useState("");
-  const [newTag, setNewTag] = useState("");
-  const [newReason, setNewReason] = useState("");
+  const [moveError, setMoveError] = useState("");
+  const boardRequestRef = useRef(0);
 
-  const selectedPipeline = useMemo(() => pipelines.find((p) => p.id === selectedPipelineId), [pipelines, selectedPipelineId]);
-  const initialStage = stages[0];
-
-  const load = useCallback(async () => {
-    setLoading(true); setError("");
+  const loadBoard = useCallback(async (pipelineId: string, refresh = false) => {
+    const requestId = boardRequestRef.current + 1;
+    boardRequestRef.current = requestId;
+    setLoadingBoard(!refresh);
+    setRefreshing(refresh);
+    setError("");
     try {
-      const [pipeData, leadData, userData, tagData, reasonData] = await Promise.all([
-        pipelineService.pipelines(), leadService.getAll({ limit: 100 }), userService.getAll({ limit: 100, active: true }), pipelineService.tags(), pipelineService.lossReasons(),
-      ]);
-      setPipelines(pipeData); setLeads(leadData.items); setUsers(userData.items); setTags(tagData); setLossReasons(reasonData);
-      const pid = selectedPipelineId || pipeData[0]?.id || ""; setSelectedPipelineId(pid);
-      if (pid) setStages((await pipelineService.kanban(pid, { limit: 20 })).stages);
-    } catch (err) { setError(err instanceof Error ? err.message : "Erro ao carregar Pipeline."); } finally { setLoading(false); }
-  }, [selectedPipelineId]);
+      const data = sortBoard(await getPipelineBoard(pipelineId));
+      if (isLatestBoardResponse(boardRequestRef.current, requestId)) setBoard(data);
+    } catch (err) {
+      if (isLatestBoardResponse(boardRequestRef.current, requestId)) {
+        setBoard(null);
+        setError(getErrorMessage(err));
+      }
+    } finally {
+      if (isLatestBoardResponse(boardRequestRef.current, requestId)) {
+        setLoadingBoard(false);
+        setRefreshing(false);
+      }
+    }
+  }, []);
 
-  useEffect(() => { const timeoutId = window.setTimeout(() => { void load(); }, 0); return () => window.clearTimeout(timeoutId); }, [load]);
-  async function refresh(text: string) { setMessage(text); await load(); window.setTimeout(() => setMessage(""), 2500); }
-  async function createDeal() { if (!selectedPipelineId || !initialStage) return setError("Crie um pipeline e uma etapa inicial antes do Deal."); await pipelineService.createDeal({ ...dealForm, pipelineId: selectedPipelineId, stageId: initialStage.id, estimatedValue: Number(dealForm.estimatedValue) }); setDealForm({ title: "", leadId: "", ownerId: "", estimatedValue: 0, expectedCloseDate: "" }); await refresh("Oportunidade criada."); }
-  async function moveDeal(dealId: string, stageId: string) { await pipelineService.moveDeal(dealId, stageId); await refresh("Oportunidade movimentada."); }
-  async function markWon(deal: Deal) { const amount = Number(window.prompt("Valor fechado", String(deal.estimatedValue)) ?? deal.estimatedValue); await pipelineService.won(deal.id, amount); await refresh("Oportunidade marcada como ganha."); }
-  async function markLost(deal: Deal) { const reason = lossReasons[0]; if (!reason) return setError("Cadastre um motivo de perda antes de perder uma oportunidade."); await pipelineService.lost(deal.id, reason.id); await refresh("Oportunidade marcada como perdida."); }
-  async function reopen(deal: Deal) { if (!initialStage) return; await pipelineService.reopen(deal.id, initialStage.id); await refresh("Oportunidade reaberta."); }
+  const loadPipelines = useCallback(async () => {
+    setLoadingPipelines(true);
+    setError("");
+    try {
+      const data = await listPipelines();
+      setPipelines(data);
+      const nextPipelineId = selectInitialPipelineId(data);
+      setSelectedPipelineId(nextPipelineId);
+      if (nextPipelineId) await loadBoard(nextPipelineId);
+      else setBoard(null);
+    } catch (err) {
+      setPipelines([]);
+      setBoard(null);
+      setError(getErrorMessage(err));
+    } finally {
+      setLoadingPipelines(false);
+    }
+  }, [loadBoard]);
 
-  return <main className="space-y-6">
-    <div className="flex flex-wrap items-center justify-between gap-4"><div><h1 className="text-4xl font-bold">Pipeline</h1><p className="mt-2 text-slate-400">Kanban comercial com forecast, SLA, tags, atividades e histórico de eventos.</p></div><button onClick={() => setSettingsOpen(!settingsOpen)} className="rounded-lg border border-slate-700 px-4 py-3 hover:bg-slate-800">Gestão do Pipeline</button></div>
-    {message && <div className="rounded-lg border border-green-800 bg-green-950/50 p-3 text-green-200">{message}</div>}{error && <div className="rounded-lg border border-red-800 bg-red-950/50 p-3 text-red-200">{error}</div>}
-    <section className="grid gap-3 rounded-2xl border border-slate-800 bg-slate-900/70 p-4 md:grid-cols-7"><select className="rounded-lg border border-slate-700 bg-slate-950 p-3 md:col-span-2" value={selectedPipelineId} onChange={(e)=>setSelectedPipelineId(e.target.value)}>{pipelines.map(p=><option key={p.id} value={p.id}>{p.name}{p.isDefault ? " • padrão" : ""}</option>)}</select><input className="rounded-lg border border-slate-700 bg-slate-950 p-3" placeholder="Título" value={dealForm.title} onChange={e=>setDealForm({...dealForm,title:e.target.value})}/><select className="rounded-lg border border-slate-700 bg-slate-950 p-3" value={dealForm.leadId} onChange={e=>setDealForm({...dealForm,leadId:e.target.value})}><option value="">Lead</option>{leads.map(l=><option key={l.id} value={l.id}>{l.name || l.phone || l.email}</option>)}</select><select className="rounded-lg border border-slate-700 bg-slate-950 p-3" value={dealForm.ownerId} onChange={e=>setDealForm({...dealForm,ownerId:e.target.value})}><option value="">Responsável</option>{users.map(u=><option key={u.id} value={u.id}>{u.name}</option>)}</select><input className="rounded-lg border border-slate-700 bg-slate-950 p-3" type="number" min={0} value={dealForm.estimatedValue} onChange={e=>setDealForm({...dealForm,estimatedValue:Number(e.target.value)})}/><button onClick={createDeal} className="rounded-lg bg-blue-600 px-4 py-3 font-semibold hover:bg-blue-700">Novo Deal</button></section>
-    {settingsOpen && <section className="grid gap-4 rounded-2xl border border-slate-800 bg-slate-900/70 p-4 md:grid-cols-4"><div><h2 className="mb-2 font-semibold">Pipelines</h2><input className="w-full rounded bg-slate-950 p-2" placeholder="Nome" value={newPipeline} onChange={e=>setNewPipeline(e.target.value)}/><button className="mt-2 w-full rounded bg-slate-700 p-2" onClick={async()=>{await pipelineService.createPipeline({name:newPipeline,isDefault:pipelines.length===0}); setNewPipeline(""); await refresh("Pipeline criado.");}}>Criar</button></div><div><h2 className="mb-2 font-semibold">Stages</h2><input className="w-full rounded bg-slate-950 p-2" placeholder="Nova etapa" value={newStage} onChange={e=>setNewStage(e.target.value)}/><button className="mt-2 w-full rounded bg-slate-700 p-2" onClick={async()=>{if(selectedPipelineId) await pipelineService.createStage(selectedPipelineId,{name:newStage,position:(stages.length+1)*1000,isInitial:stages.length===0}); setNewStage(""); await refresh("Etapa criada.");}}>Criar</button></div><div><h2 className="mb-2 font-semibold">Tags ({tags.length})</h2><input className="w-full rounded bg-slate-950 p-2" value={newTag} onChange={e=>setNewTag(e.target.value)} placeholder="Tag"/><button className="mt-2 w-full rounded bg-slate-700 p-2" onClick={async()=>{await pipelineService.createTag({name:newTag}); setNewTag(""); await refresh("Tag criada.");}}>Criar</button></div><div><h2 className="mb-2 font-semibold">Motivos de perda</h2><input className="w-full rounded bg-slate-950 p-2" value={newReason} onChange={e=>setNewReason(e.target.value)} placeholder="Motivo"/><button className="mt-2 w-full rounded bg-slate-700 p-2" onClick={async()=>{await pipelineService.createLossReason({name:newReason,pipelineId:selectedPipelineId}); setNewReason(""); await refresh("Motivo criado.");}}>Criar</button></div></section>}
-    {loading ? <div className="rounded-xl border border-slate-800 p-8 text-slate-400">Carregando Kanban...</div> : !selectedPipeline ? <div className="rounded-xl border border-slate-800 p-8 text-slate-400">Nenhum pipeline cadastrado.</div> : <section className="flex gap-4 overflow-x-auto pb-4">{stages.map(stage => <div key={stage.id} onDragOver={(e)=>e.preventDefault()} onDrop={e=>void moveDeal(e.dataTransfer.getData("dealId"), stage.id)} className="min-w-80 rounded-2xl border border-slate-800 bg-slate-900/80 p-4"><div className="mb-4 flex items-center justify-between"><div><h2 className="font-semibold">{stage.name}</h2><p className="text-xs text-slate-500">{stage.probability}% • SLA {stage.slaHours ?? "—"}h</p></div><span className="rounded-full bg-slate-800 px-3 py-1 text-xs">{stage.meta?.total ?? stage.deals?.length ?? 0}</span></div><div className="space-y-3">{stage.deals?.length ? stage.deals.map(deal => <article draggable onDragStart={e=>e.dataTransfer.setData("dealId", deal.id)} key={deal.id} onClick={()=>setSelectedDeal(deal)} className="cursor-grab rounded-xl border border-slate-700 bg-slate-950 p-4 shadow hover:border-blue-500"><div className="flex justify-between gap-3"><h3 className="font-semibold">{deal.title}</h3><span className="text-xs text-slate-400">{deal.status}</span></div><p className="mt-1 text-sm text-slate-400">{deal.lead?.name || deal.lead?.phone || "Lead vinculado"}</p><div className="mt-3 flex flex-wrap gap-2">{deal.tags?.map(({tag})=><span key={tag.id} className="rounded-full bg-blue-950 px-2 py-1 text-xs text-blue-200">{tag.name}</span>)}</div><div className="mt-3 grid grid-cols-2 gap-2 text-sm"><span>{money(deal.estimatedValue)}</span><span className="text-right text-slate-400">{daysSince(deal.currentStageEnteredAt)}</span><span className="text-slate-400">{deal.owner?.name || "Sem responsável"}</span><span className="text-right text-slate-400">{deal.expectedCloseDate ? new Date(deal.expectedCloseDate).toLocaleDateString("pt-BR") : "Sem previsão"}</span></div><div className="mt-3 flex gap-2"><button onClick={(e)=>{e.stopPropagation(); void markWon(deal);}} className="rounded bg-green-700 px-2 py-1 text-xs">Ganhar</button><button onClick={(e)=>{e.stopPropagation(); void markLost(deal);}} className="rounded bg-red-700 px-2 py-1 text-xs">Perder</button>{deal.status !== 'OPEN' && <button onClick={(e)=>{e.stopPropagation(); void reopen(deal);}} className="rounded bg-slate-700 px-2 py-1 text-xs">Reabrir</button>}</div></article>) : <div className="rounded-xl border border-dashed border-slate-700 p-6 text-center text-sm text-slate-500">Arraste oportunidades para cá.</div>}</div></div>)}</section>}
-    {selectedDeal && <aside className="fixed inset-y-0 right-0 z-50 w-full max-w-xl overflow-y-auto border-l border-slate-800 bg-slate-950 p-6 shadow-2xl"><button className="float-right text-slate-400" onClick={()=>setSelectedDeal(null)}>Fechar</button><h2 className="text-2xl font-bold">{selectedDeal.title}</h2><p className="mt-2 text-slate-400">Lead: {selectedDeal.lead?.name || selectedDeal.lead?.phone || selectedDeal.leadId}</p><div className="mt-6 grid grid-cols-2 gap-4 text-sm"><div className="rounded bg-slate-900 p-4"><span className="text-slate-500">Valor estimado</span><p className="text-lg font-semibold">{money(selectedDeal.estimatedValue)}</p></div><div className="rounded bg-slate-900 p-4"><span className="text-slate-500">Valor fechado</span><p className="text-lg font-semibold">{money(selectedDeal.closedValue)}</p></div><div className="rounded bg-slate-900 p-4"><span className="text-slate-500">Responsável</span><p>{selectedDeal.owner?.name || "—"}</p></div><div className="rounded bg-slate-900 p-4"><span className="text-slate-500">Previsão</span><p>{selectedDeal.expectedCloseDate ? new Date(selectedDeal.expectedCloseDate).toLocaleDateString("pt-BR") : "—"}</p></div></div><h3 className="mt-6 font-semibold">Atividades</h3><div className="mt-2 rounded border border-slate-800 p-4 text-slate-400">{selectedDeal.activities?.length ? selectedDeal.activities.map(a=><p key={a.id}>{a.title} • {a.status}</p>) : "Nenhuma atividade cadastrada."}</div><h3 className="mt-6 font-semibold">Histórico</h3><div className="mt-2 rounded border border-slate-800 p-4 text-slate-400">Timeline dinâmica disponível via eventos do Deal.</div></aside>}
-  </main>;
+  useEffect(() => { const timeoutId = window.setTimeout(() => { void loadPipelines(); }, 0); return () => window.clearTimeout(timeoutId); }, [loadPipelines]);
+
+  async function selectPipeline(pipelineId: string) {
+    setSelectedPipelineId(pipelineId);
+    setBoard(null);
+    if (pipelineId) await loadBoard(pipelineId);
+  }
+
+  async function handleMove(target: DropTarget) {
+    if (!board || movingCardId || target.cardId === "") return;
+    const previousBoard = board;
+    const sourceStage = findCardStage(previousBoard, target.cardId);
+    const nextBoard = moveCard(previousBoard, { cardId: target.cardId, destinationStageId: target.stageId, destinationIndex: target.index });
+    const destinationStage = nextBoard.stages.find((stage) => stage.id === target.stageId);
+    const movedCard = destinationStage?.cards.find((card) => card.id === target.cardId);
+    if (!sourceStage || !destinationStage || !movedCard) return;
+    if (sourceStage.id === target.stageId && movedCard.position === previousBoard.stages.find((stage) => stage.id === sourceStage.id)?.cards.find((card) => card.id === target.cardId)?.position) return;
+
+    setMoveError("");
+    setMovingCardId(target.cardId);
+    setBoard(nextBoard);
+    try {
+      await movePipelineCard(target.cardId, target.stageId, movedCard.position);
+    } catch (err) {
+      setBoard(previousBoard);
+      setMoveError(err instanceof Error && err.message ? err.message : "Não foi possível movimentar o card. A alteração foi desfeita.");
+    } finally {
+      setMovingCardId("");
+      setActiveCardId("");
+    }
+  }
+
+  const isLoading = loadingPipelines || loadingBoard;
+
+  return <main className="space-y-6"><PipelineHeader pipelines={pipelines} selectedPipelineId={selectedPipelineId} loading={isLoading} refreshing={refreshing} onSelectPipeline={(pipelineId) => { void selectPipeline(pipelineId); }} onRefresh={() => { if (selectedPipelineId) void loadBoard(selectedPipelineId, true); }} /><PipelineBody error={error} moveError={moveError} isLoading={isLoading} pipelineCount={pipelines.length} board={board} activeCardId={activeCardId} moving={Boolean(movingCardId)} onDragStart={setActiveCardId} onDropCard={(target) => { void handleMove(target); }} /></main>;
 }
