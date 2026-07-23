@@ -1379,11 +1379,41 @@ model LeadHistory {
 enum CampaignStatus {
   DRAFT
   SCHEDULED
-  PROCESSING
+  RUNNING
   PAUSED
   COMPLETED
   CANCELED
   FAILED
+  PROCESSING
+}
+
+enum CampaignType {
+  MARKETING
+  UTILITY
+  AUTHENTICATION
+}
+
+enum CampaignFilterField {
+  CITY
+  SOURCE
+  PIPELINE
+  STAGE
+  STATUS
+  MANAGER
+  BROKER
+  DATE
+  TEMPERATURE
+  ARCHIVED
+}
+
+enum CampaignFilterOperator {
+  EQUALS
+  IN
+  BETWEEN
+  GTE
+  LTE
+  CONTAINS
+  IS
 }
 
 enum CampaignRecipientStatus {
@@ -1403,6 +1433,8 @@ model Campaign {
   name               String              @db.VarChar(255)
   description        String?
   status             CampaignStatus      @default(DRAFT)
+  campaignType       CampaignType        @default(MARKETING)
+  archivedAt         DateTime?
   whatsappAccountId  String?
   whatsappTemplateId String?
   scheduledAt        DateTime?
@@ -1423,6 +1455,7 @@ model Campaign {
   createdBy          User                @relation("CampaignCreatedBy", fields: [createdById], references: [id])
   whatsappAccount    WhatsappAccount?    @relation(fields: [whatsappAccountId], references: [id])
   whatsappTemplate   WhatsappTemplate?   @relation(fields: [whatsappTemplateId], references: [id])
+  filters            CampaignFilter[]
   recipients         CampaignRecipient[]
   messageQueues      MessageQueue[]
   messageLogs        MessageLog[]
@@ -1432,9 +1465,25 @@ model Campaign {
   @@index([status])
   @@index([scheduledAt])
   @@index([deletedAt])
+  @@index([archivedAt])
+  @@index([campaignType])
   @@index([whatsappAccountId])
   @@index([whatsappTemplateId])
   @@index([createdById])
+}
+
+model CampaignFilter {
+  id         String                 @id @default(cuid())
+  campaignId String
+  field      CampaignFilterField
+  operator   CampaignFilterOperator
+  value      Json
+  createdAt  DateTime               @default(now())
+  updatedAt  DateTime               @updatedAt
+  campaign   Campaign               @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId])
+  @@index([field])
 }
 
 model CampaignRecipient {
