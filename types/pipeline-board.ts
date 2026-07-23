@@ -17,6 +17,7 @@ export interface PipelineCard {
   id: string;
   position: number;
   enteredStageAt?: string | null;
+  stageId?: string | null;
   lead: PipelineLeadSummary;
 }
 
