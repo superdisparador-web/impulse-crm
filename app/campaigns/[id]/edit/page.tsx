@@ -29,7 +29,7 @@ export default function EditCampaignPage() {
       if (!active) return;
 
       setCampaign(campaignData);
-      setAccounts(accountData);
+      setAccounts(accountData.items);
       setTemplates(templateData);
     }
 

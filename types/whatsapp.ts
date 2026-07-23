@@ -1,24 +1,36 @@
-import { Organization } from './organization';
+export type WhatsappAccountStatus = 'PENDING' | 'ACTIVE' | 'INACTIVE' | 'DISCONNECTED' | 'ERROR' | 'SUSPENDED';
 
-export type WhatsappAccountStatus = 'CONNECTED' | 'DISCONNECTED';
+export interface PaginatedWhatsappAccounts {
+  items: WhatsappAccount[];
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+}
 
 export interface WhatsappAccount {
   id: string;
   organizationId: string;
   name: string;
   phoneNumber: string;
+  normalizedPhone: string;
+  displayPhoneNumber?: string | null;
+  verifiedName?: string | null;
   phoneNumberId: string;
   businessAccountId: string;
-  accessToken: string;
-  verifyToken: string;
-  webhookSecret?: string | null;
+  appId?: string | null;
+  apiVersion?: string | null;
   status: WhatsappAccountStatus;
+  isDefault: boolean;
+  qualityRating?: string | null;
+  messagingLimitTier?: string | null;
   connectedAt?: string | null;
   lastSyncAt?: string | null;
+  lastConnectionTestAt?: string | null;
+  lastConnectionError?: string | null;
   createdAt: string;
   updatedAt: string;
   deletedAt?: string | null;
-  organization?: Pick<Organization, 'id' | 'name' | 'active'>;
 }
 
 export interface WhatsappTemplate {
@@ -31,20 +43,23 @@ export interface WhatsappTemplate {
   components: unknown;
   createdAt: string;
   updatedAt: string;
-  organization?: Pick<Organization, 'id' | 'name' | 'active'>;
 }
 
 export interface WhatsappAccountFormData {
-  organizationId: string;
   name: string;
-  phoneNumber: string;
+  phoneNumber?: string;
   phoneNumberId: string;
   businessAccountId: string;
-  accessToken: string;
-  verifyToken: string;
-  webhookSecret?: string;
-  status?: WhatsappAccountStatus;
+  credential?: string;
+  apiVersion?: string;
+  active?: boolean;
 }
 
-export interface WhatsappListParams { organizationId?: string; }
-export interface SyncWhatsappTemplatesData { organizationId: string; accountId: string; }
+export interface WhatsappListParams {
+  search?: string;
+  status?: string;
+  state?: 'active' | 'inactive' | 'archived' | 'all';
+  page?: number;
+  pageSize?: number;
+}
+export interface SyncWhatsappTemplatesData { accountId: string; }

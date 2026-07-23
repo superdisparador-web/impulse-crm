@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Headers, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Headers, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Permissions } from '../auth/decorators/permissions.decorator';
@@ -10,7 +10,7 @@ import { CreateWhatsappAccountDto } from './dto/create-whatsapp-account.dto';
 import { ListWhatsappDto } from './dto/list-whatsapp.dto';
 import { SendMediaMessageDto, SendTemplateMessageDto, SendTextMessageDto } from './dto/messages.dto';
 import { SyncWhatsappTemplatesDto } from './dto/sync-whatsapp-templates.dto';
-import { UpdateWhatsappAccountDto } from './dto/update-whatsapp-account.dto';
+import { UpdateWhatsappAccountDto, UpdateWhatsappAccountStatusDto } from './dto/update-whatsapp-account.dto';
 import { WhatsappService } from './whatsapp.service';
 
 type RawReq = Request & { rawBody?: Buffer };
@@ -23,7 +23,11 @@ export class WhatsappController {
   @Get('accounts') @Permissions('whatsapp:accounts:read') findAccounts(@Query() q: ListWhatsappDto, @CurrentUser() u: AuthenticatedUserRef) { return this.service.findAccounts(q, u); }
   @Get('accounts/:id') @Permissions('whatsapp:accounts:read') getAccount(@Param('id') id: string, @CurrentUser() u: AuthenticatedUserRef) { return this.service.getAccount(id, u); }
   @Patch('accounts/:id') @Permissions('whatsapp:accounts:update') updateAccount(@Param('id') id: string, @Body() d: UpdateWhatsappAccountDto, @CurrentUser() u: AuthenticatedUserRef) { return this.service.updateAccount(id, d, u); }
-  @Patch('accounts/:id/test') @Permissions('whatsapp:accounts:test') testAccount(@Param('id') id: string, @CurrentUser() u: AuthenticatedUserRef) { return this.service.testAccount(id, u); }
+  @Patch('accounts/:id/status') @Permissions('whatsapp:accounts:update') updateAccountStatus(@Param('id') id: string, @Body() d: UpdateWhatsappAccountStatusDto, @CurrentUser() u: AuthenticatedUserRef) { return this.service.updateAccountStatus(id, d, u); }
+  @Patch('accounts/:id/default') @Permissions('whatsapp:accounts:update') setDefaultAccount(@Param('id') id: string, @CurrentUser() u: AuthenticatedUserRef) { return this.service.setDefaultAccount(id, u); }
+  @Post('accounts/:id/test') @Permissions('whatsapp:accounts:test') testAccountPost(@Param('id') id: string, @CurrentUser() u: AuthenticatedUserRef) { return this.service.testAccount(id, u); }
+  @Post('accounts/:id/sync') @Permissions('whatsapp:accounts:test') syncAccount(@Param('id') id: string, @CurrentUser() u: AuthenticatedUserRef) { return this.service.syncAccount(id, u); }
+  @Delete('accounts/:id') @Permissions('whatsapp:accounts:archive') deleteAccount(@Param('id') id: string, @CurrentUser() u: AuthenticatedUserRef) { return this.service.archiveAccount(id, u); }
   @Patch('accounts/:id/archive') @Permissions('whatsapp:accounts:archive') archive(@Param('id') id: string, @CurrentUser() u: AuthenticatedUserRef) { return this.service.archiveAccount(id, u); }
   @Patch('accounts/:id/restore') @Permissions('whatsapp:accounts:archive') restore(@Param('id') id: string, @CurrentUser() u: AuthenticatedUserRef) { return this.service.restoreAccount(id, u); }
   @Get('conversations') @Permissions('whatsapp:conversations:read') conversations(@Query() q: ListWhatsappDto, @CurrentUser() u: AuthenticatedUserRef) { return this.service.listConversations(q, u); }
