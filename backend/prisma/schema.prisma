@@ -1023,7 +1023,8 @@ enum LeadHistoryAction {
 
 enum WhatsappAccountStatus {
   PENDING
-  CONNECTED
+  ACTIVE
+  INACTIVE
   DISCONNECTED
   ERROR
   SUSPENDED
@@ -1085,6 +1086,8 @@ model WhatsappAccount {
   name               String                 @db.VarChar(255)
   phoneNumber        String                 @db.VarChar(32)
   normalizedPhone    String                 @db.VarChar(32)
+  displayPhoneNumber String?                @db.VarChar(64)
+  verifiedName       String?                @db.VarChar(255)
   phoneNumberId      String                 @unique @db.VarChar(128)
   businessAccountId  String                 @db.VarChar(128)
   appId              String?                @db.VarChar(128)
@@ -1092,11 +1095,15 @@ model WhatsappAccount {
   verifyToken        String                 @db.Text
   appSecret          String?                @db.Text
   webhookSecret      String?                @db.Text
+  apiVersion         String?                @db.VarChar(16)
   qualityRating      String?                @db.VarChar(64)
   messagingLimitTier String?                @db.VarChar(64)
   status             WhatsappAccountStatus  @default(PENDING)
+  isDefault          Boolean                @default(false)
   connectedAt        DateTime?
   lastSyncAt         DateTime?
+  lastConnectionTestAt DateTime?
+  lastConnectionError  String?              @db.VarChar(500)
   createdByUserId    String?
   createdAt          DateTime               @default(now())
   updatedAt          DateTime               @updatedAt
@@ -1111,6 +1118,7 @@ model WhatsappAccount {
   messageQueues      MessageQueue[]
 
   @@index([organizationId, status])
+  @@index([organizationId, isDefault])
   @@index([organizationId, normalizedPhone])
   @@index([businessAccountId])
   @@index([deletedAt])
@@ -1652,7 +1660,6 @@ model Pipeline {
   @@index([deletedAt])
   @@index([organizationId, active, deletedAt])
   @@index([organizationId, isActive])
-  @@index([organizationId, isDefault])
 }
 
 model PipelineStage {

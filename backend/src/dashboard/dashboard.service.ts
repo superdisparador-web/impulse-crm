@@ -14,7 +14,7 @@ const campaignStatuses: CampaignStatus[] = [
 
 const whatsappAccountStatuses: WhatsappAccountStatus[] = [
   'PENDING',
-  'CONNECTED',
+  'ACTIVE',
   'DISCONNECTED',
   'ERROR',
   'SUSPENDED',
@@ -118,7 +118,7 @@ export class DashboardService {
         draftCampaigns: campaignsByStatus.find((item) => item.status === 'DRAFT')?.total ?? 0,
         scheduledCampaigns: campaignsByStatus.find((item) => item.status === 'SCHEDULED')?.total ?? 0,
         completedCampaigns: campaignsByStatus.find((item) => item.status === 'COMPLETED')?.total ?? 0,
-        connectedWhatsappAccounts: whatsappCounts.CONNECTED,
+        connectedWhatsappAccounts: whatsappCounts.ACTIVE,
         disconnectedWhatsappAccounts: whatsappCounts.DISCONNECTED,
         totalRecipients: campaignMetrics._sum.totalContacts ?? 0,
         totalSent: performance.sent,
