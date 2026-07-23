@@ -1,0 +1,12 @@
+CREATE TYPE "CampaignType" AS ENUM ('MARKETING','UTILITY','AUTHENTICATION');
+CREATE TYPE "CampaignFilterField" AS ENUM ('CITY','SOURCE','PIPELINE','STAGE','STATUS','MANAGER','BROKER','DATE','TEMPERATURE','ARCHIVED');
+CREATE TYPE "CampaignFilterOperator" AS ENUM ('EQUALS','IN','BETWEEN','GTE','LTE','CONTAINS','IS');
+ALTER TYPE "CampaignStatus" ADD VALUE IF NOT EXISTS 'RUNNING';
+ALTER TABLE "Campaign" ADD COLUMN IF NOT EXISTS "campaignType" "CampaignType" NOT NULL DEFAULT 'MARKETING';
+ALTER TABLE "Campaign" ADD COLUMN IF NOT EXISTS "archivedAt" TIMESTAMP(3);
+CREATE TABLE "CampaignFilter" ("id" TEXT NOT NULL,"campaignId" TEXT NOT NULL,"field" "CampaignFilterField" NOT NULL,"operator" "CampaignFilterOperator" NOT NULL,"value" JSONB NOT NULL,"createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,"updatedAt" TIMESTAMP(3) NOT NULL,CONSTRAINT "CampaignFilter_pkey" PRIMARY KEY ("id"));
+CREATE INDEX "Campaign_archivedAt_idx" ON "Campaign"("archivedAt");
+CREATE INDEX "Campaign_campaignType_idx" ON "Campaign"("campaignType");
+CREATE INDEX "CampaignFilter_campaignId_idx" ON "CampaignFilter"("campaignId");
+CREATE INDEX "CampaignFilter_field_idx" ON "CampaignFilter"("field");
+ALTER TABLE "CampaignFilter" ADD CONSTRAINT "CampaignFilter_campaignId_fkey" FOREIGN KEY ("campaignId") REFERENCES "Campaign"("id") ON DELETE CASCADE ON UPDATE CASCADE;
