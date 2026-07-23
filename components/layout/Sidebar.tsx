@@ -17,7 +17,7 @@ import {
   Settings,
 } from "lucide-react";
 
-const menu = [
+export const sidebarMenu = [
   {
     title: "Dashboard",
     href: "/dashboard",
@@ -96,7 +96,7 @@ export default function Sidebar() {
       </div>
 
       <nav className="flex-1 p-4 space-y-2">
-        {menu.map((item) => {
+        {sidebarMenu.map((item) => {
           const Icon = item.icon;
 
           return (
