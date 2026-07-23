@@ -1,21 +1,54 @@
-import { DealActivityStatus, DealActivityType, DealStatus, StageChecklistType } from '@prisma/client';
 import { Type } from 'class-transformer';
-import { IsArray, IsBoolean, IsEnum, IsInt, IsNumber, IsObject, IsOptional, IsString, Max, Min } from 'class-validator';
+import { ArrayNotEmpty, IsArray, IsBoolean, IsInt, IsOptional, IsString, MaxLength, Min, ValidateNested } from 'class-validator';
 
-export class ListDto { @IsOptional() @Type(() => Number) @IsInt() @Min(1) page?: number; @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(100) limit?: number; @IsOptional() @IsString() search?: string; @IsOptional() @IsString() organizationId?: string; @IsOptional() @IsString() pipelineId?: string; @IsOptional() @IsString() stageId?: string; @IsOptional() @IsEnum(DealStatus) status?: DealStatus; @IsOptional() @IsString() ownerId?: string; @IsOptional() @IsString() tagId?: string; }
-export class PipelineDto { @IsString() name: string; @IsOptional() @IsString() description?: string; @IsOptional() @IsString() organizationId?: string; @IsOptional() @IsBoolean() isDefault?: boolean; @IsOptional() @IsBoolean() isActive?: boolean; @IsOptional() @IsString() currency?: string; }
-export class StageDto { @IsString() name: string; @IsOptional() @IsString() description?: string; @IsOptional() @IsString() organizationId?: string; @IsOptional() @IsInt() @Type(() => Number) position?: number; @IsOptional() @IsInt() @Min(0) @Max(100) @Type(() => Number) probability?: number; @IsOptional() @IsInt() @Min(0) @Type(() => Number) slaHours?: number; @IsOptional() @IsBoolean() isInitial?: boolean; @IsOptional() @IsBoolean() isActive?: boolean; @IsOptional() @IsString() color?: string; }
-export class ReorderStagesDto { @IsArray() stages: Array<{ id: string; position: number; isInitial?: boolean }>; }
-export class ChecklistDto { @IsString() title: string; @IsOptional() @IsString() description?: string; @IsOptional() @IsEnum(StageChecklistType) type?: StageChecklistType; @IsOptional() @IsBoolean() isRequired?: boolean; @IsOptional() @IsInt() @Type(() => Number) position?: number; @IsOptional() @IsBoolean() isActive?: boolean; @IsOptional() @IsObject() metadata?: Record<string, unknown>; }
-export class LossReasonDto { @IsString() name: string; @IsOptional() @IsString() description?: string; @IsOptional() @IsString() organizationId?: string; @IsOptional() @IsString() pipelineId?: string; @IsOptional() @IsBoolean() isActive?: boolean; @IsOptional() @IsInt() @Type(() => Number) position?: number; }
-export class TagDto { @IsString() name: string; @IsOptional() @IsString() organizationId?: string; @IsOptional() @IsString() color?: string; @IsOptional() @IsString() description?: string; @IsOptional() @IsBoolean() isActive?: boolean; }
-export class DealDto { @IsString() leadId: string; @IsString() pipelineId: string; @IsString() stageId: string; @IsOptional() @IsString() organizationId?: string; @IsOptional() @IsString() ownerId?: string | null; @IsString() title: string; @IsOptional() @IsString() description?: string | null; @IsOptional() @Type(() => Number) @IsNumber() @Min(0) estimatedValue?: number; @IsOptional() @IsString() currency?: string; @IsOptional() @IsString() expectedCloseDate?: string; @IsOptional() @IsInt() @Min(0) @Max(100) @Type(() => Number) probabilityOverride?: number; @IsOptional() @IsString() source?: string; @IsOptional() @IsObject() metadata?: Record<string, unknown>; }
-export class UpdateDealDto { @IsOptional() @IsString() title?: string; @IsOptional() @IsString() description?: string | null; @IsOptional() @Type(() => Number) @IsNumber() @Min(0) estimatedValue?: number; @IsOptional() @IsString() expectedCloseDate?: string | null; @IsOptional() @IsInt() @Min(0) @Max(100) @Type(() => Number) probabilityOverride?: number | null; @IsOptional() @IsObject() metadata?: Record<string, unknown>; }
-export class MoveDto { @IsString() toStageId: string; @IsOptional() @IsString() reason?: string; }
-export class ChangePipelineDto { @IsString() pipelineId: string; @IsString() stageId: string; @IsOptional() @IsString() reason?: string; }
-export class AssignDto { @IsOptional() @IsString() ownerId?: string | null; @IsOptional() @IsString() reason?: string; }
-export class TagDealDto { @IsString() tagId: string; }
-export class WonDto { @Type(() => Number) @IsNumber() @Min(0) amount: number; @IsOptional() @IsString() wonAt?: string; @IsOptional() @IsString() notes?: string; }
-export class LostDto { @IsString() lossReasonId: string; @IsOptional() @IsString() lostAt?: string; @IsOptional() @IsString() notes?: string; }
-export class ReopenDto { @IsString() toStageId: string; @IsOptional() @IsString() reason?: string; }
-export class ActivityDto { @IsString() title: string; @IsEnum(DealActivityType) type: DealActivityType; @IsOptional() @IsEnum(DealActivityStatus) status?: DealActivityStatus; @IsOptional() @IsString() description?: string; @IsOptional() @IsString() dueAt?: string; @IsOptional() @IsString() assignedToUserId?: string; @IsOptional() @IsObject() metadata?: Record<string, unknown>; }
+export class ListPipelinesDto {
+  @IsOptional() @IsString() organizationId?: string;
+}
+
+export class CreatePipelineDto {
+  @IsString() @MaxLength(120) name: string;
+  @IsOptional() @IsString() description?: string;
+  @IsOptional() @IsString() organizationId?: string;
+  @IsOptional() @IsBoolean() isDefault?: boolean;
+  @IsOptional() @IsBoolean() isActive?: boolean;
+}
+
+export class UpdatePipelineDto {
+  @IsOptional() @IsString() @MaxLength(120) name?: string;
+  @IsOptional() @IsString() description?: string;
+  @IsOptional() @IsBoolean() isActive?: boolean;
+}
+
+export class CreateStageDto {
+  @IsString() @MaxLength(120) name: string;
+  @IsOptional() @IsString() description?: string;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(0) position?: number;
+  @IsOptional() @IsString() color?: string;
+  @IsOptional() @IsBoolean() isActive?: boolean;
+}
+
+export class UpdateStageDto {
+  @IsOptional() @IsString() @MaxLength(120) name?: string;
+  @IsOptional() @IsString() description?: string;
+  @IsOptional() @IsString() color?: string;
+  @IsOptional() @IsBoolean() isActive?: boolean;
+}
+
+export class ReorderStageItemDto {
+  @IsString() id: string;
+  @Type(() => Number) @IsInt() @Min(0) position: number;
+}
+
+export class ReorderStagesDto {
+  @IsArray() @ArrayNotEmpty() @ValidateNested({ each: true }) @Type(() => ReorderStageItemDto) stages: ReorderStageItemDto[];
+}
+
+export class AddCardDto {
+  @IsString() leadId: string;
+  @IsString() stageId: string;
+}
+
+export class MoveCardDto {
+  @IsString() stageId: string;
+  @Type(() => Number) @IsInt() @Min(0) position: number;
+}
