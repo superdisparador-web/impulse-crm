@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { DropTarget } from "@/components/pipeline/KanbanBoard";
 import { PipelineBody } from "@/components/pipeline/PipelineBody";
+import { LeadDrawer } from "@/components/leads/LeadDrawer";
 import { PipelineHeader } from "@/components/pipeline/PipelineHeader";
 import { findCardStage, getErrorMessage, isLatestBoardResponse, moveCard, selectInitialPipelineId, sortBoard } from "@/components/pipeline/pipeline-utils";
 import { getPipelineBoard, listPipelines, movePipelineCard } from "@/services/pipeline-board.service";
@@ -19,6 +20,7 @@ export default function PipelinePage() {
   const [activeCardId, setActiveCardId] = useState("");
   const [error, setError] = useState("");
   const [moveError, setMoveError] = useState("");
+  const [selectedCardId, setSelectedCardId] = useState("");
   const boardRequestRef = useRef(0);
 
   const loadBoard = useCallback(async (pipelineId: string, refresh = false) => {
@@ -95,6 +97,7 @@ export default function PipelinePage() {
   }
 
   const isLoading = loadingPipelines || loadingBoard;
+  const selectedCard = board?.stages.flatMap((stage) => stage.cards.map((card) => ({ ...card, stageId: stage.id }))).find((card) => card.id === selectedCardId) ?? null;
 
-  return <main className="space-y-6"><PipelineHeader pipelines={pipelines} selectedPipelineId={selectedPipelineId} loading={isLoading} refreshing={refreshing} onSelectPipeline={(pipelineId) => { void selectPipeline(pipelineId); }} onRefresh={() => { if (selectedPipelineId) void loadBoard(selectedPipelineId, true); }} /><PipelineBody error={error} moveError={moveError} isLoading={isLoading} pipelineCount={pipelines.length} board={board} activeCardId={activeCardId} moving={Boolean(movingCardId)} onDragStart={setActiveCardId} onDropCard={(target) => { void handleMove(target); }} /></main>;
+  return <main className="space-y-6"><PipelineHeader pipelines={pipelines} selectedPipelineId={selectedPipelineId} loading={isLoading} refreshing={refreshing} onSelectPipeline={(pipelineId) => { void selectPipeline(pipelineId); }} onRefresh={() => { if (selectedPipelineId) void loadBoard(selectedPipelineId, true); }} /><PipelineBody error={error} moveError={moveError} isLoading={isLoading} pipelineCount={pipelines.length} board={board} activeCardId={activeCardId} moving={Boolean(movingCardId)} onDragStart={setActiveCardId} onDropCard={(target) => { void handleMove(target); }} onOpenCard={setSelectedCardId} /><LeadDrawer card={selectedCard} board={board} onClose={() => setSelectedCardId("")} onArchived={() => { if (selectedPipelineId) void loadBoard(selectedPipelineId, true); }} /></main>;
 }
