@@ -12,6 +12,14 @@ const campaignStatuses: CampaignStatus[] = [
   'FAILED',
 ];
 
+const whatsappAccountStatuses: WhatsappAccountStatus[] = [
+  'PENDING',
+  'CONNECTED',
+  'DISCONNECTED',
+  'ERROR',
+  'SUSPENDED',
+];
+
 @Injectable()
 export class DashboardService {
   constructor(private readonly prisma: PrismaService) {}
@@ -145,7 +153,8 @@ export class DashboardService {
   }
 
   private countWhatsappStatus(grouped: { status: WhatsappAccountStatus; _count: { _all: number } }[]) {
-    return grouped.reduce<Record<WhatsappAccountStatus, number>>((totals, item) => ({ ...totals, [item.status]: item._count._all }), { CONNECTED: 0, DISCONNECTED: 0 });
+    const totals = Object.fromEntries(whatsappAccountStatuses.map((status) => [status, 0])) as Record<WhatsappAccountStatus, number>;
+    return grouped.reduce<Record<WhatsappAccountStatus, number>>((accumulator, item) => ({ ...accumulator, [item.status]: item._count._all }), totals);
   }
 
   private formatLeadsByDay(start: Date, leads: { createdAt: Date }[]) {
