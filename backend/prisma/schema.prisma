@@ -755,53 +755,54 @@ enum TriggerType {
 }
 
 model Organization {
-  id                String               @id @default(cuid())
-  name              String               @db.VarChar(255)
-  legalName         String?              @db.VarChar(255)
-  document          String?              @db.VarChar(32)
-  slug              String               @db.VarChar(120)
-  status            OrganizationStatus   @default(ACTIVE)
-  timezone          String               @default("America/Sao_Paulo") @db.VarChar(80)
-  locale            String               @default("pt-BR") @db.VarChar(16)
-  email             String?              @db.VarChar(255)
-  phone             String?              @db.VarChar(32)
-  active            Boolean              @default(true)
-  createdAt         DateTime             @default(now())
-  updatedAt         DateTime             @updatedAt
-  deletedAt         DateTime?
-  users             User[]
-  leads             Lead[]
-  whatsappAccounts       WhatsappAccount[]
-  whatsappTemplates      WhatsappTemplate[]
+  id                    String                 @id @default(cuid())
+  name                  String                 @db.VarChar(255)
+  legalName             String?                @db.VarChar(255)
+  document              String?                @db.VarChar(32)
+  slug                  String                 @db.VarChar(120)
+  status                OrganizationStatus     @default(ACTIVE)
+  timezone              String                 @default("America/Sao_Paulo") @db.VarChar(80)
+  locale                String                 @default("pt-BR") @db.VarChar(16)
+  email                 String?                @db.VarChar(255)
+  phone                 String?                @db.VarChar(32)
+  active                Boolean                @default(true)
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  deletedAt             DateTime?
+  users                 User[]
+  leads                 Lead[]
+  whatsappAccounts      WhatsappAccount[]
+  whatsappTemplates     WhatsappTemplate[]
   whatsappConversations WhatsappConversation[]
   whatsappMessages      WhatsappMessage[]
   whatsappWebhookEvents WhatsappWebhookEvent[]
-  campaigns         Campaign[]
-  messageQueues     MessageQueue[]
-  pipelines         Pipeline[]
-  pipelineStages    PipelineStage[]
-  stageChecklists   StageChecklist[]
-  lossReasons       PipelineLossReason[]
-  deals             Deal[]
-  dealMovements     DealStageMovement[]
-  dealEvents        DealEvent[]
-  dealAssignments   DealAssignment[]
-  tags              Tag[]
-  dealTags          DealTag[]
-  dealActivities    DealActivity[]
-  auditLogs         AuditLog[]
-  rbacRoles         RbacRole[]
-  distributionLists DistributionList[]
-  distributionMembers DistributionMember[]
-  distributionCursors DistributionCursor[]
-  leadDistributions LeadDistribution[]
-  analyticsEvents AnalyticsEvent[]
-  dailyMetrics DailyMetric[]
-  hourlyMetrics HourlyMetric[]
-  campaignMetrics CampaignMetric[]
-  brokerMetrics BrokerMetric[]
-  managerMetrics ManagerMetric[]
-  whatsappMetrics WhatsappMetric[]
+  campaigns             Campaign[]
+  messageQueues         MessageQueue[]
+  pipelines             Pipeline[]
+  pipelineStages        PipelineStage[]
+  pipelineLeads         PipelineLead[]
+  stageChecklists       StageChecklist[]
+  lossReasons           PipelineLossReason[]
+  deals                 Deal[]
+  dealMovements         DealStageMovement[]
+  dealEvents            DealEvent[]
+  dealAssignments       DealAssignment[]
+  tags                  Tag[]
+  dealTags              DealTag[]
+  dealActivities        DealActivity[]
+  auditLogs             AuditLog[]
+  rbacRoles             RbacRole[]
+  distributionLists     DistributionList[]
+  distributionMembers   DistributionMember[]
+  distributionCursors   DistributionCursor[]
+  leadDistributions     LeadDistribution[]
+  analyticsEvents       AnalyticsEvent[]
+  dailyMetrics          DailyMetric[]
+  hourlyMetrics         HourlyMetric[]
+  campaignMetrics       CampaignMetric[]
+  brokerMetrics         BrokerMetric[]
+  managerMetrics        ManagerMetric[]
+  whatsappMetrics       WhatsappMetric[]
 
   @@index([name])
   @@index([document])
@@ -810,47 +811,48 @@ model Organization {
 }
 
 model User {
-  id                     String              @id @default(cuid())
-  name                   String
-  email                  String              @unique
-  password               String
-  phone                  String?             @db.VarChar(32)
-  role                   Role                @default(ADMIN)
-  active                 Boolean             @default(true)
-  status                 UserStatus          @default(ACTIVE)
-  organizationId         String?
-  organization           Organization?       @relation(fields: [organizationId], references: [id])
-  createdAt              DateTime            @default(now())
-  updatedAt              DateTime            @updatedAt
-  deletedAt              DateTime?
-  assignedLeads          Lead[]
-  managedLeads           Lead[]              @relation("LeadManager")
-  createdLeads           Lead[]              @relation("LeadCreatedBy")
-  leadHistory            LeadHistory[]
-  leadEvents             LeadEvent[]
-  leadActivities         LeadActivity[]      @relation("LeadActivityResponsible")
-  createdActivities      LeadActivity[]      @relation("LeadActivityCreatedBy")
-  createdCampaigns       Campaign[]          @relation("CampaignCreatedBy")
-  campaignRecipients     CampaignRecipient[]
-  ownedDeals             Deal[]              @relation("DealOwner")
-  dealAssignmentsFrom    DealAssignment[]    @relation("DealAssignmentFromUser")
-  dealAssignmentsTo      DealAssignment[]    @relation("DealAssignmentToUser")
-  dealAssignmentsMade    DealAssignment[]    @relation("DealAssignmentAssignedBy")
-  movedDeals             DealStageMovement[] @relation("DealMovedBy")
-  dealEvents             DealEvent[]         @relation("DealEventActor")
-  createdDealTags        DealTag[]           @relation("DealTagCreatedBy")
-  assignedDealActivities DealActivity[]      @relation("DealActivityAssignedTo")
-  createdDealActivities  DealActivity[]      @relation("DealActivityCreatedBy")
-  auditLogs              AuditLog[]
-  authSessions           AuthSession[]
-  refreshTokens          RefreshToken[]
-  authAuditLogs          AuthAuditLog[]
-  userRoles              UserRole[]
-  createdWhatsappAccounts WhatsappAccount[] @relation("WhatsappAccountCreatedBy")
+  id                            String                 @id @default(cuid())
+  name                          String
+  email                         String                 @unique
+  password                      String
+  phone                         String?                @db.VarChar(32)
+  role                          Role                   @default(ADMIN)
+  active                        Boolean                @default(true)
+  status                        UserStatus             @default(ACTIVE)
+  organizationId                String?
+  organization                  Organization?          @relation(fields: [organizationId], references: [id])
+  createdAt                     DateTime               @default(now())
+  updatedAt                     DateTime               @updatedAt
+  deletedAt                     DateTime?
+  assignedLeads                 Lead[]
+  managedLeads                  Lead[]                 @relation("LeadManager")
+  createdLeads                  Lead[]                 @relation("LeadCreatedBy")
+  leadHistory                   LeadHistory[]
+  leadEvents                    LeadEvent[]
+  leadActivities                LeadActivity[]         @relation("LeadActivityResponsible")
+  createdActivities             LeadActivity[]         @relation("LeadActivityCreatedBy")
+  createdCampaigns              Campaign[]             @relation("CampaignCreatedBy")
+  campaignRecipients            CampaignRecipient[]
+  ownedDeals                    Deal[]                 @relation("DealOwner")
+  dealAssignmentsFrom           DealAssignment[]       @relation("DealAssignmentFromUser")
+  dealAssignmentsTo             DealAssignment[]       @relation("DealAssignmentToUser")
+  dealAssignmentsMade           DealAssignment[]       @relation("DealAssignmentAssignedBy")
+  movedDeals                    DealStageMovement[]    @relation("DealMovedBy")
+  dealEvents                    DealEvent[]            @relation("DealEventActor")
+  createdDealTags               DealTag[]              @relation("DealTagCreatedBy")
+  assignedDealActivities        DealActivity[]         @relation("DealActivityAssignedTo")
+  createdDealActivities         DealActivity[]         @relation("DealActivityCreatedBy")
+  auditLogs                     AuditLog[]
+  authSessions                  AuthSession[]
+  refreshTokens                 RefreshToken[]
+  authAuditLogs                 AuthAuditLog[]
+  userRoles                     UserRole[]
+  createdWhatsappAccounts       WhatsappAccount[]      @relation("WhatsappAccountCreatedBy")
   assignedWhatsappConversations WhatsappConversation[] @relation("WhatsappConversationAssignedUser")
-  managedWhatsappConversations WhatsappConversation[] @relation("WhatsappConversationManagerUser")
-  createdWhatsappMessages WhatsappMessage[] @relation("WhatsappMessageCreatedBy")
-  createdDistributionLists DistributionList[] @relation("DistributionListCreatedBy")
+  managedWhatsappConversations  WhatsappConversation[] @relation("WhatsappConversationManagerUser")
+  createdWhatsappMessages       WhatsappMessage[]      @relation("WhatsappMessageCreatedBy")
+  createdDistributionLists      DistributionList[]     @relation("DistributionListCreatedBy")
+  pipelines                     Pipeline[]
 
   @@index([organizationId])
   @@index([organizationId, status])
@@ -1078,35 +1080,35 @@ enum WhatsappWebhookEventStatus {
 }
 
 model WhatsappAccount {
-  id                     String                 @id @default(cuid())
-  organizationId         String
-  name                   String                 @db.VarChar(255)
-  phoneNumber            String                 @db.VarChar(32)
-  normalizedPhone        String                 @db.VarChar(32)
-  phoneNumberId          String                 @unique @db.VarChar(128)
-  businessAccountId      String                 @db.VarChar(128)
-  appId                  String?                @db.VarChar(128)
-  accessToken            String                 @db.Text
-  verifyToken            String                 @db.Text
-  appSecret              String?                @db.Text
-  webhookSecret          String?                @db.Text
-  qualityRating          String?                @db.VarChar(64)
-  messagingLimitTier     String?                @db.VarChar(64)
-  status                 WhatsappAccountStatus  @default(PENDING)
-  connectedAt            DateTime?
-  lastSyncAt             DateTime?
-  createdByUserId        String?
-  createdAt              DateTime               @default(now())
-  updatedAt              DateTime               @updatedAt
-  deletedAt              DateTime?
-  organization           Organization           @relation(fields: [organizationId], references: [id])
-  createdByUser          User?                  @relation("WhatsappAccountCreatedBy", fields: [createdByUserId], references: [id])
-  templates              WhatsappTemplate[]
-  conversations          WhatsappConversation[]
-  messages               WhatsappMessage[]
-  webhookEvents          WhatsappWebhookEvent[]
-  campaigns              Campaign[]
-  messageQueues          MessageQueue[]
+  id                 String                 @id @default(cuid())
+  organizationId     String
+  name               String                 @db.VarChar(255)
+  phoneNumber        String                 @db.VarChar(32)
+  normalizedPhone    String                 @db.VarChar(32)
+  phoneNumberId      String                 @unique @db.VarChar(128)
+  businessAccountId  String                 @db.VarChar(128)
+  appId              String?                @db.VarChar(128)
+  accessToken        String                 @db.Text
+  verifyToken        String                 @db.Text
+  appSecret          String?                @db.Text
+  webhookSecret      String?                @db.Text
+  qualityRating      String?                @db.VarChar(64)
+  messagingLimitTier String?                @db.VarChar(64)
+  status             WhatsappAccountStatus  @default(PENDING)
+  connectedAt        DateTime?
+  lastSyncAt         DateTime?
+  createdByUserId    String?
+  createdAt          DateTime               @default(now())
+  updatedAt          DateTime               @updatedAt
+  deletedAt          DateTime?
+  organization       Organization           @relation(fields: [organizationId], references: [id])
+  createdByUser      User?                  @relation("WhatsappAccountCreatedBy", fields: [createdByUserId], references: [id])
+  templates          WhatsappTemplate[]
+  conversations      WhatsappConversation[]
+  messages           WhatsappMessage[]
+  webhookEvents      WhatsappWebhookEvent[]
+  campaigns          Campaign[]
+  messageQueues      MessageQueue[]
 
   @@index([organizationId, status])
   @@index([organizationId, normalizedPhone])
@@ -1141,30 +1143,30 @@ model WhatsappTemplate {
 }
 
 model WhatsappConversation {
-  id                              String                     @id @default(cuid())
-  organizationId                  String
-  whatsappAccountId               String
-  leadId                          String?
-  contactPhone                    String                     @db.VarChar(32)
-  normalizedPhone                 String                     @db.VarChar(32)
-  contactName                     String?                    @db.VarChar(255)
-  status                          WhatsappConversationStatus @default(OPEN)
-  assignedUserId                  String?
-  managerUserId                   String?
-  lastMessageAt                   DateTime?
-  lastInboundAt                   DateTime?
-  lastOutboundAt                  DateTime?
-  customerServiceWindowEndsAt     DateTime?
-  unreadCount                     Int                        @default(0)
-  createdAt                       DateTime                   @default(now())
-  updatedAt                       DateTime                   @updatedAt
-  deletedAt                       DateTime?
-  organization                    Organization               @relation(fields: [organizationId], references: [id])
-  whatsappAccount                 WhatsappAccount            @relation(fields: [whatsappAccountId], references: [id])
-  lead                            Lead?                      @relation(fields: [leadId], references: [id])
-  assignedUser                    User?                      @relation("WhatsappConversationAssignedUser", fields: [assignedUserId], references: [id])
-  managerUser                     User?                      @relation("WhatsappConversationManagerUser", fields: [managerUserId], references: [id])
-  messages                        WhatsappMessage[]
+  id                          String                     @id @default(cuid())
+  organizationId              String
+  whatsappAccountId           String
+  leadId                      String?
+  contactPhone                String                     @db.VarChar(32)
+  normalizedPhone             String                     @db.VarChar(32)
+  contactName                 String?                    @db.VarChar(255)
+  status                      WhatsappConversationStatus @default(OPEN)
+  assignedUserId              String?
+  managerUserId               String?
+  lastMessageAt               DateTime?
+  lastInboundAt               DateTime?
+  lastOutboundAt              DateTime?
+  customerServiceWindowEndsAt DateTime?
+  unreadCount                 Int                        @default(0)
+  createdAt                   DateTime                   @default(now())
+  updatedAt                   DateTime                   @updatedAt
+  deletedAt                   DateTime?
+  organization                Organization               @relation(fields: [organizationId], references: [id])
+  whatsappAccount             WhatsappAccount            @relation(fields: [whatsappAccountId], references: [id])
+  lead                        Lead?                      @relation(fields: [leadId], references: [id])
+  assignedUser                User?                      @relation("WhatsappConversationAssignedUser", fields: [assignedUserId], references: [id])
+  managerUser                 User?                      @relation("WhatsappConversationManagerUser", fields: [managerUserId], references: [id])
+  messages                    WhatsappMessage[]
 
   @@index([whatsappAccountId, normalizedPhone])
   @@index([organizationId, status, lastMessageAt])
@@ -1215,20 +1217,20 @@ model WhatsappMessage {
 }
 
 model WhatsappWebhookEvent {
-  id                   String                     @id @default(cuid())
-  organizationId       String
-  whatsappAccountId    String
-  provider             String                     @default("META_OFFICIAL") @db.VarChar(64)
-  eventType            String                     @db.VarChar(64)
-  deduplicationKey     String                     @db.VarChar(255)
-  externalMessageId    String?                    @db.VarChar(255)
-  status               WhatsappWebhookEventStatus @default(RECEIVED)
-  sanitizedPayload     Json?
-  errorMessage         String?                    @db.VarChar(500)
-  receivedAt           DateTime                   @default(now())
-  processedAt          DateTime?
-  organization         Organization               @relation(fields: [organizationId], references: [id])
-  whatsappAccount      WhatsappAccount            @relation(fields: [whatsappAccountId], references: [id])
+  id                String                     @id @default(cuid())
+  organizationId    String
+  whatsappAccountId String
+  provider          String                     @default("META_OFFICIAL") @db.VarChar(64)
+  eventType         String                     @db.VarChar(64)
+  deduplicationKey  String                     @db.VarChar(255)
+  externalMessageId String?                    @db.VarChar(255)
+  status            WhatsappWebhookEventStatus @default(RECEIVED)
+  sanitizedPayload  Json?
+  errorMessage      String?                    @db.VarChar(500)
+  receivedAt        DateTime                   @default(now())
+  processedAt       DateTime?
+  organization      Organization               @relation(fields: [organizationId], references: [id])
+  whatsappAccount   WhatsappAccount            @relation(fields: [whatsappAccountId], references: [id])
 
   @@unique([organizationId, whatsappAccountId, deduplicationKey])
   @@index([organizationId, receivedAt])
@@ -1236,46 +1238,47 @@ model WhatsappWebhookEvent {
 }
 
 model Lead {
-  id                 String                 @id @default(cuid())
-  name               String?                @db.VarChar(255)
-  phone              String?                @db.VarChar(32)
-  normalizedPhone    String?                @db.VarChar(32)
-  email              String?                @db.VarChar(255)
-  normalizedEmail    String?                @db.VarChar(255)
-  document           String?                @db.VarChar(64)
-  source             LeadSource             @default(MANUAL)
-  status             LeadStatus             @default(NEW)
-  temperature        LeadTemperature        @default(UNKNOWN)
-  score              Int                    @default(0)
-  notes              String?
-  organizationId     String
-  assignedUserId     String?
-  managerUserId      String?
-  createdByUserId    String?
-  lastAssignedAt     DateTime?
-  lastInteractionAt  DateTime?
-  lastContactAt      DateTime?
-  convertedAt        DateTime?
-  lostAt             DateTime?
-  archivedAt         DateTime?
-  metadata           Json?
-  createdAt          DateTime               @default(now())
-  updatedAt          DateTime               @updatedAt
-  deletedAt          DateTime?
-  organization       Organization           @relation(fields: [organizationId], references: [id])
-  assignedUser       User?                  @relation(fields: [assignedUserId], references: [id])
-  managerUser        User?                  @relation("LeadManager", fields: [managerUserId], references: [id])
-  createdByUser      User?                  @relation("LeadCreatedBy", fields: [createdByUserId], references: [id])
-  history            LeadHistory[]
-  events             LeadEvent[]
-  externalIdentities LeadExternalIdentity[]
-  activities         LeadActivity[]
-  campaignRecipients CampaignRecipient[]
-  deals              Deal[]
-  dealActivities     DealActivity[]
+  id                    String                 @id @default(cuid())
+  name                  String?                @db.VarChar(255)
+  phone                 String?                @db.VarChar(32)
+  normalizedPhone       String?                @db.VarChar(32)
+  email                 String?                @db.VarChar(255)
+  normalizedEmail       String?                @db.VarChar(255)
+  document              String?                @db.VarChar(64)
+  source                LeadSource             @default(MANUAL)
+  status                LeadStatus             @default(NEW)
+  temperature           LeadTemperature        @default(UNKNOWN)
+  score                 Int                    @default(0)
+  notes                 String?
+  organizationId        String
+  assignedUserId        String?
+  managerUserId         String?
+  createdByUserId       String?
+  lastAssignedAt        DateTime?
+  lastInteractionAt     DateTime?
+  lastContactAt         DateTime?
+  convertedAt           DateTime?
+  lostAt                DateTime?
+  archivedAt            DateTime?
+  metadata              Json?
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  deletedAt             DateTime?
+  organization          Organization           @relation(fields: [organizationId], references: [id])
+  assignedUser          User?                  @relation(fields: [assignedUserId], references: [id])
+  managerUser           User?                  @relation("LeadManager", fields: [managerUserId], references: [id])
+  createdByUser         User?                  @relation("LeadCreatedBy", fields: [createdByUserId], references: [id])
+  history               LeadHistory[]
+  events                LeadEvent[]
+  externalIdentities    LeadExternalIdentity[]
+  activities            LeadActivity[]
+  campaignRecipients    CampaignRecipient[]
+  deals                 Deal[]
+  dealActivities        DealActivity[]
   whatsappConversations WhatsappConversation[]
-  whatsappMessages WhatsappMessage[]
-  leadDistributions LeadDistribution[]
+  whatsappMessages      WhatsappMessage[]
+  leadDistributions     LeadDistribution[]
+  pipelineLeads         PipelineLead[]
 
   @@index([organizationId, createdAt])
   @@index([organizationId, updatedAt])
@@ -1576,22 +1579,29 @@ enum StageChecklistType {
 }
 
 model Pipeline {
-  id             String               @id @default(cuid())
-  organizationId String
-  name           String               @db.VarChar(255)
-  description    String?
-  isDefault      Boolean              @default(false)
-  isActive       Boolean              @default(true)
-  currency       String               @default("BRL") @db.VarChar(8)
-  createdAt      DateTime             @default(now())
-  updatedAt      DateTime             @updatedAt
-  archivedAt     DateTime?
-  organization   Organization         @relation(fields: [organizationId], references: [id])
-  stages         PipelineStage[]
-  deals          Deal[]
-  lossReasons    PipelineLossReason[]
+  id              String               @id @default(cuid())
+  organizationId  String
+  name            String               @db.VarChar(255)
+  description     String?
+  isDefault       Boolean              @default(false)
+  active          Boolean              @default(true)
+  isActive        Boolean              @default(true)
+  currency        String               @default("BRL") @db.VarChar(8)
+  createdByUserId String?
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+  archivedAt      DateTime?
+  deletedAt       DateTime?
+  organization    Organization         @relation(fields: [organizationId], references: [id])
+  createdByUser   User?                @relation(fields: [createdByUserId], references: [id])
+  stages          PipelineStage[]
+  cards           PipelineLead[]
+  deals           Deal[]
+  lossReasons     PipelineLossReason[]
 
   @@index([organizationId])
+  @@index([deletedAt])
+  @@index([organizationId, active, deletedAt])
   @@index([organizationId, isActive])
   @@index([organizationId, isDefault])
 }
@@ -1606,22 +1616,53 @@ model PipelineStage {
   probability    Int                 @default(0)
   slaHours       Int?
   isInitial      Boolean             @default(false)
+  active         Boolean             @default(true)
   isActive       Boolean             @default(true)
   color          String?             @db.VarChar(32)
   createdAt      DateTime            @default(now())
   updatedAt      DateTime            @updatedAt
   archivedAt     DateTime?
+  deletedAt      DateTime?
   organization   Organization        @relation(fields: [organizationId], references: [id])
   pipeline       Pipeline            @relation(fields: [pipelineId], references: [id])
   deals          Deal[]
+  cards          PipelineLead[]
   checklists     StageChecklist[]
   movementsFrom  DealStageMovement[] @relation("MovementFromStage")
   movementsTo    DealStageMovement[] @relation("MovementToStage")
 
   @@index([organizationId])
   @@index([pipelineId])
+  @@index([position])
+  @@index([deletedAt])
   @@index([organizationId, pipelineId, position])
   @@index([organizationId, pipelineId, isActive])
+}
+
+model PipelineLead {
+  id             String        @id @default(cuid())
+  organizationId String
+  pipelineId     String
+  stageId        String
+  leadId         String
+  position       Int
+  enteredStageAt DateTime      @default(now())
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  deletedAt      DateTime?
+  organization   Organization  @relation(fields: [organizationId], references: [id])
+  pipeline       Pipeline      @relation(fields: [pipelineId], references: [id])
+  stage          PipelineStage @relation(fields: [stageId], references: [id])
+  lead           Lead          @relation(fields: [leadId], references: [id])
+
+  @@unique([organizationId, pipelineId, leadId])
+  @@index([organizationId])
+  @@index([pipelineId])
+  @@index([stageId])
+  @@index([leadId])
+  @@index([position])
+  @@index([deletedAt])
+  @@index([organizationId, pipelineId, stageId, position])
 }
 
 model StageChecklist {
@@ -2018,19 +2059,19 @@ model DistributionList {
 }
 
 model DistributionMember {
-  id                 String             @id @default(cuid())
+  id                 String               @id @default(cuid())
   organizationId     String
   distributionListId String
-  name               String             @db.VarChar(255)
-  phoneE164          String             @db.VarChar(32)
+  name               String               @db.VarChar(255)
+  phoneE164          String               @db.VarChar(32)
   position           Int
-  isActive           Boolean            @default(true)
+  isActive           Boolean              @default(true)
   metadata           Json?
-  createdAt          DateTime           @default(now())
-  updatedAt          DateTime           @updatedAt
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
   deletedAt          DateTime?
-  organization       Organization       @relation(fields: [organizationId], references: [id])
-  distributionList   DistributionList   @relation(fields: [distributionListId], references: [id], onDelete: Cascade)
+  organization       Organization         @relation(fields: [organizationId], references: [id])
+  distributionList   DistributionList     @relation(fields: [distributionListId], references: [id], onDelete: Cascade)
   cursorUsages       DistributionCursor[]
   distributions      LeadDistribution[]
 
@@ -2043,12 +2084,12 @@ model DistributionMember {
 
 model DistributionCursor {
   organizationId     String
-  distributionListId String @unique
+  distributionListId String              @unique
   lastMemberId       String?
-  version            Int    @default(0)
-  updatedAt          DateTime @updatedAt
-  organization       Organization @relation(fields: [organizationId], references: [id])
-  distributionList   DistributionList @relation(fields: [distributionListId], references: [id], onDelete: Cascade)
+  version            Int                 @default(0)
+  updatedAt          DateTime            @updatedAt
+  organization       Organization        @relation(fields: [organizationId], references: [id])
+  distributionList   DistributionList    @relation(fields: [distributionListId], references: [id], onDelete: Cascade)
   lastMember         DistributionMember? @relation(fields: [lastMemberId], references: [id])
 
   @@id([organizationId, distributionListId])
