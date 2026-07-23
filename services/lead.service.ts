@@ -20,6 +20,6 @@ class LeadService {
   getActivities(id: string) { return api.get<{ items: LeadActivity[] }>(`/leads/${id}/activities`); }
   createActivity(id: string, data: LeadActivityFormData) { return api.post<LeadActivity>(`/leads/${id}/activities`, data); }
   updateActivity(id: string, activityId: string, data: Partial<LeadActivityFormData>) { return api<LeadActivity>(`/leads/${id}/activities/${activityId}`, { method: 'PATCH', body: JSON.stringify(data) }); }
-  async delete(id: string) { await api.delete<void>(`/leads/${id}`); }
+  archive(id: string) { return api< { success: true } >(`/leads/${id}/archive`, { method: 'PATCH' }); }
 }
 export const leadService = new LeadService();

@@ -47,8 +47,8 @@ export class LeadsService {
 
   async findAll(query: ListLeadsDto, user: UserRef) {
     const ctx = await this.access.resolve(user);
-    const page = query.page ?? 1;
-    const limit = query.limit ?? 10;
+    const page = Math.max(1, query.page ?? 1);
+    const limit = Math.min(100, Math.max(1, query.limit ?? 10));
     const where: Prisma.LeadWhereInput = {
       ...this.archiveWhere(query.archived),
       ...this.visibilityWhere(ctx),
@@ -78,7 +78,8 @@ export class LeadsService {
       this.prisma.lead.findMany({ where, include: leadInclude, orderBy: [{ createdAt: query.order ?? 'desc' }, { id: 'desc' }], skip: (page - 1) * limit, take: limit }),
       this.prisma.lead.count({ where }),
     ]);
-    return { items, meta: { total, page, limit, totalPages: Math.max(1, Math.ceil(total / limit)) } };
+    const totalPages = Math.max(1, Math.ceil(total / limit));
+    return { items, page, pageSize: limit, total, totalPages, meta: { total, page, limit, totalPages } };
   }
 
   async findOne(id: string, user: UserRef) {
@@ -231,7 +232,8 @@ export class LeadsService {
       this.prisma.leadActivity.findMany({ where, include: { responsibleUser: { select: safeUserSelect }, createdByUser: { select: safeUserSelect } }, orderBy: { dueAt: 'asc' }, skip: (page - 1) * limit, take: limit }),
       this.prisma.leadActivity.count({ where }),
     ]);
-    return { items, meta: { total, page, limit, totalPages: Math.max(1, Math.ceil(total / limit)) } };
+    const totalPages = Math.max(1, Math.ceil(total / limit));
+    return { items, page, pageSize: limit, total, totalPages, meta: { total, page, limit, totalPages } };
   }
 
   async updateActivity(leadId: string, activityId: string, data: UpdateLeadActivityDto, user: UserRef) {

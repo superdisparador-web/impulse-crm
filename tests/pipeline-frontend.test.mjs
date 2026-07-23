@@ -78,6 +78,7 @@ function withHookDispatcher(run) {
     },
     useMemo(factory) { return factory(); },
     useCallback(callback) { return callback; },
+    useRef(initial) { return { current: initial }; },
   };
   try { return run({ cleanup: () => cleanups.splice(0).forEach((cleanup) => cleanup()) }); }
   finally { internals.H = previous; }
@@ -252,7 +253,7 @@ test('28. LeadDrawer abre com overlay e apenas um drawer', () => {
   global.window = previousWindow;
 });
 
-test('29. LeadDrawer fecha pelo botão e pelo overlay', () => {
+test('29. LeadDrawer não dispara múltiplos fechamentos durante animação', () => {
   const { LeadDrawer } = require('../components/leads/LeadDrawer.tsx');
   const card = { id: 'card-1', position: 1, stageId: 'stage-1', lead: { id: 'lead-1', name: 'Ana' } };
   const board = { id: 'pipe-1', name: 'Vendas', stages: [{ id: 'stage-1', name: 'Novo Lead', position: 1, cards: [card] }] };
@@ -262,33 +263,47 @@ test('29. LeadDrawer fecha pelo botão e pelo overlay', () => {
   const element = withHookDispatcher(() => LeadDrawer({ card, board, onClose: () => { closes += 1; }, onArchived: () => {} }));
   findFirst(element, (item) => item.type === 'button' && textOf(item) === 'Fechar').props.onClick();
   findFirst(element, (item) => item.props?.['aria-label'] === 'Fechar ficha clicando fora').props.onClick();
-  assert.equal(closes, 2);
+  assert.equal(closes, 1);
   global.window = previousWindow;
 });
 
-test('30. LeadDrawer fecha pelo ESC e limpa listener', () => {
+test('30. LeadDrawer fecha pelo ESC por card ou leadId e remove listener', () => {
   const { LeadDrawer } = require('../components/leads/LeadDrawer.tsx');
   const card = { id: 'card-1', position: 1, stageId: 'stage-1', lead: { id: 'lead-1', name: 'Ana' } };
   const board = { id: 'pipe-1', name: 'Vendas', stages: [{ id: 'stage-1', name: 'Novo Lead', position: 1, cards: [card] }] };
-  let handler = null;
+  function runScenario(props) {
+    let handler = null;
+    let removed = false;
+    let closes = 0;
+    const previousWindow = global.window;
+    global.window = { ...previousWindow, setTimeout: (callback, delay) => { if (delay === 180) callback(); return 1; }, clearTimeout: () => {}, addEventListener: (_event, callback) => { handler = callback; }, removeEventListener: (_event, callback) => { removed = callback === handler; } };
+    withHookDispatcher(({ cleanup }) => { LeadDrawer({ ...props, onClose: () => { closes += 1; }, onArchived: () => {} }); handler({ key: 'Enter' }); handler({ key: 'Escape' }); handler({ key: 'Escape' }); cleanup(); });
+    global.window = previousWindow;
+    return { closes, removed, registered: Boolean(handler) };
+  }
+  assert.deepEqual(runScenario({ card, board }), { closes: 1, removed: true, registered: true });
+  assert.deepEqual(runScenario({ card: null, board: null, leadId: 'lead-1' }), { closes: 1, removed: true, registered: true });
+});
+
+test('31. LeadDrawer não registra ESC sem card e sem leadId', () => {
+  const { LeadDrawer } = require('../components/leads/LeadDrawer.tsx');
+  let registered = false;
   let removed = false;
-  let closes = 0;
   const previousWindow = global.window;
-  global.window = { ...previousWindow, setTimeout: (callback, delay) => { if (delay === 180) callback(); return 1; }, clearTimeout: () => {}, addEventListener: (_event, callback) => { handler = callback; }, removeEventListener: (_event, callback) => { removed = callback === handler; } };
-  const result = withHookDispatcher(({ cleanup }) => { LeadDrawer({ card, board, onClose: () => { closes += 1; }, onArchived: () => {} }); handler({ key: 'Escape' }); cleanup(); });
-  assert.equal(result, undefined);
-  assert.equal(closes, 1);
-  assert.equal(removed, true);
+  global.window = { ...previousWindow, setTimeout: () => 1, clearTimeout: () => {}, addEventListener: () => { registered = true; }, removeEventListener: () => { removed = true; } };
+  withHookDispatcher(({ cleanup }) => { LeadDrawer({ card: null, board: null, onClose: () => {}, onArchived: () => {} }); cleanup(); });
+  assert.equal(registered, false);
+  assert.equal(removed, false);
   global.window = previousWindow;
 });
 
-test('31. botão Editar foi removido até existir ação real', () => {
+test('32. botão Editar foi removido até existir ação real', () => {
   const { LeadHeader } = require('../components/leads/LeadHeader.tsx');
   const element = LeadHeader({ card: { id: 'card-1', position: 1, lead: { id: 'lead-1', name: 'Ana' } }, archiving: false, onArchive: () => {}, onClose: () => {} });
   assert.equal(Boolean(findByText(element, 'Editar')), false);
 });
 
-test('32. LeadNotes permite excluir observações e mantém adapter isolado', () => {
+test('33. LeadNotes permite excluir observações e mantém adapter isolado', () => {
   const { LeadNotes } = require('../components/leads/LeadNotes.tsx');
   let changed = null;
   const note = { id: 'n1', text: 'Observação inicial', createdAt: '2026-07-23T10:00:00.000Z', updatedAt: '2026-07-23T10:00:00.000Z' };
@@ -298,7 +313,7 @@ test('32. LeadNotes permite excluir observações e mantém adapter isolado', ()
   assert.deepEqual(leadNotes.parseLeadNotes(leadNotes.serializeLeadNotes([note])), [note]);
 });
 
-test('33. LeadTimeline renderiza timeline mapeada pelo adapter', () => {
+test('34. LeadTimeline renderiza timeline mapeada pelo adapter', () => {
   const notes = [{ id: 'n1', text: 'Nota', createdAt: '2026-07-23T10:00:00.000Z', updatedAt: '2026-07-23T10:00:00.000Z' }];
   const timeline = leadTimeline.mapLeadTimeline({ lead: { id: 'lead-1', source: 'MANUAL', status: 'NEW', temperature: 'HOT', score: 0, organizationId: 'org-1', createdAt: '2026-07-23T09:00:00.000Z', updatedAt: '2026-07-23T09:00:00.000Z' }, card: { id: 'card-1', position: 1, enteredStageAt: '2026-07-23T09:30:00.000Z', lead: { id: 'lead-1' } }, events: [], activities: [], notes });
   const element = LeadTimeline({ items: timeline });
@@ -308,13 +323,13 @@ test('33. LeadTimeline renderiza timeline mapeada pelo adapter', () => {
 });
 
 
-test('34. LeadHistory mostra etapas visuais do Pipeline', () => {
+test('35. LeadHistory mostra etapas visuais do Pipeline', () => {
   const element = LeadPipelineHistory({ stages: ['Novo Lead', 'Contato', 'Documentação', 'Mesa', 'Venda'].map((name, index) => ({ id: String(index), name, current: index === 1 })) });
   assert.ok(findByText(element, 'Novo Lead'));
   assert.ok(findByText(element, 'Venda'));
 });
 
-test('35. utilitários serializam observações e montam timeline extensível', () => {
+test('36. utilitários serializam observações e montam timeline extensível', () => {
   const notes = [{ id: 'n1', text: 'Nota', createdAt: '2026-07-23T10:00:00.000Z', updatedAt: '2026-07-23T10:00:00.000Z' }];
   const created = leadNotes.createLeadNote('Nova nota', new Date('2026-07-23T11:00:00.000Z'), 0.5);
   assert.equal(created.text, 'Nova nota');
@@ -322,4 +337,104 @@ test('35. utilitários serializam observações e montam timeline extensível', 
   assert.deepEqual(leadNotes.parseLeadNotes(leadNotes.serializeLeadNotes(notes)), notes);
   const timeline = leadTimeline.mapLeadTimeline({ lead: { id: 'lead-1', source: 'MANUAL', status: 'NEW', temperature: 'HOT', score: 0, organizationId: 'org-1', createdAt: '2026-07-23T09:00:00.000Z', updatedAt: '2026-07-23T09:00:00.000Z' }, card: { id: 'card-1', position: 1, enteredStageAt: '2026-07-23T09:30:00.000Z', lead: { id: 'lead-1' } }, events: [], activities: [], notes });
   assert.deepEqual(timeline.map((item) => item.title), ['Lead criado', 'Entrou no Pipeline', 'Observação']);
+});
+const { leadService } = require('../services/lead.service.ts');
+const { pipelineService } = require('../services/pipeline.service.ts');
+const LeadFilters = require('../components/leads/LeadFilters.tsx').default;
+const LeadTable = require('../components/leads/LeadTable.tsx').default;
+const LeadForm = require('../components/leads/LeadForm.tsx').default;
+const AddLeadToPipelineDialog = require('../components/leads/AddLeadToPipelineDialog.tsx').default;
+
+function sampleLead(overrides = {}) {
+  return { id: 'lead-1', name: 'Ana', phone: '11999999999', email: 'ana@example.com', document: '12345678901', source: 'MANUAL', status: 'NEW', temperature: 'WARM', score: 0, organizationId: 'org-1', assignedUserId: null, createdAt: '2026-07-23T10:00:00.000Z', updatedAt: '2026-07-23T11:00:00.000Z', ...overrides };
+}
+
+function setupWindowForUi() {
+  const previousWindow = global.window;
+  global.window = { ...previousWindow, setTimeout: (callback) => { callback(); return 1; }, clearTimeout: () => {}, addEventListener: () => {}, removeEventListener: () => {} };
+  return () => { global.window = previousWindow; };
+}
+
+test('37. leads busca filtros e paginação são enviados ao backend', async () => {
+  const calls = mockFetch(() => ({ items: [], page: 2, pageSize: 25, total: 0, totalPages: 1, meta: { total: 0, page: 2, limit: 25, totalPages: 1 } }));
+  await leadService.getAll({ page: 2, limit: 25, search: 'Ana', status: 'QUALIFIED', temperature: 'HOT', source: 'WEBSITE', assignedUserId: 'user-1', archived: true, createdFrom: '2026-07-01' });
+  const url = new URL(calls[0].url);
+  assert.equal(url.pathname, '/leads');
+  assert.equal(url.searchParams.get('search'), 'Ana');
+  assert.equal(url.searchParams.get('status'), 'QUALIFIED');
+  assert.equal(url.searchParams.get('temperature'), 'HOT');
+  assert.equal(url.searchParams.get('source'), 'WEBSITE');
+  assert.equal(url.searchParams.get('assignedUserId'), 'user-1');
+  assert.equal(url.searchParams.get('archived'), 'true');
+  assert.equal(url.searchParams.get('page'), '2');
+  assert.equal(url.searchParams.get('limit'), '25');
+});
+
+test('38. LeadFilters combina filtros e limpa preservando paginação base', () => {
+  let next = null;
+  const element = LeadFilters({ filters: { page: 3, limit: 25, search: 'Ana', status: 'NEW' }, users: [{ id: 'user-1', name: 'Maria' }], onChange: (filters) => { next = filters; } });
+  findFirst(element, (item) => item.props?.id === 'lead-temperature-filter').props.onChange({ target: { value: 'HOT' } });
+  assert.equal(next.temperature, 'HOT');
+  assert.equal(next.page, 1);
+  findFirst(element, (item) => item.type === 'button' && textOf(item) === 'Limpar filtros').props.onClick();
+  assert.deepEqual(next, { page: 1, limit: 25, order: 'desc', search: 'Ana' });
+});
+
+test('39. LeadTable dispara edição arquivamento Lead 360 status e temperatura', () => {
+  const lead = sampleLead();
+  const calls = [];
+  const element = LeadTable({ leads: [lead], loading: false, users: [{ id: 'user-1', name: 'Maria' }], onView: (value) => calls.push(['view', value.id]), onEdit: (value) => calls.push(['edit', value.id]), onArchive: (value) => calls.push(['archive', value.id]), onAddToPipeline: (value) => calls.push(['pipeline', value.id]), onAssign: (value, userId) => calls.push(['assign', value.id, userId]), onStatus: (value, status) => calls.push(['status', value.id, status]), onTemperature: (value, temperature) => calls.push(['temperature', value.id, temperature]) });
+  findFirst(element, (item) => item.type === 'button' && textOf(item) === 'Lead 360°').props.onClick();
+  findFirst(element, (item) => item.type === 'button' && textOf(item) === 'Editar').props.onClick();
+  findFirst(element, (item) => item.type === 'button' && textOf(item) === 'Pipeline').props.onClick();
+  findFirst(element, (item) => item.type === 'button' && textOf(item) === 'Arquivar').props.onClick();
+  findFirst(element, (item) => item.props?.['aria-label'] === 'Status de Ana').props.onChange({ target: { value: 'QUALIFIED' } });
+  findFirst(element, (item) => item.props?.['aria-label'] === 'Temperatura de Ana').props.onChange({ target: { value: 'HOT' } });
+  findFirst(element, (item) => item.props?.['aria-label'] === 'Responsável de Ana').props.onChange({ target: { value: 'user-1' } });
+  assert.deepEqual(calls, [['view', 'lead-1'], ['edit', 'lead-1'], ['pipeline', 'lead-1'], ['archive', 'lead-1'], ['status', 'lead-1', 'QUALIFIED'], ['temperature', 'lead-1', 'HOT'], ['assign', 'lead-1', 'user-1']]);
+});
+
+test('40. leadService cria edita arquiva altera status e temperatura', async () => {
+  const calls = mockFetch(() => sampleLead());
+  await leadService.create({ name: 'Ana', phone: '11999999999' });
+  await leadService.update('lead-1', { name: 'Ana Silva' });
+  await leadService.archive('lead-1');
+  await leadService.updateStatus('lead-1', 'QUALIFIED');
+  await leadService.updateTemperature('lead-1', 'HOT');
+  assert.deepEqual(calls.map((call) => [new URL(call.url).pathname, call.options.method ?? 'GET']), [['/leads', 'POST'], ['/leads/lead-1', 'PATCH'], ['/leads/lead-1/archive', 'PATCH'], ['/leads/lead-1/status', 'PATCH'], ['/leads/lead-1/temperature', 'PATCH']]);
+});
+
+test('41. LeadForm valida dados mínimos antes de criar', () => {
+  const restoreWindow = setupWindowForUi();
+  const element = withHookDispatcher(() => LeadForm({ users: [], onCancel: () => {}, onSuccess: () => {} }));
+  findFirst(element, (item) => item.type === 'form').props.onSubmit({ preventDefault: () => {} });
+  assert.ok(findByText(element, 'Informe pelo menos nome, telefone ou e-mail.'));
+  restoreWindow();
+});
+
+test('42. LeadDrawer abre pela lista de Leads usando leadId sem card virtual', () => {
+  const { LeadDrawer } = require('../components/leads/LeadDrawer.tsx');
+  const previousWindow = global.window;
+  global.window = { ...previousWindow, setTimeout: () => 1, clearTimeout: () => {}, addEventListener: () => {}, removeEventListener: () => {} };
+  const element = withHookDispatcher(() => LeadDrawer({ card: null, board: null, leadId: 'lead-1', onClose: () => {}, onArchived: () => {} }));
+  assert.equal(flatten(element).filter((item) => item.type === 'aside' && item.props?.['aria-label'] === 'Ficha completa do cliente').length, 1);
+  global.window = previousWindow;
+});
+
+test('43. Pipeline dialog escolhe pipeline etapa e confirma addCard', () => {
+  const restoreWindow = setupWindowForUi();
+  let payload = null;
+  const pipelines = [{ id: 'pipe-1', organizationId: 'org-1', name: 'Vendas', isDefault: true, isActive: true, currency: 'BRL', stages: [{ id: 'stage-1', organizationId: 'org-1', pipelineId: 'pipe-1', name: 'Novo', position: 1, probability: 10, isInitial: true, isActive: true }] }];
+  const element = withHookDispatcher(() => AddLeadToPipelineDialog({ lead: sampleLead(), pipelines, saving: false, message: '', onCancel: () => {}, onConfirm: (pipelineId, stageId) => { payload = { pipelineId, stageId }; } }));
+  findFirst(element, (item) => item.type === 'button' && textOf(item) === 'Adicionar').props.onClick();
+  assert.deepEqual(payload, { pipelineId: 'pipe-1', stageId: 'stage-1' });
+  restoreWindow();
+});
+
+test('44. pipelineService usa rotas reais do backend para listar board e addCard', async () => {
+  const calls = mockFetch((url) => url.endsWith('/board') ? { pipeline: {}, stages: [] } : []);
+  await pipelineService.pipelines();
+  await pipelineService.kanban('pipe-1');
+  await pipelineService.addCard('pipe-1', { leadId: 'lead-1', stageId: 'stage-1' });
+  assert.deepEqual(calls.map((call) => [new URL(call.url).pathname, call.options.method ?? 'GET']), [['/pipeline', 'GET'], ['/pipeline/pipe-1/board', 'GET'], ['/pipeline/pipe-1/cards', 'POST']]);
 });

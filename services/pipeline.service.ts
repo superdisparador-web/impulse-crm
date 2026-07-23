@@ -2,12 +2,12 @@ import { api } from './api';
 import { Deal, DealListResponse, KanbanResponse, LossReason, Pipeline, Tag } from '@/types/pipeline';
 function qs(params: object = {}) { const s = new URLSearchParams(); Object.entries(params).forEach(([k,v]) => { if (v !== undefined && v !== '') s.set(k, String(v)); }); const q=s.toString(); return q ? `?${q}` : ''; }
 class PipelineService {
-  pipelines(params: object = {}) { return api.get<Pipeline[]>(`/pipeline/pipelines${qs(params)}`); }
-  createPipeline(data: Partial<Pipeline>) { return api.post<Pipeline>('/pipeline/pipelines', data); }
-  updatePipeline(id:string, data: Partial<Pipeline>) { return api<Pipeline>(`/pipeline/pipelines/${id}`, { method:'PATCH', body: JSON.stringify(data) }); }
-  createStage(pipelineId:string, data: object) { return api.post(`/pipeline/pipelines/${pipelineId}/stages`, data); }
-  updateStage(id:string, data: object) { return api(`/pipeline/stages/${id}`, { method:'PATCH', body: JSON.stringify(data) }); }
-  reorderStages(pipelineId:string, stages: Array<{id:string; position:number; isInitial?:boolean}>) { return api(`/pipeline/stages/reorder/${pipelineId}`, { method:'PATCH', body: JSON.stringify({ stages }) }); }
+  pipelines(params: object = {}) { return api.get<Pipeline[]>(`/pipeline${qs(params)}`); }
+  createPipeline(data: Partial<Pipeline>) { return api.post<Pipeline>('/pipeline', data); }
+  updatePipeline(id:string, data: Partial<Pipeline>) { return api<Pipeline>(`/pipeline/${id}`, { method:'PATCH', body: JSON.stringify(data) }); }
+  createStage(pipelineId:string, data: object) { return api.post(`/pipeline/${pipelineId}/stages`, data); }
+  updateStage(pipelineId:string, stageId:string, data: object) { return api(`/pipeline/${pipelineId}/stages/${stageId}`, { method:'PATCH', body: JSON.stringify(data) }); }
+  reorderStages(pipelineId:string, stages: Array<{id:string; position:number; isInitial?:boolean}>) { return api(`/pipeline/${pipelineId}/stages/reorder`, { method:'PATCH', body: JSON.stringify({ stages }) }); }
   tags(params: object = {}) { return api.get<Tag[]>(`/pipeline/tags${qs(params)}`); }
   createTag(data: object) { return api.post<Tag>('/pipeline/tags', data); }
   lossReasons(params: object = {}) { return api.get<LossReason[]>(`/pipeline/loss-reasons${qs(params)}`); }
@@ -22,6 +22,7 @@ class PipelineService {
   reopen(id:string, toStageId:string) { return api.post<Deal>(`/pipeline/deals/${id}/reopen`, { toStageId }); }
   addTag(id:string, tagId:string) { return api.post(`/pipeline/deals/${id}/tags`, { tagId }); }
   timeline(id:string) { return api.get(`/pipeline/deals/${id}/timeline`); }
-  kanban(pipelineId:string, params: object = {}) { return api.get<KanbanResponse>(`/pipeline/pipelines/${pipelineId}/kanban${qs(params)}`); }
+  kanban(pipelineId:string, params: object = {}) { return api.get<KanbanResponse>(`/pipeline/${pipelineId}/board${qs(params)}`); }
+  addCard(pipelineId:string, data: { leadId:string; stageId:string }) { return api.post(`/pipeline/${pipelineId}/cards`, data); }
 }
 export const pipelineService = new PipelineService();
