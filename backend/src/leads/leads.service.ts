@@ -12,6 +12,8 @@ import { AuditService } from '../audit/audit.service';
 import { TimelineService } from './timeline.service';
 import { AnalyticsEventsService } from '../analytics/analytics-events.service';
 
+const allowedAssigneeRoles: Role[] = [Role.CORRETOR, Role.ORG_ADMIN, Role.MANAGER, Role.BROKER];
+
 const safeUserSelect = { id: true, name: true, email: true, phone: true, role: true, active: true, organizationId: true } satisfies Prisma.UserSelect;
 const leadInclude = {
   organization: { select: { id: true, name: true, active: true } },
@@ -96,7 +98,7 @@ export class LeadsService {
     await this.ensureAssignedUser(organizationId, payload.assignedUserId ?? null);
     await this.ensureAssignedUser(organizationId, payload.managerUserId ?? null);
     const duplicate = await this.findDuplicate(organizationId, payload, identities);
-    if (duplicate) throw new ConflictException({ code: 'LEAD_DUPLICATE_CONFLICT', message: 'Já existe um lead ativo com a mesma identidade externa, documento, telefone ou e-mail nesta organização', duplicateLeadId: duplicate.leadId ?? duplicate.id });
+    if (duplicate) throw new ConflictException({ code: 'LEAD_DUPLICATE_CONFLICT', message: 'Já existe um lead ativo com a mesma identidade externa, documento, telefone ou e-mail nesta organização', duplicateLeadId: this.getDuplicateLeadId(duplicate) });
     const lead = await this.handleDuplicateRace(async () => this.prisma.$transaction(async (tx) => {
       const created = await tx.lead.create({ data: { ...payload, status: payload.assignedUserId && !data.status ? LeadStatus.ASSIGNED : payload.status } as Prisma.LeadUncheckedCreateInput });
       for (const identity of identities) await tx.leadExternalIdentity.create({ data: { ...identity, organizationId, leadId: created.id, metadata: (identity.metadata ?? Prisma.JsonNull) as Prisma.InputJsonValue } });
@@ -118,7 +120,7 @@ export class LeadsService {
     await this.ensureAssignedUser(organizationId, payload.managerUserId === undefined ? current.managerUserId : payload.managerUserId);
     if (!payload.normalizedPhone && !payload.normalizedEmail && !current.externalIdentities.length && data.phone !== undefined && data.email !== undefined) throw new BadRequestException('Lead deve manter telefone, e-mail ou identidade externa');
     const duplicate = await this.findDuplicate(organizationId, payload, [], id);
-    if (duplicate) throw new ConflictException({ code: 'LEAD_DUPLICATE_CONFLICT', message: 'Já existe outro lead ativo com estes dados nesta organização', duplicateLeadId: duplicate.leadId ?? duplicate.id });
+    if (duplicate) throw new ConflictException({ code: 'LEAD_DUPLICATE_CONFLICT', message: 'Já existe outro lead ativo com estes dados nesta organização', duplicateLeadId: this.getDuplicateLeadId(duplicate) });
     await this.handleDuplicateRace(async () => this.prisma.$transaction(async (tx) => {
       await tx.lead.update({ where: { id }, data: payload as Prisma.LeadUncheckedUpdateInput });
       await this.recordHistory(tx, id, organizationId, user.id, LeadHistoryAction.UPDATED, current, payload, { fields: Object.keys(data) });
@@ -321,6 +323,10 @@ export class LeadsService {
     return null;
   }
 
+  private getDuplicateLeadId(duplicate: { id: string } | { leadId: string }) {
+    return 'leadId' in duplicate ? duplicate.leadId : duplicate.id;
+  }
+
   private async ensureOrganization(id: string) {
     const organization = await this.prisma.organization.findFirst({ where: { id, active: true, deletedAt: null } });
     if (!organization) throw new NotFoundException('Organização ativa não encontrada');
@@ -354,7 +360,7 @@ export class LeadsService {
     await this.audit?.record({ organizationId, actorUserId, module: 'leads', entityType: 'Lead', entityId: leadId, action, before: beforeJson, after: afterJson, metadata: metadataJson });
   }
 
-  private toJson(value: unknown): Prisma.InputJsonValue | Prisma.JsonNull {
+  private toJson(value: unknown): Prisma.InputJsonValue | typeof Prisma.JsonNull {
     if (value === null || value === undefined) return Prisma.JsonNull;
     return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
   }
@@ -363,7 +369,7 @@ export class LeadsService {
     if (!userId) return;
     const user = await this.prisma.user.findFirst({ where: { id: userId, active: true, deletedAt: null }, select: { organizationId: true, role: true } });
     if (!user) throw new NotFoundException({ code: 'LEAD_ASSIGNEE_INACTIVE', message: 'Usuário responsável ativo não encontrado' });
-    if (![Role.CORRETOR, Role.ORG_ADMIN, Role.MANAGER, Role.BROKER].includes(user.role)) throw new BadRequestException({ code: 'LEAD_ASSIGNEE_INVALID_ROLE', message: 'Responsável inválido' });
+    if (!allowedAssigneeRoles.includes(user.role)) throw new BadRequestException({ code: 'LEAD_ASSIGNEE_INVALID_ROLE', message: 'Responsável inválido' });
     if (user.organizationId !== organizationId) throw new BadRequestException({ code: 'LEAD_ASSIGNEE_CROSS_TENANT', message: 'Responsável deve pertencer à mesma organização do lead' });
   }
 }
