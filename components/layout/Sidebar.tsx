@@ -8,6 +8,7 @@ import {
   KanbanSquare,
   UserCog,
   MessageCircle,
+  FileText,
   Megaphone,
   Send,
   CalendarClock,
@@ -42,6 +43,11 @@ export const sidebarMenu = [
     title: "WhatsApp",
     href: "/whatsapp",
     icon: MessageCircle,
+  },
+  {
+    title: "Templates",
+    href: "/templates",
+    icon: FileText,
   },
   {
     title: "Campanhas",
