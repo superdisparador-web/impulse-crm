@@ -795,6 +795,13 @@ model Organization {
   distributionMembers DistributionMember[]
   distributionCursors DistributionCursor[]
   leadDistributions LeadDistribution[]
+  analyticsEvents AnalyticsEvent[]
+  dailyMetrics DailyMetric[]
+  hourlyMetrics HourlyMetric[]
+  campaignMetrics CampaignMetric[]
+  brokerMetrics BrokerMetric[]
+  managerMetrics ManagerMetric[]
+  whatsappMetrics WhatsappMetric[]
 
   @@index([name])
   @@index([document])
@@ -2080,4 +2087,159 @@ model LeadDistribution {
   @@index([organizationId, distributionMemberId, createdAt])
   @@index([organizationId, recipientPhoneE164])
   @@index([organizationId, status, createdAt])
+}
+
+enum AnalyticsEventSource {
+  LEADS
+  CAMPAIGNS
+  DISTRIBUTION
+  WHATSAPP
+}
+
+model AnalyticsEvent {
+  id                String               @id @default(cuid())
+  organizationId    String
+  source            AnalyticsEventSource
+  eventType         String               @db.VarChar(120)
+  leadId            String?
+  campaignId        String?
+  brokerUserId      String?
+  managerUserId     String?
+  whatsappAccountId String?
+  idempotencyKey    String?
+  occurredAt        DateTime             @default(now())
+  processedAt       DateTime?
+  metadata          Json?
+  organization      Organization         @relation(fields: [organizationId], references: [id])
+
+  @@unique([organizationId, idempotencyKey])
+  @@index([organizationId, source, eventType, occurredAt])
+  @@index([organizationId, processedAt])
+  @@map("analytics_events")
+}
+
+model DailyMetric {
+  id             String       @id @default(cuid())
+  organizationId String
+  bucketStart    DateTime     @db.Date
+  leads          Int          @default(0)
+  campaigns      Int          @default(0)
+  distributions  Int          @default(0)
+  whatsappSent   Int          @default(0)
+  whatsappRead   Int          @default(0)
+  conversions    Int          @default(0)
+  metadata       Json?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([organizationId, bucketStart])
+  @@index([organizationId, bucketStart])
+  @@map("daily_metrics")
+}
+
+model HourlyMetric {
+  id             String       @id @default(cuid())
+  organizationId String
+  bucketStart    DateTime
+  leads          Int          @default(0)
+  campaigns      Int          @default(0)
+  distributions  Int          @default(0)
+  whatsappSent   Int          @default(0)
+  whatsappRead   Int          @default(0)
+  conversions    Int          @default(0)
+  metadata       Json?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([organizationId, bucketStart])
+  @@index([organizationId, bucketStart])
+  @@map("hourly_metrics")
+}
+
+model CampaignMetric {
+  id             String       @id @default(cuid())
+  organizationId String
+  campaignId     String
+  bucketStart    DateTime     @db.Date
+  sent           Int          @default(0)
+  delivered      Int          @default(0)
+  opened         Int          @default(0)
+  clicked        Int          @default(0)
+  failed         Int          @default(0)
+  conversions    Int          @default(0)
+  metadata       Json?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([organizationId, campaignId, bucketStart])
+  @@index([organizationId, bucketStart])
+  @@index([organizationId, campaignId, bucketStart])
+  @@map("campaign_metrics")
+}
+
+model BrokerMetric {
+  id             String       @id @default(cuid())
+  organizationId String
+  brokerUserId   String
+  bucketStart    DateTime     @db.Date
+  assignedLeads  Int          @default(0)
+  contactedLeads Int          @default(0)
+  wonDeals       Int          @default(0)
+  lostDeals      Int          @default(0)
+  activities     Int          @default(0)
+  metadata       Json?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([organizationId, brokerUserId, bucketStart])
+  @@index([organizationId, bucketStart])
+  @@index([organizationId, brokerUserId, bucketStart])
+  @@map("broker_metrics")
+}
+
+model ManagerMetric {
+  id             String       @id @default(cuid())
+  organizationId String
+  managerUserId  String
+  bucketStart    DateTime     @db.Date
+  managedLeads   Int          @default(0)
+  assignedLeads  Int          @default(0)
+  activeBrokers  Int          @default(0)
+  wonDeals       Int          @default(0)
+  lostDeals      Int          @default(0)
+  metadata       Json?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([organizationId, managerUserId, bucketStart])
+  @@index([organizationId, bucketStart])
+  @@index([organizationId, managerUserId, bucketStart])
+  @@map("manager_metrics")
+}
+
+model WhatsappMetric {
+  id                String       @id @default(cuid())
+  organizationId    String
+  whatsappAccountId String?
+  bucketStart       DateTime     @db.Date
+  sent              Int          @default(0)
+  delivered         Int          @default(0)
+  read              Int          @default(0)
+  received          Int          @default(0)
+  failed            Int          @default(0)
+  conversations     Int          @default(0)
+  metadata          Json?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  organization      Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([organizationId, whatsappAccountId, bucketStart])
+  @@index([organizationId, bucketStart])
+  @@index([organizationId, whatsappAccountId, bucketStart])
+  @@map("whatsapp_metrics")
 }
