@@ -2106,6 +2106,8 @@ model AnalyticsEvent {
   brokerUserId      String?
   managerUserId     String?
   whatsappAccountId String?
+  distributionId    String?
+  dealId            String?
   idempotencyKey    String?
   occurredAt        DateTime             @default(now())
   processedAt       DateTime?
@@ -2114,7 +2116,9 @@ model AnalyticsEvent {
 
   @@unique([organizationId, idempotencyKey])
   @@index([organizationId, source, eventType, occurredAt])
-  @@index([organizationId, processedAt])
+  @@index([organizationId, processedAt, occurredAt])
+  @@index([organizationId, distributionId, occurredAt])
+  @@index([organizationId, dealId, occurredAt])
   @@map("analytics_events")
 }
 

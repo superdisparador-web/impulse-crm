@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import { LeadActivityStatus, LeadEventType, LeadHistoryAction, LeadStatus, LeadTemperature, Prisma, Role } from '@prisma/client';
+import { AnalyticsEventSource, LeadActivityStatus, LeadEventType, LeadHistoryAction, LeadStatus, LeadTemperature, Prisma, Role } from '@prisma/client';
 import { AccessContext, AccessContextService, AuthenticatedUserRef } from '../auth/access-context.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateLeadActivityDto } from './dto/create-lead-activity.dto';
@@ -10,6 +10,7 @@ import { UpdateLeadActivityDto } from './dto/update-lead-activity.dto';
 import { UpdateLeadDto } from './dto/update-lead.dto';
 import { AuditService } from '../audit/audit.service';
 import { TimelineService } from './timeline.service';
+import { AnalyticsEventsService } from '../analytics/analytics-events.service';
 
 const safeUserSelect = { id: true, name: true, email: true, phone: true, role: true, active: true, organizationId: true } satisfies Prisma.UserSelect;
 const leadInclude = {
@@ -30,7 +31,7 @@ type LeadPayload = Omit<CreateLeadDto, 'externalIdentity' | 'externalIdentities'
 
 @Injectable()
 export class LeadsService {
-  constructor(private readonly prisma: PrismaService, private readonly access: AccessContextService, private readonly timeline: TimelineService, private readonly audit?: AuditService) {}
+  constructor(private readonly prisma: PrismaService, private readonly access: AccessContextService, private readonly timeline: TimelineService, private readonly audit: AuditService, private readonly analyticsEvents: AnalyticsEventsService) {}
 
   normalizePhone(phone?: string | null) {
     const digits = phone?.replace(/\D/g, '') || '';
@@ -104,6 +105,8 @@ export class LeadsService {
       if (created.assignedUserId) await tx.leadEvent.create({ data: { leadId: created.id, organizationId, eventType: LeadEventType.LEAD_ASSIGNED, description: 'Lead atribuído', actorUserId: user.id, payload: { assignedUserId: created.assignedUserId } } });
       return created;
     }));
+    await this.analyticsEvents.emit({ organizationId, source: AnalyticsEventSource.LEADS, eventType: 'LEAD_CREATED', occurredAt: lead.createdAt, idempotencyKey: `lead-created:${lead.id}`, leadId: lead.id, brokerUserId: lead.assignedUserId, managerUserId: lead.managerUserId });
+    if (lead.assignedUserId) await this.analyticsEvents.emit({ organizationId, source: AnalyticsEventSource.LEADS, eventType: 'LEAD_ASSIGNED', occurredAt: lead.lastAssignedAt ?? lead.createdAt, idempotencyKey: `lead-assigned:${lead.id}:${lead.assignedUserId}`, leadId: lead.id, brokerUserId: lead.assignedUserId, managerUserId: lead.managerUserId });
     return this.findOne(lead.id, user);
   }
 
@@ -132,7 +135,9 @@ export class LeadsService {
       await this.recordHistory(tx, id, lead.organizationId, user.id, assignedUserId ? LeadHistoryAction.ASSIGNED : LeadHistoryAction.UNASSIGNED, { assignedUserId: lead.assignedUserId }, { assignedUserId }, { previousAssignedUserId: lead.assignedUserId, assignedByUserId: user.id });
       await tx.leadEvent.create({ data: { leadId: id, organizationId: lead.organizationId, eventType: assignedUserId ? LeadEventType.LEAD_ASSIGNED : LeadEventType.LEAD_UNASSIGNED, description: assignedUserId ? 'Lead atribuído' : 'Atribuição removida', actorUserId: user.id, payload: { assignedUserId } } });
     });
-    return this.findOne(id, user);
+    const updated = await this.findOne(id, user);
+    if (assignedUserId) await this.analyticsEvents.emit({ organizationId: lead.organizationId, source: AnalyticsEventSource.LEADS, eventType: 'LEAD_ASSIGNED', occurredAt: updated.lastAssignedAt ?? new Date(), idempotencyKey: `lead-assigned:${id}:${assignedUserId}`, leadId: id, brokerUserId: assignedUserId, managerUserId: updated.managerUserId });
+    return updated;
   }
 
   async updateStatus(id: string, status: LeadStatus, user: UserRef) {
@@ -143,7 +148,11 @@ export class LeadsService {
       await this.recordHistory(tx, id, lead.organizationId, user.id, LeadHistoryAction.STATUS_CHANGED, { status: lead.status }, { status }, {});
       await tx.leadEvent.create({ data: { leadId: id, organizationId: lead.organizationId, eventType: LeadEventType.LEAD_STATUS_CHANGED, description: 'Status geral do lead alterado', actorUserId: user.id, payload: { from: lead.status, to: status } } });
     });
-    return this.findOne(id, user);
+    const updated = await this.findOne(id, user);
+    await this.analyticsEvents.emit({ organizationId: lead.organizationId, source: AnalyticsEventSource.LEADS, eventType: 'LEAD_STAGE_CHANGED', occurredAt: now, idempotencyKey: `lead-stage-changed:${id}:${status}:${now.toISOString()}`, leadId: id, brokerUserId: updated.assignedUserId, managerUserId: updated.managerUserId, metadata: { from: lead.status, to: status } });
+    if (status === LeadStatus.CONVERTED) await this.analyticsEvents.emit({ organizationId: lead.organizationId, source: AnalyticsEventSource.LEADS, eventType: 'DEAL_WON', occurredAt: now, idempotencyKey: `deal-won:${id}:${now.toISOString()}`, leadId: id, dealId: id, brokerUserId: updated.assignedUserId, managerUserId: updated.managerUserId });
+    if (status === LeadStatus.LOST) await this.analyticsEvents.emit({ organizationId: lead.organizationId, source: AnalyticsEventSource.LEADS, eventType: 'DEAL_LOST', occurredAt: now, idempotencyKey: `deal-lost:${id}:${now.toISOString()}`, leadId: id, dealId: id, brokerUserId: updated.assignedUserId, managerUserId: updated.managerUserId });
+    return updated;
   }
 
   async updateTemperature(id: string, temperature: LeadTemperature, user: UserRef) {
