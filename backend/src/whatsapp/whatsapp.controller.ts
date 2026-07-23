@@ -7,10 +7,13 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { AuthenticatedUserRef } from '../auth/access-context.service';
 import { AssignConversationDto, UpdateConversationDto } from './dto/conversations.dto';
 import { CreateWhatsappAccountDto } from './dto/create-whatsapp-account.dto';
+import { CreateWhatsappTemplateDto } from './dto/create-whatsapp-template.dto';
 import { ListWhatsappDto } from './dto/list-whatsapp.dto';
+import { ListWhatsappTemplatesDto } from './dto/list-whatsapp-templates.dto';
 import { SendMediaMessageDto, SendTemplateMessageDto, SendTextMessageDto } from './dto/messages.dto';
 import { SyncWhatsappTemplatesDto } from './dto/sync-whatsapp-templates.dto';
 import { UpdateWhatsappAccountDto, UpdateWhatsappAccountStatusDto } from './dto/update-whatsapp-account.dto';
+import { UpdateWhatsappTemplateDto } from './dto/update-whatsapp-template.dto';
 import { WhatsappService } from './whatsapp.service';
 
 type RawReq = Request & { rawBody?: Buffer };
@@ -41,8 +44,13 @@ export class WhatsappController {
   @Post('conversations/:id/messages/text') @Permissions('whatsapp:messages:send') sendText(@Param('id') id: string, @Body() d: SendTextMessageDto, @CurrentUser() u: AuthenticatedUserRef) { return this.service.sendText(id, d, u); }
   @Post('conversations/:id/messages/template') @Permissions('whatsapp:messages:send') sendTemplate(@Param('id') id: string, @Body() d: SendTemplateMessageDto, @CurrentUser() u: AuthenticatedUserRef) { return this.service.sendTemplate(id, d, u); }
   @Post('conversations/:id/messages/media') @Permissions('whatsapp:messages:send') sendMedia(@Param('id') id: string, @Body() d: SendMediaMessageDto, @CurrentUser() u: AuthenticatedUserRef) { return this.service.sendMedia(id, d, u); }
-  @Get('templates') @Permissions('whatsapp:templates:read') templates(@Query() q: ListWhatsappDto, @CurrentUser() u: AuthenticatedUserRef) { return this.service.findTemplates(q, u); }
+  @Get('templates') @Permissions('whatsapp:templates:read') templates(@Query() q: ListWhatsappTemplatesDto, @CurrentUser() u: AuthenticatedUserRef) { return this.service.findTemplates(q, u); }
   @Get('templates/:id') @Permissions('whatsapp:templates:read') template(@Param('id') id: string, @CurrentUser() u: AuthenticatedUserRef) { return this.service.getTemplate(id, u); }
+  @Post('templates') @Permissions('whatsapp:templates:create') createTemplate(@Body() d: CreateWhatsappTemplateDto, @CurrentUser() u: AuthenticatedUserRef) { return this.service.createTemplate(d, u); }
+  @Patch('templates/:id') @Permissions('whatsapp:templates:update') updateTemplate(@Param('id') id: string, @Body() d: UpdateWhatsappTemplateDto, @CurrentUser() u: AuthenticatedUserRef) { return this.service.updateTemplate(id, d, u); }
+  @Patch('templates/:id/archive') @Permissions('whatsapp:templates:update') archiveTemplate(@Param('id') id: string, @CurrentUser() u: AuthenticatedUserRef) { return this.service.archiveTemplate(id, u); }
+  @Patch('templates/:id/restore') @Permissions('whatsapp:templates:update') restoreTemplate(@Param('id') id: string, @CurrentUser() u: AuthenticatedUserRef) { return this.service.restoreTemplate(id, u); }
+  @Delete('templates/:id') @Permissions('whatsapp:templates:update') deleteTemplate(@Param('id') id: string, @CurrentUser() u: AuthenticatedUserRef) { return this.service.deleteTemplate(id, u); }
   @Post('templates/sync') @Permissions('whatsapp:templates:sync') sync(@Body() d: SyncWhatsappTemplatesDto, @CurrentUser() u: AuthenticatedUserRef) { return this.service.syncTemplates(d, u); }
 }
 @ApiTags('Webhooks WhatsApp Meta')

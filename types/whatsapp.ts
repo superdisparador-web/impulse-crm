@@ -33,13 +33,17 @@ export interface WhatsappAccount {
   deletedAt?: string | null;
 }
 
+export type WhatsappTemplateStatus = 'DRAFT' | 'PENDING' | 'APPROVED' | 'REJECTED' | 'DISABLED';
+export type WhatsappTemplateCategory = 'MARKETING' | 'UTILITY' | 'AUTHENTICATION';
+export type WhatsappTemplateLanguage = 'pt_BR' | 'en_US' | 'es_ES';
+
 export interface WhatsappTemplate {
   id: string;
   organizationId: string;
   name: string;
-  category: string;
-  language: string;
-  status: string;
+  category: WhatsappTemplateCategory;
+  language: WhatsappTemplateLanguage;
+  status: WhatsappTemplateStatus;
   components: unknown;
   createdAt: string;
   updatedAt: string;

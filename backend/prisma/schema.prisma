@@ -778,6 +778,7 @@ model Organization {
   whatsappWebhookEvents WhatsappWebhookEvent[]
   campaigns             Campaign[]
   messageQueues         MessageQueue[]
+  messageLogs           MessageLog[]
   pipelines             Pipeline[]
   pipelineStages        PipelineStage[]
   pipelineLeads         PipelineLead[]
@@ -1065,12 +1066,11 @@ enum WhatsappMessageStatus {
 }
 
 enum WhatsappTemplateStatus {
+  DRAFT
   PENDING
   APPROVED
   REJECTED
-  PAUSED
   DISABLED
-  DELETED
 }
 
 enum WhatsappWebhookEventStatus {
@@ -1127,13 +1127,23 @@ model WhatsappAccount {
 model WhatsappTemplate {
   id                 String                 @id @default(cuid())
   organizationId     String
-  whatsappAccountId  String
+  whatsappAccountId  String?
   externalTemplateId String?                @db.VarChar(128)
+  metaTemplateId     String?                @db.VarChar(128)
   name               String                 @db.VarChar(255)
+  displayName        String                 @db.VarChar(255)
+  metaName           String                 @db.VarChar(255)
   category           String                 @db.VarChar(64)
   language           String                 @db.VarChar(16)
-  status             WhatsappTemplateStatus @default(PENDING)
+  status             WhatsappTemplateStatus @default(DRAFT)
+  headerType         String                 @default("NONE") @db.VarChar(32)
+  headerText         String?                @db.VarChar(255)
+  body               String                 @db.Text
+  footer             String?                @db.VarChar(255)
+  buttons            Json?
   components         Json
+  isActive           Boolean                @default(true)
+  archivedAt         DateTime?
   parameterSchema    Json?
   rejectionReason    String?                @db.VarChar(500)
   lastSyncedAt       DateTime?
@@ -1141,11 +1151,14 @@ model WhatsappTemplate {
   updatedAt          DateTime               @updatedAt
   deletedAt          DateTime?
   organization       Organization           @relation(fields: [organizationId], references: [id])
-  whatsappAccount    WhatsappAccount        @relation(fields: [whatsappAccountId], references: [id])
+  whatsappAccount    WhatsappAccount?       @relation(fields: [whatsappAccountId], references: [id])
   campaigns          Campaign[]
 
   @@unique([organizationId, whatsappAccountId, name, language])
   @@index([organizationId, status])
+  @@index([organizationId, category])
+  @@index([organizationId, language])
+  @@index([organizationId, isActive])
   @@index([whatsappAccountId])
   @@index([deletedAt])
 }
@@ -1577,6 +1590,7 @@ model MessageQueue {
 
 model MessageLog {
   id          String             @id @default(cuid())
+  organizationId String?
   queueId     String
   campaignId  String
   recipientId String?
@@ -1584,10 +1598,12 @@ model MessageLog {
   message     String
   response    Json?
   createdAt   DateTime           @default(now())
+  organization Organization?      @relation(fields: [organizationId], references: [id])
   queue       MessageQueue       @relation(fields: [queueId], references: [id], onDelete: Cascade)
   campaign    Campaign           @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   recipient   CampaignRecipient? @relation(fields: [recipientId], references: [id])
 
+  @@index([organizationId])
   @@index([queueId])
   @@index([campaignId])
   @@index([recipientId])
