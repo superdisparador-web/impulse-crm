@@ -791,6 +791,10 @@ model Organization {
   dealActivities    DealActivity[]
   auditLogs         AuditLog[]
   rbacRoles         RbacRole[]
+  distributionLists DistributionList[]
+  distributionMembers DistributionMember[]
+  distributionCursors DistributionCursor[]
+  leadDistributions LeadDistribution[]
 
   @@index([name])
   @@index([document])
@@ -839,6 +843,7 @@ model User {
   assignedWhatsappConversations WhatsappConversation[] @relation("WhatsappConversationAssignedUser")
   managedWhatsappConversations WhatsappConversation[] @relation("WhatsappConversationManagerUser")
   createdWhatsappMessages WhatsappMessage[] @relation("WhatsappMessageCreatedBy")
+  createdDistributionLists DistributionList[] @relation("DistributionListCreatedBy")
 
   @@index([organizationId])
   @@index([organizationId, status])
@@ -1263,6 +1268,7 @@ model Lead {
   dealActivities     DealActivity[]
   whatsappConversations WhatsappConversation[]
   whatsappMessages WhatsappMessage[]
+  leadDistributions LeadDistribution[]
 
   @@index([organizationId, createdAt])
   @@index([organizationId, updatedAt])
@@ -1410,6 +1416,7 @@ model Campaign {
   recipients         CampaignRecipient[]
   messageQueues      MessageQueue[]
   messageLogs        MessageLog[]
+  leadDistributions  LeadDistribution[]
 
   @@index([organizationId])
   @@index([status])
@@ -1941,4 +1948,136 @@ model AuthAuditLog {
   @@index([userId, createdAt])
   @@index([organizationId, createdAt])
   @@index([eventType, createdAt])
+}
+
+enum DistributionListStatus {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+enum DistributionStrategy {
+  ROUND_ROBIN
+  WEIGHTED
+  LEAST_ASSIGNED
+  RANDOM
+  BY_TEAM
+  BY_REGION
+}
+
+enum DistributionStatus {
+  PENDING
+  ASSIGNED
+  CONTACT_QUEUED
+  CONTACT_SENT
+  DELIVERED
+  READ
+  FAILED
+  CANCELLED
+}
+
+enum DistributionTriggerType {
+  CAMPAIGN_BUTTON
+  WEBHOOK
+  AUTOMATION
+  MANUAL
+}
+
+enum DistributionImportMode {
+  ADD
+  REPLACE
+  UPDATE
+}
+
+model DistributionList {
+  id             String                 @id @default(cuid())
+  organizationId String
+  name           String                 @db.VarChar(255)
+  description    String?
+  status         DistributionListStatus @default(ACTIVE)
+  createdById    String
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+  deletedAt      DateTime?
+  organization   Organization           @relation(fields: [organizationId], references: [id])
+  createdBy      User                   @relation("DistributionListCreatedBy", fields: [createdById], references: [id])
+  members        DistributionMember[]
+  cursor         DistributionCursor?
+  distributions  LeadDistribution[]
+
+  @@index([organizationId, status])
+  @@index([organizationId, name])
+  @@index([deletedAt])
+}
+
+model DistributionMember {
+  id                 String             @id @default(cuid())
+  organizationId     String
+  distributionListId String
+  name               String             @db.VarChar(255)
+  phoneE164          String             @db.VarChar(32)
+  position           Int
+  isActive           Boolean            @default(true)
+  metadata           Json?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  deletedAt          DateTime?
+  organization       Organization       @relation(fields: [organizationId], references: [id])
+  distributionList   DistributionList   @relation(fields: [distributionListId], references: [id], onDelete: Cascade)
+  cursorUsages       DistributionCursor[]
+  distributions      LeadDistribution[]
+
+  @@unique([distributionListId, phoneE164])
+  @@unique([distributionListId, position])
+  @@index([organizationId, distributionListId, isActive, position])
+  @@index([organizationId, phoneE164])
+  @@index([deletedAt])
+}
+
+model DistributionCursor {
+  organizationId     String
+  distributionListId String @unique
+  lastMemberId       String?
+  version            Int    @default(0)
+  updatedAt          DateTime @updatedAt
+  organization       Organization @relation(fields: [organizationId], references: [id])
+  distributionList   DistributionList @relation(fields: [distributionListId], references: [id], onDelete: Cascade)
+  lastMember         DistributionMember? @relation(fields: [lastMemberId], references: [id])
+
+  @@id([organizationId, distributionListId])
+  @@index([lastMemberId])
+}
+
+model LeadDistribution {
+  id                   String                  @id @default(cuid())
+  organizationId       String
+  campaignId           String?
+  distributionListId   String
+  distributionMemberId String?
+  leadId               String?
+  recipientPhoneE164   String                  @db.VarChar(32)
+  triggerType          DistributionTriggerType @default(CAMPAIGN_BUTTON)
+  triggerId            String?                 @db.VarChar(255)
+  webhookEventId       String?                 @db.VarChar(255)
+  status               DistributionStatus      @default(PENDING)
+  strategy             DistributionStrategy    @default(ROUND_ROBIN)
+  idempotencyKey       String                  @db.VarChar(500)
+  errorMessage         String?
+  attempts             Int                     @default(0)
+  messagePayload       Json?
+  distributedAt        DateTime?
+  createdAt            DateTime                @default(now())
+  updatedAt            DateTime                @updatedAt
+  organization         Organization            @relation(fields: [organizationId], references: [id])
+  campaign             Campaign?               @relation(fields: [campaignId], references: [id])
+  distributionList     DistributionList        @relation(fields: [distributionListId], references: [id])
+  distributionMember   DistributionMember?     @relation(fields: [distributionMemberId], references: [id])
+  lead                 Lead?                   @relation(fields: [leadId], references: [id])
+
+  @@unique([organizationId, idempotencyKey])
+  @@index([organizationId, campaignId, createdAt])
+  @@index([organizationId, distributionListId, createdAt])
+  @@index([organizationId, distributionMemberId, createdAt])
+  @@index([organizationId, recipientPhoneE164])
+  @@index([organizationId, status, createdAt])
 }
