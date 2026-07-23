@@ -57,7 +57,43 @@ export class WhatsappService {
   private async processValue(account:any,value:any){ for(const m of value.messages||[]) await this.processInbound(account,value,m); for(const s of value.statuses||[]) await this.processStatus(account,s); }
   private async createEvent(account:any,type:string,key:string,externalMessageId?:string,payload?:unknown){ try{return await this.prisma.whatsappWebhookEvent.create({data:{organizationId:account.organizationId,whatsappAccountId:account.id,eventType:type,deduplicationKey:key,externalMessageId,sanitizedPayload:redactSecrets(payload) as Prisma.InputJsonValue}});}catch{return null;} }
   private async processInbound(account:any,value:any,m:any){ const key=m.id||createHash('sha256').update(JSON.stringify(m)).digest('hex'); const ev=await this.createEvent(account,'message',key,m.id,{id:m.id,type:m.type}); if(!ev) return; const phone=this.normalizePhone(m.from); const contact=value.contacts?.find((c:any)=>c.wa_id===m.from); const lead=await this.findOrCreateLead(account.organizationId,phone,contact?.profile?.name); const now=new Date(Number(m.timestamp||Date.now()/1000)*1000); const ends=this.windowPolicy.windowEndsAt(now); let conv:any=await this.prisma.whatsappConversation.findFirst({where:{whatsappAccountId:account.id,normalizedPhone:phone,deletedAt:null}}); if(conv) conv=await this.prisma.whatsappConversation.update({where:{id:conv.id},data:{leadId:lead.id,contactName:contact?.profile?.name,lastMessageAt:now,lastInboundAt:now,customerServiceWindowEndsAt:ends,status:'OPEN' as never,unreadCount:{increment:1}}}); else conv=await this.prisma.whatsappConversation.create({data:{organizationId:account.organizationId,whatsappAccountId:account.id,leadId:lead.id,contactPhone:m.from,normalizedPhone:phone,contactName:contact?.profile?.name,lastMessageAt:now,lastInboundAt:now,customerServiceWindowEndsAt:ends,unreadCount:1}}); await this.prisma.whatsappMessage.upsert({where:{organizationId_externalMessageId:{organizationId:account.organizationId,externalMessageId:m.id}},update:{},create:{organizationId:account.organizationId,whatsappAccountId:account.id,conversationId:conv.id,leadId:lead.id,externalMessageId:m.id,direction:'INBOUND' as never,type:this.mapType(m.type) as never,status:'RECEIVED' as never,senderPhone:phone,recipientPhone:account.normalizedPhone,text:m.text?.body,mediaId:m.image?.id||m.document?.id||m.audio?.id||m.video?.id,mimeType:m.image?.mime_type||m.document?.mime_type||m.audio?.mime_type||m.video?.mime_type,fileName:m.document?.filename,metadata:redactSecrets({location:m.location,interactive:m.interactive,contacts:m.contacts,unknown:m.type&&!['text','image','document','audio','video','location','interactive','contacts'].includes(m.type)?m:undefined}) as Prisma.InputJsonValue,createdAt:now}}); await this.prisma.whatsappWebhookEvent.update({where:{id:ev.id},data:{status:'PROCESSED' as never,processedAt:new Date()}}); }
-  private async processStatus(account:any,s:any){ const key=s.id+':'+s.status+':'+(s.timestamp||''); const ev=await this.createEvent(account,'status',key,s.id,{id:s.id,status:s.status,errors:s.errors}); if(!ev) return; const msg:any=await this.prisma.whatsappMessage.findFirst({where:{organizationId:account.organizationId,externalMessageId:s.id}}); if(msg){ const status=this.mapStatus(s.status); if(statusRank[status]>=statusRank[msg.status] || status==='FAILED') await this.prisma.whatsappMessage.update({where:{id:msg.id},data:{status:status as never,deliveredAt:status==='DELIVERED'?new Date():undefined,readAt:status==='READ'?new Date():undefined,failedAt:status==='FAILED'?new Date():undefined,errorCode:s.errors?.[0]?.code?.toString(),errorMessage:s.errors?.[0]?.title?.slice(0,500)}}); } await this.prisma.whatsappWebhookEvent.update({where:{id:ev.id},data:{status:'PROCESSED' as never,processedAt:new Date()}}); }
+  private async processStatus(account: any, s: any) {
+    const key = `${s.id}:${s.status}:${s.timestamp || ''}`;
+    const ev = await this.createEvent(account, 'status', key, s.id, {
+      id: s.id,
+      status: s.status,
+      errors: s.errors,
+    });
+    if (!ev) return;
+
+    const msg: any = await this.prisma.whatsappMessage.findFirst({
+      where: { organizationId: account.organizationId, externalMessageId: s.id },
+    });
+
+    if (msg) {
+      const status = this.mapStatus(s.status);
+      if (statusRank[status] >= statusRank[msg.status] || status === 'FAILED') {
+        await this.prisma.whatsappMessage.update({
+          where: { id: msg.id },
+          data: {
+            status: status as never,
+            deliveredAt: status === 'DELIVERED' ? new Date() : undefined,
+            readAt: status === 'READ' ? new Date() : undefined,
+            failedAt: status === 'FAILED' ? new Date() : undefined,
+            errorCode: s.errors?.[0]?.code?.toString(),
+            errorMessage: s.errors?.[0]?.title?.slice(0, 500),
+          },
+        });
+        await this.updateDistributionFromWhatsappMessage(msg, status, s.errors?.[0]?.title);
+      }
+    }
+
+    await this.prisma.whatsappWebhookEvent.update({
+      where: { id: ev.id },
+      data: { status: 'PROCESSED' as never, processedAt: new Date() },
+    });
+  }
+  private async updateDistributionFromWhatsappMessage(msg:any,status:string,errorMessage?:string){ const distributionId=msg.metadata?.distributionId; if(!distributionId) return; await this.prisma.leadDistribution.update({where:{id:distributionId},data:{status:status==='FAILED'?'FAILED' as never:status==='DELIVERED'?'DELIVERED' as never:status==='READ'?'READ' as never:'CONTACT_SENT' as never,errorMessage:errorMessage?.slice(0,500)??null}}).catch(()=>undefined); }
   private mapType(t:string){ return ({text:'TEXT',image:'IMAGE',document:'DOCUMENT',audio:'AUDIO',video:'VIDEO',location:'LOCATION',interactive:'INTERACTIVE',contacts:'CONTACTS'} as any)[t]||'UNKNOWN'; }
   private mapStatus(s:string){ return ({sent:'SENT',delivered:'DELIVERED',read:'READ',failed:'FAILED'} as any)[s]||'SENT'; }
   private async findOrCreateLead(org:string,phone:string,name?:string){ const existing=await this.prisma.lead.findFirst({where:{organizationId:org,normalizedPhone:phone,deletedAt:null}}); if(existing) return existing; const lead=await this.prisma.lead.create({data:{organizationId:org,phone,normalizedPhone:phone,name:name||null,source:'WHATSAPP' as never,createdByUserId:null,lastInteractionAt:new Date()}}); await this.prisma.leadEvent.create({data:{organizationId:org,leadId:lead.id,eventType:'LEAD_CREATED' as never,description:'Lead criado automaticamente por mensagem WhatsApp oficial',idempotencyKey:`whatsapp-auto-lead:${org}:${phone}`,payload:{source:'WHATSAPP'}}}).catch(()=>undefined); return lead; }
