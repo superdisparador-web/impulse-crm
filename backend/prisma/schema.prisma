@@ -804,6 +804,7 @@ model Organization {
   brokerMetrics         BrokerMetric[]
   managerMetrics        ManagerMetric[]
   whatsappMetrics       WhatsappMetric[]
+  campaignSecureLinks   CampaignSecureLink[]
 
   @@index([name])
   @@index([document])
@@ -834,6 +835,7 @@ model User {
   createdActivities             LeadActivity[]         @relation("LeadActivityCreatedBy")
   createdCampaigns              Campaign[]             @relation("CampaignCreatedBy")
   campaignRecipients            CampaignRecipient[]
+  campaignSecureLinks           CampaignSecureLink[]
   ownedDeals                    Deal[]                 @relation("DealOwner")
   dealAssignmentsFrom           DealAssignment[]       @relation("DealAssignmentFromUser")
   dealAssignmentsTo             DealAssignment[]       @relation("DealAssignmentToUser")
@@ -1427,13 +1429,16 @@ model LeadHistory {
 
 enum CampaignStatus {
   DRAFT
+  VALIDATING
+  READY
   SCHEDULED
+  QUEUED
   RUNNING
   PAUSED
   COMPLETED
+  COMPLETED_WITH_ERRORS
   CANCELED
   FAILED
-  PROCESSING
 }
 
 enum CampaignType {
@@ -1468,62 +1473,81 @@ enum CampaignFilterOperator {
 enum CampaignRecipientStatus {
   PENDING
   QUEUED
+  PROCESSING
   SENT
   DELIVERED
   READ
   CLICKED
   FAILED
+  FAILED_RETRYABLE
+  FAILED_PERMANENT
+  CANCELED
   SKIPPED
+  UNKNOWN
 }
 
 model Campaign {
-  id                 String              @id @default(cuid())
+  id                 String               @id @default(cuid())
   organizationId     String
-  name               String              @db.VarChar(255)
+  name               String               @db.VarChar(255)
   description        String?
-  status             CampaignStatus      @default(DRAFT)
-  campaignType       CampaignType        @default(MARKETING)
+  status             CampaignStatus       @default(DRAFT)
+  campaignType       CampaignType         @default(MARKETING)
   archivedAt         DateTime?
   whatsappAccountId  String?
   whatsappTemplateId String?
   scheduledAt        DateTime?
   startedAt          DateTime?
   finishedAt         DateTime?
-  totalContacts      Int                 @default(0)
-  totalQueued        Int                 @default(0)
-  totalSent          Int                 @default(0)
-  totalDelivered     Int                 @default(0)
-  totalRead          Int                 @default(0)
-  totalFailed        Int                 @default(0)
-  totalClicked       Int                 @default(0)
+  canceledAt         DateTime?
+  pausedAt           DateTime?
+  resumedAt          DateTime?
+  scheduledByUserId  String?
+  pausedByUserId     String?
+  resumedByUserId    String?
+  canceledByUserId   String?
+  totalContacts      Int                  @default(0)
+  totalQueued        Int                  @default(0)
+  totalSent          Int                  @default(0)
+  totalDelivered     Int                  @default(0)
+  totalRead          Int                  @default(0)
+  totalFailed        Int                  @default(0)
+  totalClicked       Int                  @default(0)
   createdById        String
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
   deletedAt          DateTime?
-  organization       Organization        @relation(fields: [organizationId], references: [id])
-  createdBy          User                @relation("CampaignCreatedBy", fields: [createdById], references: [id])
+  organization       Organization         @relation(fields: [organizationId], references: [id])
+  createdBy          User                 @relation("CampaignCreatedBy", fields: [createdById], references: [id])
   updatedById        String?
-  currentStep        Int                 @default(1)
-  category           String?             @db.VarChar(32)
+  currentStep        Int                  @default(1)
+  category           String?              @db.VarChar(32)
   internalNotes      String?
   variableMappings   Json?
   destinationConfig  Json?
   listConfirmedAt    DateTime?
   reviewedAt         DateTime?
-  mediaStorageKey    String?             @db.VarChar(500)
-  mediaOriginalName  String?             @db.VarChar(255)
-  mediaMimeType      String?             @db.VarChar(128)
+  mediaStorageKey    String?              @db.VarChar(500)
+  mediaOriginalName  String?              @db.VarChar(255)
+  mediaMimeType      String?              @db.VarChar(128)
   mediaSize          Int?
-  mediaSha256        String?             @db.Char(64)
+  mediaSha256        String?              @db.Char(64)
+  mediaMetaId        String?              @db.VarChar(255)
+  mediaUploadedAt    DateTime?
+  mediaExpiresAt     DateTime?
+  mediaUploadStatus  String?              @db.VarChar(32)
+  mediaUploadError   String?              @db.VarChar(500)
+  rotationCursor     Int                  @default(0)
   import             CampaignImport?
   agents             CampaignAgent[]
-  whatsappAccount    WhatsappAccount?    @relation(fields: [whatsappAccountId], references: [id])
-  whatsappTemplate   WhatsappTemplate?   @relation(fields: [whatsappTemplateId], references: [id])
+  whatsappAccount    WhatsappAccount?     @relation(fields: [whatsappAccountId], references: [id])
+  whatsappTemplate   WhatsappTemplate?    @relation(fields: [whatsappTemplateId], references: [id])
   filters            CampaignFilter[]
   recipients         CampaignRecipient[]
   messageQueues      MessageQueue[]
   messageLogs        MessageLog[]
   leadDistributions  LeadDistribution[]
+  secureLinks        CampaignSecureLink[]
 
   @@index([organizationId])
   @@index([status])
@@ -1572,6 +1596,16 @@ model CampaignRecipient {
   readAt                 DateTime?
   clickedAt              DateTime?
   failedAt               DateTime?
+  processingAt           DateTime?
+  canceledAt             DateTime?
+  lastAttemptAt          DateTime?
+  nextRetryAt            DateTime?
+  attemptCount           Int                     @default(0)
+  errorCode              String?                 @db.VarChar(128)
+  errorCategory          String?                 @db.VarChar(64)
+  externalMessageId      String?                 @db.VarChar(255)
+  idempotencyKey         String?                 @unique @db.VarChar(255)
+  workerJobId            String?                 @db.VarChar(255)
   createdAt              DateTime                @default(now())
   updatedAt              DateTime                @updatedAt
   campaign               Campaign                @relation(fields: [campaignId], references: [id], onDelete: Cascade)
@@ -1579,6 +1613,7 @@ model CampaignRecipient {
   assignedUser           User?                   @relation(fields: [assignedUserId], references: [id])
   messageQueues          MessageQueue[]
   messageLogs            MessageLog[]
+  secureLink             CampaignSecureLink?
 
   @@unique([campaignId, leadId])
   @@index([campaignId])
@@ -1586,6 +1621,26 @@ model CampaignRecipient {
   @@index([leadId])
   @@index([status])
   @@index([assignedUserId])
+}
+
+model CampaignSecureLink {
+  id             String            @id @default(cuid())
+  organizationId String
+  campaignId     String
+  recipientId    String            @unique
+  assignedUserId String?
+  tokenHash      String            @unique @db.Char(64)
+  expiresAt      DateTime
+  revokedAt      DateTime?
+  createdAt      DateTime          @default(now())
+  organization   Organization      @relation(fields: [organizationId], references: [id])
+  campaign       Campaign          @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  recipient      CampaignRecipient @relation(fields: [recipientId], references: [id], onDelete: Cascade)
+  assignedUser   User?             @relation(fields: [assignedUserId], references: [id])
+
+  @@index([organizationId, campaignId])
+  @@index([assignedUserId])
+  @@index([expiresAt, revokedAt])
 }
 
 model CampaignImport {
@@ -1671,6 +1726,7 @@ model MessageQueue {
   whatsappAccount   WhatsappAccount?   @relation(fields: [whatsappAccountId], references: [id])
   logs              MessageLog[]
 
+  @@unique([campaignId, recipientId])
   @@index([organizationId])
   @@index([campaignId])
   @@index([recipientId])

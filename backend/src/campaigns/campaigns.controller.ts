@@ -9,6 +9,7 @@ import { ListCampaignsDto } from './dto/list-campaigns.dto';
 import { UpdateCampaignDto } from './dto/update-campaign.dto';
 import { CampaignsService } from './campaigns.service';
 import { DestinationDto, ListMappingDto, ReviewDto, StepDto, TemplateConfigurationDto } from './dto/prepare-campaign.dto';
+import { CampaignReasonDto, ScheduleCampaignDto } from './dto/operate-campaign.dto';
 
 type AuthRequest = Request & { user?: { id?: string } };
 type UploadedCampaignFile = { buffer: Buffer; originalname: string; mimetype: string; size: number };
@@ -32,8 +33,19 @@ export class CampaignsController {
   @Post(':id/template/media') @UseInterceptors(FileInterceptor('file',{limits:{fileSize:16*1024*1024,files:1}})) media(@Req() req:AuthRequest,@Param('id') id:string,@UploadedFile() file:UploadedCampaignFile){return this.campaignsService.uploadMedia(this.userId(req),id,file);}
   @Patch(':id/destination') destination(@Req() req:AuthRequest,@Param('id') id:string,@Body() data:DestinationDto){return this.campaignsService.configureDestination(this.userId(req),id,data);}
   @Post(':id/review') review(@Req() req:AuthRequest,@Param('id') id:string,@Body() data:ReviewDto){return this.campaignsService.review(this.userId(req),id,data);}
+  @Post(':id/validate') validate(@Req() req:AuthRequest,@Param('id') id:string){return this.campaignsService.validateOperational(this.userId(req),id);}
+  @Post(':id/start') start(@Req() req:AuthRequest,@Param('id') id:string){return this.campaignsService.start(this.userId(req),id);}
+  @Post(':id/schedule') schedule(@Req() req:AuthRequest,@Param('id') id:string,@Body() data:ScheduleCampaignDto){return this.campaignsService.schedule(this.userId(req),id,data.scheduledAt);}
+  @Post(':id/pause') pause(@Req() req:AuthRequest,@Param('id') id:string){return this.campaignsService.pause(this.userId(req),id);}
+  @Post(':id/resume') resume(@Req() req:AuthRequest,@Param('id') id:string){return this.campaignsService.resume(this.userId(req),id);}
+  @Get(':id/progress') progress(@Req() req:AuthRequest,@Param('id') id:string){return this.campaignsService.progress(this.userId(req),id);}
+  @Get(':id/recipients') recipients(@Req() req:AuthRequest,@Param('id') id:string,@Query() query:{status?:string;search?:string;page?:number;limit?:number}){return this.campaignsService.recipientsPage(this.userId(req),id,query);}
+  @Get(':id/events') events(@Req() req:AuthRequest,@Param('id') id:string){return this.campaignsService.events(this.userId(req),id);}
+  @Get(':id/report') report(@Req() req:AuthRequest,@Param('id') id:string){return this.campaignsService.report(this.userId(req),id);}
+  @Get(':id/results.csv') @Header('Content-Type','text/csv; charset=utf-8') async results(@Req() req:AuthRequest,@Param('id') id:string,@Res({passthrough:true}) res:Response){res.setHeader('Content-Disposition','attachment; filename="resultados-campanha.csv"');return this.campaignsService.exportResults(this.userId(req),id);}
+  @Post(':id/recipients/:recipientId/retry') retry(@Req() req:AuthRequest,@Param('id') id:string,@Param('recipientId') recipientId:string){return this.campaignsService.retryRecipient(this.userId(req),id,recipientId);}
   @Patch(':id/archive') archive(@Req() req: AuthRequest, @Param('id') id: string, @Body() data: ArchiveCampaignDto) { return this.campaignsService.archive(this.userId(req), id, data.archived); }
   @Patch(':id/restore') restore(@Req() req: AuthRequest, @Param('id') id: string) { return this.campaignsService.restore(this.userId(req), id); }
-  @Post(':id/cancel') cancel(@Req() req: AuthRequest, @Param('id') id: string) { return this.campaignsService.cancel(this.userId(req), id); }
+  @Post(':id/cancel') cancel(@Req() req: AuthRequest, @Param('id') id: string, @Body() data:CampaignReasonDto) { return this.campaignsService.cancel(this.userId(req), id, data.reason); }
   @Delete(':id') remove(@Req() req: AuthRequest, @Param('id') id: string) { return this.campaignsService.remove(this.userId(req), id); }
 }

@@ -5,7 +5,6 @@ import { PrismaService } from '../prisma/prisma.service';
 const campaignStatuses: CampaignStatus[] = [
   'DRAFT',
   'SCHEDULED',
-  'PROCESSING',
   'PAUSED',
   'COMPLETED',
   'CANCELED',

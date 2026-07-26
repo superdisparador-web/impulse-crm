@@ -1,0 +1,15 @@
+ALTER TABLE "Campaign" ADD COLUMN "mediaMetaId" VARCHAR(255), ADD COLUMN "mediaUploadedAt" TIMESTAMP(3), ADD COLUMN "mediaExpiresAt" TIMESTAMP(3), ADD COLUMN "mediaUploadStatus" VARCHAR(32), ADD COLUMN "mediaUploadError" VARCHAR(500), ADD COLUMN "rotationCursor" INTEGER NOT NULL DEFAULT 0;
+CREATE TABLE "CampaignSecureLink" ("id" TEXT NOT NULL, "organizationId" TEXT NOT NULL, "campaignId" TEXT NOT NULL, "recipientId" TEXT NOT NULL, "assignedUserId" TEXT, "tokenHash" CHAR(64) NOT NULL, "expiresAt" TIMESTAMP(3) NOT NULL, "revokedAt" TIMESTAMP(3), "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT "CampaignSecureLink_pkey" PRIMARY KEY ("id"));
+CREATE UNIQUE INDEX "CampaignSecureLink_recipientId_key" ON "CampaignSecureLink"("recipientId");
+CREATE UNIQUE INDEX "CampaignSecureLink_tokenHash_key" ON "CampaignSecureLink"("tokenHash");
+CREATE INDEX "CampaignSecureLink_organizationId_campaignId_idx" ON "CampaignSecureLink"("organizationId", "campaignId");
+CREATE INDEX "CampaignSecureLink_assignedUserId_idx" ON "CampaignSecureLink"("assignedUserId");
+CREATE INDEX "CampaignSecureLink_expiresAt_revokedAt_idx" ON "CampaignSecureLink"("expiresAt", "revokedAt");
+ALTER TABLE "CampaignSecureLink" ADD CONSTRAINT "CampaignSecureLink_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "Organization"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "CampaignSecureLink" ADD CONSTRAINT "CampaignSecureLink_campaignId_fkey" FOREIGN KEY ("campaignId") REFERENCES "Campaign"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "CampaignSecureLink" ADD CONSTRAINT "CampaignSecureLink_recipientId_fkey" FOREIGN KEY ("recipientId") REFERENCES "CampaignRecipient"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "CampaignSecureLink" ADD CONSTRAINT "CampaignSecureLink_assignedUserId_fkey" FOREIGN KEY ("assignedUserId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TYPE "CampaignStatus" RENAME TO "CampaignStatus_old";
+CREATE TYPE "CampaignStatus" AS ENUM ('DRAFT','VALIDATING','READY','SCHEDULED','QUEUED','RUNNING','PAUSED','COMPLETED','COMPLETED_WITH_ERRORS','CANCELED','FAILED');
+ALTER TABLE "Campaign" ALTER COLUMN "status" DROP DEFAULT, ALTER COLUMN "status" TYPE "CampaignStatus" USING (CASE WHEN "status"::text = 'PROCESSING' THEN 'QUEUED' ELSE "status"::text END)::"CampaignStatus", ALTER COLUMN "status" SET DEFAULT 'DRAFT';
+DROP TYPE "CampaignStatus_old";
