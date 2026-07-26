@@ -46,11 +46,11 @@ export default function Modal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-6"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-sm sm:p-6"
       onClick={onClose}
     >
       <div
-        className={`w-full ${widthClasses[width]} rounded-2xl border border-slate-200 bg-white shadow-2xl`}
+        className={`w-full ${widthClasses[width]} max-h-[calc(100dvh-2rem)] overflow-hidden rounded-2xl border border-white/80 bg-white shadow-[0_32px_80px_-24px_rgba(2,6,23,0.5)]`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
@@ -66,7 +66,7 @@ export default function Modal({
           </button>
         </div>
 
-        <div className="p-6">
+        <div className="max-h-[calc(100dvh-7rem)] overflow-y-auto p-6">
           {children}
         </div>
       </div>

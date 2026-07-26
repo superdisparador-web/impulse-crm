@@ -9,7 +9,7 @@ import {
 
 export default function Header() {
   return (
-    <header className="flex min-h-16 shrink-0 items-center justify-between gap-4 border-b border-slate-200 bg-white px-6">
+    <header className="z-20 flex min-h-[68px] shrink-0 items-center justify-between gap-4 border-b border-slate-200/80 bg-white/90 px-4 shadow-[0_1px_12px_rgba(15,23,42,0.035)] backdrop-blur-xl sm:px-6 xl:px-8">
       <div className="relative hidden w-full max-w-md md:block">
         <Search
           className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
@@ -20,7 +20,7 @@ export default function Header() {
           type="search"
           aria-label="Pesquisar no Impulse CRM"
           placeholder="Pesquisar leads, campanhas e usuários..."
-          className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 hover:border-slate-300 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100"
+          className="h-10 w-full rounded-xl border border-slate-200/90 bg-slate-100/70 pl-10 pr-4 text-sm text-slate-900 outline-none transition-all placeholder:text-slate-400 hover:border-slate-300 hover:bg-slate-50 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100/80"
         />
       </div>
 
@@ -28,7 +28,7 @@ export default function Header() {
         <button
           type="button"
           aria-label="Abrir notificações"
-          className="relative flex h-10 w-10 items-center justify-center rounded-xl text-slate-600 transition hover:bg-slate-100 hover:text-slate-900 focus:outline-none focus:ring-4 focus:ring-blue-100"
+          className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-transparent text-slate-500 transition hover:border-slate-200 hover:bg-slate-50 hover:text-slate-900 focus:outline-none focus:ring-4 focus:ring-blue-100"
         >
           <Bell size={20} />
 
@@ -38,7 +38,7 @@ export default function Header() {
         <button
           type="button"
           aria-label="Abrir menu do usuário"
-          className="flex items-center gap-3 rounded-xl px-2 py-1.5 text-left transition hover:bg-slate-100 focus:outline-none focus:ring-4 focus:ring-blue-100"
+          className="flex items-center gap-3 rounded-xl border border-transparent px-2 py-1.5 text-left transition hover:border-slate-200 hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-blue-100"
         >
           <UserCircle2
             className="shrink-0 text-slate-700"

@@ -39,7 +39,7 @@ export const TableContainer = forwardRef<
     <div
       ref={ref}
       className={joinClasses(
-        "w-full overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm",
+        "w-full overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_1px_3px_rgba(15,23,42,0.04),0_12px_28px_-22px_rgba(15,23,42,0.25)]",
         compact ? "text-sm" : "",
         className
       )}
@@ -96,7 +96,7 @@ export const TableHeader = forwardRef<
     <thead
       ref={ref}
       className={joinClasses(
-        "border-b border-slate-200 bg-slate-50",
+        "border-b border-slate-200 bg-slate-50/80",
         className
       )}
       {...props}

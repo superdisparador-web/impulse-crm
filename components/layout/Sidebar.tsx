@@ -89,8 +89,9 @@ export default function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="flex h-screen w-20 shrink-0 flex-col border-r border-slate-800/80 bg-slate-950 shadow-xl shadow-slate-950/10 transition-[width] duration-300 lg:w-64">
-      <div className="flex min-h-20 items-center border-b border-slate-800/80 px-3 lg:px-5">
+    <aside className="relative flex h-dvh w-20 shrink-0 flex-col overflow-hidden border-r border-white/10 bg-[linear-gradient(180deg,#071225_0%,#0a1730_52%,#07111f_100%)] shadow-[8px_0_32px_-20px_rgba(2,6,23,0.55)] transition-[width] duration-300 lg:w-64">
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-64 bg-[radial-gradient(circle_at_top,_rgba(37,99,235,0.18),_transparent_68%)]" />
+      <div className="relative flex min-h-20 items-center border-b border-white/8 px-3 lg:px-5">
         <Link href="/dashboard" className="flex w-full justify-center rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 lg:justify-start" aria-label="Impulse CRM — Dashboard">
           <Image
             src="/branding/impulse-logo-horizontal.png"
@@ -103,7 +104,7 @@ export default function Sidebar() {
         </Link>
       </div>
 
-      <nav aria-label="Navegação principal" className="flex-1 space-y-1.5 overflow-y-auto px-2.5 py-4 lg:px-3">
+      <nav aria-label="Navegação principal" className="relative flex-1 space-y-1 overflow-y-auto px-2.5 py-5 lg:px-3">
         {sidebarMenu.map((item) => {
           const Icon = item.icon;
           const active = isRouteActive(pathname, item.href);
@@ -114,10 +115,10 @@ export default function Sidebar() {
               href={item.href}
               aria-current={active ? "page" : undefined}
               title={item.title}
-              className={`group flex min-h-11 items-center justify-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-400/80 lg:justify-start ${
+              className={`group flex min-h-11 items-center justify-center gap-3 rounded-xl border px-3 py-2.5 text-sm font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-400/80 lg:justify-start ${
                 active
-                  ? "bg-blue-600 text-white shadow-md shadow-blue-950/30"
-                  : "text-slate-300 hover:bg-slate-800/80 hover:text-white"
+                  ? "border-blue-400/20 bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-lg shadow-blue-950/30"
+                  : "border-transparent text-slate-300 hover:border-white/5 hover:bg-white/[0.07] hover:text-white"
               }`}
             >
               <Icon
@@ -135,8 +136,8 @@ export default function Sidebar() {
         })}
       </nav>
 
-      <div className="hidden border-t border-slate-800/80 p-3 lg:block">
-        <div className="rounded-xl border border-slate-800 bg-slate-900/80 px-4 py-3 shadow-inner">
+      <div className="relative hidden border-t border-white/8 p-3 lg:block">
+        <div className="rounded-xl border border-white/10 bg-white/[0.055] px-4 py-3 shadow-inner backdrop-blur-sm">
           <p className="text-sm font-semibold text-white">
             Rodrigo Lopes
           </p>
