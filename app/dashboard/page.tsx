@@ -265,11 +265,7 @@ export default function DashboardPage() {
 
       <section className="relative min-h-64 overflow-hidden rounded-3xl border border-blue-950/15 bg-slate-950 shadow-[0_24px_60px_-30px_rgba(15,23,42,0.6)] sm:min-h-72">
         <Image src="/branding/dashboard-hero.png" alt="" fill priority sizes="(max-width: 1024px) 100vw, 80vw" className="object-cover object-center" />
-        <div className="relative flex min-h-64 items-end p-5 text-white sm:min-h-72 sm:p-8">
-          <div className="max-w-xl rounded-2xl border border-white/15 bg-slate-950/55 px-5 py-4 shadow-[0_16px_40px_-20px_rgba(2,6,23,0.8)] backdrop-blur-md sm:px-6 sm:py-5 [&_h1]:text-2xl [&_h1]:text-white sm:[&_h1]:text-3xl [&_p]:text-slate-100">
-            <DashboardHeader />
-          </div>
-        </div>
+
       </section>
 
       <KpiGrid items={kpis} />
