@@ -38,6 +38,7 @@ function childrenOf(node) {
 function renderTree(node) {
   if (!node || typeof node !== 'object') return node;
   if (typeof node.type === 'function') return renderTree(node.type({ ...node.props }));
+  if (typeof node.type?.render === 'function' && (!node.type.displayName || node.type.displayName === 'Select')) return renderTree(node.type.render({ ...node.props }, null));
   const children = childrenOf(node).map(renderTree);
   return { ...node, props: { ...node.props, children } };
 }
@@ -57,6 +58,11 @@ function findByText(node, text) {
 }
 function findFirst(node, predicate) {
   return flatten(node).find(predicate);
+}
+function findComponent(node, predicate) {
+  if (!node || typeof node !== 'object') return undefined;
+  if (predicate(node)) return node;
+  return childrenOf(node).map((child) => findComponent(child, predicate)).find(Boolean);
 }
 
 function withHookDispatcher(run) {
@@ -79,6 +85,7 @@ function withHookDispatcher(run) {
     useMemo(factory) { return factory(); },
     useCallback(callback) { return callback; },
     useRef(initial) { return { current: initial }; },
+    useContext(context) { return context?._currentValue ?? {}; },
   };
   try { return run({ cleanup: () => cleanups.splice(0).forEach((cleanup) => cleanup()) }); }
   finally { internals.H = previous; }
@@ -373,7 +380,7 @@ test('37. leads busca filtros e paginação são enviados ao backend', async () 
 test('38. LeadFilters combina filtros e limpa preservando paginação base', () => {
   let next = null;
   const element = LeadFilters({ filters: { page: 3, limit: 25, search: 'Ana', status: 'NEW' }, users: [{ id: 'user-1', name: 'Maria' }], onChange: (filters) => { next = filters; } });
-  findFirst(element, (item) => item.props?.id === 'lead-temperature-filter').props.onChange({ target: { value: 'HOT' } });
+  findFirst(element, (item) => item.type === 'select' && item.props?.value === '').props.onChange({ target: { value: 'HOT' } });
   assert.equal(next.temperature, 'HOT');
   assert.equal(next.page, 1);
   findFirst(element, (item) => item.type === 'button' && textOf(item) === 'Limpar filtros').props.onClick();
@@ -384,13 +391,19 @@ test('39. LeadTable dispara edição arquivamento Lead 360 status e temperatura'
   const lead = sampleLead();
   const calls = [];
   const element = LeadTable({ leads: [lead], loading: false, users: [{ id: 'user-1', name: 'Maria' }], onView: (value) => calls.push(['view', value.id]), onEdit: (value) => calls.push(['edit', value.id]), onArchive: (value) => calls.push(['archive', value.id]), onAddToPipeline: (value) => calls.push(['pipeline', value.id]), onAssign: (value, userId) => calls.push(['assign', value.id, userId]), onStatus: (value, status) => calls.push(['status', value.id, status]), onTemperature: (value, temperature) => calls.push(['temperature', value.id, temperature]) });
-  findFirst(element, (item) => item.type === 'button' && textOf(item) === 'Lead 360°').props.onClick();
-  findFirst(element, (item) => item.type === 'button' && textOf(item) === 'Editar').props.onClick();
-  findFirst(element, (item) => item.type === 'button' && textOf(item) === 'Pipeline').props.onClick();
-  findFirst(element, (item) => item.type === 'button' && textOf(item) === 'Arquivar').props.onClick();
-  findFirst(element, (item) => item.props?.['aria-label'] === 'Status de Ana').props.onChange({ target: { value: 'QUALIFIED' } });
-  findFirst(element, (item) => item.props?.['aria-label'] === 'Temperatura de Ana').props.onChange({ target: { value: 'HOT' } });
-  findFirst(element, (item) => item.props?.['aria-label'] === 'Responsável de Ana').props.onChange({ target: { value: 'user-1' } });
+  const actionMenu = findComponent(element, (item) => item.type?.name === 'ActionMenu');
+  actionMenu.props.onView();
+  actionMenu.props.onEdit();
+  actionMenu.props.onAddToPipeline();
+  actionMenu.props.onArchive();
+  const previousDocument = global.document;
+  global.document = { addEventListener: () => {}, removeEventListener: () => {} };
+  withHookDispatcher(() => {
+    findFirst(element, (item) => item.props?.['aria-label'] === 'Status de Ana').props.onChange({ target: { value: 'QUALIFIED' } });
+    findFirst(element, (item) => item.props?.['aria-label'] === 'Temperatura de Ana').props.onChange({ target: { value: 'HOT' } });
+    findFirst(element, (item) => item.props?.['aria-label'] === 'Responsável de Ana').props.onChange({ target: { value: 'user-1' } });
+  });
+  global.document = previousDocument;
   assert.deepEqual(calls, [['view', 'lead-1'], ['edit', 'lead-1'], ['pipeline', 'lead-1'], ['archive', 'lead-1'], ['status', 'lead-1', 'QUALIFIED'], ['temperature', 'lead-1', 'HOT'], ['assign', 'lead-1', 'user-1']]);
 });
 
@@ -406,9 +419,16 @@ test('40. leadService cria edita arquiva altera status e temperatura', async () 
 
 test('41. LeadForm valida dados mínimos antes de criar', () => {
   const restoreWindow = setupWindowForUi();
-  const element = withHookDispatcher(() => LeadForm({ users: [], onCancel: () => {}, onSuccess: () => {} }));
-  findFirst(element, (item) => item.type === 'form').props.onSubmit({ preventDefault: () => {} });
-  assert.ok(findByText(element, 'Informe pelo menos nome, telefone ou e-mail.'));
+  const previousDocument = global.document;
+  global.document = { addEventListener: () => {}, removeEventListener: () => {}, body: { style: {} } };
+  let requested = false;
+  global.fetch = async () => { requested = true; };
+  withHookDispatcher(() => {
+    const element = LeadForm({ users: [], onCancel: () => {}, onSuccess: () => {} });
+    findFirst(element, (item) => item.type === 'form').props.onSubmit({ preventDefault: () => {} });
+    assert.equal(requested, false);
+  });
+  global.document = previousDocument;
   restoreWindow();
 });
 

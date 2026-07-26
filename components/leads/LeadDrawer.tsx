@@ -140,9 +140,13 @@ export function LeadDrawer({
   }, [onClose]);
 
   useEffect(() => {
-    closingRef.current = false;
-    setIsClosing(false);
-    setActiveTab("summary");
+    const timeoutId = window.setTimeout(() => {
+      closingRef.current = false;
+      setIsClosing(false);
+      setActiveTab("summary");
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
   }, [selectedLeadId]);
 
   useEffect(() => {

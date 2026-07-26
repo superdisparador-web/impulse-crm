@@ -144,11 +144,19 @@ export default function UsersPage({ mode }: UsersPageProps) {
   }, [globalAdmin]);
 
   useEffect(() => {
-    void loadUsers();
+    const timeoutId = window.setTimeout(() => {
+      void loadUsers();
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
   }, [loadUsers]);
 
   useEffect(() => {
-    void loadOrganizations();
+    const timeoutId = window.setTimeout(() => {
+      void loadOrganizations();
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
   }, [loadOrganizations]);
 
   function openCreateForm() {

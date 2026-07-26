@@ -52,8 +52,7 @@ export const TableContainer = forwardRef<
   );
 });
 
-export interface TableProps
-  extends TableHTMLAttributes<HTMLTableElement> {}
+export type TableProps = TableHTMLAttributes<HTMLTableElement>;
 
 export const Table = forwardRef<
   HTMLTableElement,
@@ -80,8 +79,7 @@ export const Table = forwardRef<
   );
 });
 
-export interface TableHeaderProps
-  extends HTMLAttributes<HTMLTableSectionElement> {}
+export type TableHeaderProps = HTMLAttributes<HTMLTableSectionElement>;
 
 export const TableHeader = forwardRef<
   HTMLTableSectionElement,
@@ -108,8 +106,7 @@ export const TableHeader = forwardRef<
   );
 });
 
-export interface TableBodyProps
-  extends HTMLAttributes<HTMLTableSectionElement> {}
+export type TableBodyProps = HTMLAttributes<HTMLTableSectionElement>;
 
 export const TableBody = forwardRef<
   HTMLTableSectionElement,
@@ -136,8 +133,7 @@ export const TableBody = forwardRef<
   );
 });
 
-export interface TableFooterProps
-  extends HTMLAttributes<HTMLTableSectionElement> {}
+export type TableFooterProps = HTMLAttributes<HTMLTableSectionElement>;
 
 export const TableFooter = forwardRef<
   HTMLTableSectionElement,
@@ -236,8 +232,7 @@ export const TableHead = forwardRef<
   );
 });
 
-export interface TableHeaderCellProps
-  extends TableHeadProps {}
+export type TableHeaderCellProps = TableHeadProps;
 
 export const TableHeaderCell = forwardRef<
   HTMLTableCellElement,
@@ -293,8 +288,7 @@ export const TableCell = forwardRef<
   );
 });
 
-export interface TableCaptionProps
-  extends HTMLAttributes<HTMLTableCaptionElement> {}
+export type TableCaptionProps = HTMLAttributes<HTMLTableCaptionElement>;
 
 export const TableCaption = forwardRef<
   HTMLTableCaptionElement,
