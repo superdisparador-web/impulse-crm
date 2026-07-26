@@ -12,12 +12,14 @@ export interface WhatsappAccount {
   id: string;
   organizationId: string;
   name: string;
+  provider: 'META_CLOUD' | 'EVOLUTION';
+  wabaId: string;
   phoneNumber: string;
   normalizedPhone: string;
   displayPhoneNumber?: string | null;
   verifiedName?: string | null;
   phoneNumberId: string;
-  businessAccountId: string;
+  businessAccountId?: string;
   appId?: string | null;
   apiVersion?: string | null;
   status: WhatsappAccountStatus;
@@ -28,6 +30,9 @@ export interface WhatsappAccount {
   lastSyncAt?: string | null;
   lastConnectionTestAt?: string | null;
   lastConnectionError?: string | null;
+  webhookSubscribedAt?: string | null;
+  tokenConfigured: boolean;
+  tokenLast4?: string | null;
   createdAt: string;
   updatedAt: string;
   deletedAt?: string | null;
@@ -52,9 +57,11 @@ export interface WhatsappTemplate {
 export interface WhatsappAccountFormData {
   name: string;
   phoneNumber?: string;
+  wabaId: string;
   phoneNumberId: string;
-  businessAccountId: string;
+  businessAccountId?: string;
   credential?: string;
+  verifyToken?: string;
   apiVersion?: string;
   active?: boolean;
 }

@@ -14,7 +14,7 @@ class WhatsappService {
   updateAccount(id: string, data: Partial<WhatsappAccountFormData>) { const { credential, ...rest } = data; return api<WhatsappAccount>(`/whatsapp/accounts/${id}`, { method: 'PATCH', body: JSON.stringify({ ...rest, ...(credential ? { accessToken: credential } : {}) }) }); }
   updateStatus(id: string, status: 'ACTIVE' | 'INACTIVE') { return api<WhatsappAccount>(`/whatsapp/accounts/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }); }
   setDefault(id: string) { return api<WhatsappAccount>(`/whatsapp/accounts/${id}/default`, { method: 'PATCH' }); }
-  testAccount(id: string) { return api.post<WhatsappAccount>(`/whatsapp/accounts/${id}/test`, {}); }
+  testAccount(id: string) { return api.post<WhatsappAccount>(`/whatsapp/accounts/${id}/test-connection`, {}); }
   syncAccount(id: string) { return api.post<WhatsappAccount>(`/whatsapp/accounts/${id}/sync`, {}); }
   async deleteAccount(id: string) { await api.delete<{ success: boolean }>(`/whatsapp/accounts/${id}`); }
   restoreAccount(id: string) { return api<WhatsappAccount>(`/whatsapp/accounts/${id}/restore`, { method: 'PATCH' }); }
