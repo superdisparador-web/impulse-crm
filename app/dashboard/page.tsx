@@ -263,11 +263,12 @@ export default function DashboardPage() {
     <div className="relative isolate space-y-7 overflow-hidden rounded-3xl p-1 sm:p-3">
       <Image src="/branding/dashboard-wallpaper.png" alt="" fill sizes="(max-width: 1024px) 100vw, 80vw" className="-z-10 object-cover opacity-[0.07]" />
 
-      <section className="relative min-h-60 overflow-hidden rounded-3xl border border-slate-800/20 bg-slate-950 shadow-lg">
+      <section className="relative min-h-64 overflow-hidden rounded-3xl border border-blue-950/15 bg-slate-950 shadow-[0_24px_60px_-30px_rgba(15,23,42,0.6)] sm:min-h-72">
         <Image src="/branding/dashboard-hero.png" alt="" fill priority sizes="(max-width: 1024px) 100vw, 80vw" className="object-cover object-center" />
-        <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/85 to-slate-950/10" />
-        <div className="relative flex min-h-60 max-w-2xl items-end p-6 text-white sm:p-8 [&_h1]:text-2xl [&_h1]:text-white sm:[&_h1]:text-3xl [&_p]:text-slate-200">
-          <DashboardHeader />
+        <div className="relative flex min-h-64 items-end p-5 text-white sm:min-h-72 sm:p-8">
+          <div className="max-w-xl rounded-2xl border border-white/15 bg-slate-950/55 px-5 py-4 shadow-[0_16px_40px_-20px_rgba(2,6,23,0.8)] backdrop-blur-md sm:px-6 sm:py-5 [&_h1]:text-2xl [&_h1]:text-white sm:[&_h1]:text-3xl [&_p]:text-slate-100">
+            <DashboardHeader />
+          </div>
         </div>
       </section>
 
