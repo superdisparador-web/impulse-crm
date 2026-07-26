@@ -32,6 +32,11 @@ export const sidebarMenu = [
     icon: Users,
   },
   {
+    title: "Leads recebidos",
+    href: "/leads/received",
+    icon: Send,
+  },
+  {
     title: "Analytics",
     href: "/analytics",
     icon: ChartNoAxesCombined,

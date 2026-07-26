@@ -7,6 +7,8 @@ import { AnalyticsModule } from '../analytics/analytics.module';
 import { DistributionController } from './distribution.controller';
 import { DistributionImportService } from './distribution-import.service';
 import { DistributionService } from './distribution.service';
+import { CampaignClickService } from './campaign-click.service';
+import { PublicRedirectController } from './public-redirect.controller';
 
-@Module({ imports: [PrismaModule, AuthModule, IamModule, AuditModule, AnalyticsModule], controllers: [DistributionController], providers: [DistributionService, DistributionImportService], exports: [DistributionService] })
+@Module({ imports: [PrismaModule, AuthModule, IamModule, AuditModule, AnalyticsModule], controllers: [DistributionController, PublicRedirectController], providers: [DistributionService, DistributionImportService, CampaignClickService], exports: [DistributionService] })
 export class DistributionModule {}
