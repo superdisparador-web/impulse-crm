@@ -1,5 +1,6 @@
 import { Type } from 'class-transformer';
-import { ArrayNotEmpty, IsArray, IsBoolean, IsInt, IsOptional, IsString, MaxLength, Min, ValidateNested } from 'class-validator';
+import { LeadSource, LeadStatus, LeadTemperature } from '@prisma/client';
+import { ArrayNotEmpty, IsArray, IsBoolean, IsDateString, IsEnum, IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min, ValidateNested } from 'class-validator';
 
 export class ListPipelinesDto {
   @IsOptional() @IsString() organizationId?: string;
@@ -51,4 +52,21 @@ export class AddCardDto {
 export class MoveCardDto {
   @IsString() stageId: string;
   @Type(() => Number) @IsInt() @Min(0) position: number;
+  @IsOptional() @IsString() @MaxLength(500) reason?: string;
+}
+
+export class PipelineBoardQueryDto {
+  @IsOptional() @IsString() search?: string;
+  @IsOptional() @IsString() brokerId?: string;
+  @IsOptional() @IsString() managerId?: string;
+  @IsOptional() @IsString() development?: string;
+  @IsOptional() @IsString() region?: string;
+  @IsOptional() @IsString() neighborhood?: string;
+  @IsOptional() @IsEnum(LeadStatus) status?: LeadStatus;
+  @IsOptional() @IsEnum(LeadTemperature) temperature?: LeadTemperature;
+  @IsOptional() @IsEnum(LeadSource) source?: LeadSource;
+  @IsOptional() @IsDateString() from?: string;
+  @IsOptional() @IsDateString() to?: string;
+  @IsOptional() @IsIn(['ALL', 'OVERDUE', 'ON_TIME']) sla?: 'ALL' | 'OVERDUE' | 'ON_TIME';
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(100) limit?: number;
 }

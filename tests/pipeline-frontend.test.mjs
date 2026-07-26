@@ -458,3 +458,64 @@ test('44. pipelineService usa rotas reais do backend para listar board e addCard
   await pipelineService.addCard('pipe-1', { leadId: 'lead-1', stageId: 'stage-1' });
   assert.deepEqual(calls.map((call) => [new URL(call.url).pathname, call.options.method ?? 'GET']), [['/pipeline', 'GET'], ['/pipeline/pipe-1/board', 'GET'], ['/pipeline/pipe-1/cards', 'POST']]);
 });
+
+test('45. pipeline imobiliário envia filtros reais e exibe métricas operacionais', async () => {
+  const { PipelineMetrics } = require('../components/pipeline/PipelineMetrics.tsx');
+  const calls = mockFetch(() => ({ id: 'pipe-1', name: 'Vendas', stages: [], metrics: { total: 12, byStage: {}, conversionRate: 25, averageStageHours: 8, overdueSla: 2 } }));
+  await service.getPipelineBoard('pipe-1', { region: 'Sul', neighborhood: 'Moema', sla: 'OVERDUE', limit: 50 });
+  const url = new URL(calls[0].url);
+  assert.equal(url.searchParams.get('region'), 'Sul');
+  assert.equal(url.searchParams.get('neighborhood'), 'Moema');
+  assert.equal(url.searchParams.get('sla'), 'OVERDUE');
+  const element = PipelineMetrics({ metrics: { total: 12, byStage: {}, conversionRate: 25, averageStageHours: 8, overdueSla: 2 } });
+  assert.ok(findByText(element, 'Total de leads'));
+  assert.ok(findByText(element, 'SLA vencido'));
+});
+
+test('46. card imobiliário apresenta empreendimento, região, bairro, gerente e SLA', () => {
+  const element = LeadCard({ card: { id: 'card-real-estate', position: 1, enteredStageAt: new Date().toISOString(), lead: { id: 'lead-real-estate', name: 'Cliente', development: 'Residencial Azul', region: 'Sul', neighborhood: 'Moema', source: 'CAMPAIGN', managerUser: { id: 'manager-1', name: 'Gerente Ana' }, sla: { dueAt: new Date().toISOString(), status: 'OVERDUE' } } }, dragging: false });
+  for (const text of ['Residencial Azul', 'Sul • Moema', 'Gerente: Gerente Ana', 'SLA vencido']) assert.ok(findByText(element, text));
+});
+
+test('47. filtros vazios são omitidos da URL', async () => {
+  const calls = mockFetch(() => boardFixture());
+  await service.getPipelineBoard('pipe-1', { search: '', region: undefined, sla: undefined });
+  assert.equal(calls[0].url, 'http://localhost:3000/pipeline/pipe-1/board');
+});
+
+test('48. movimento otimista persiste e faz rollback comportamental quando a API falha', async () => {
+  const { persistOptimisticPipelineMove } = require('../app/pipeline/page.tsx');
+  const previous = utils.sortBoard(boardFixture());
+  const rendered = [];
+  const errors = [];
+  const result = await persistOptimisticPipelineMove(previous, { cardId: 'card-1', stageId: 'stage-2', index: 0 }, async () => { throw new Error('API indisponível'); }, (board) => rendered.push(board), (message) => errors.push(message));
+  assert.equal(result, false);
+  assert.equal(rendered.length, 2);
+  assert.equal(rendered[0].stages[1].cards[0].id, 'card-1');
+  assert.deepEqual(rendered[1], previous);
+  assert.deepEqual(errors, ['API indisponível']);
+});
+
+test('49. skeleton, empty state e erro são estados renderizados de forma comportamental', () => {
+  const loading = PipelineBody({ error: '', moveError: '', isLoading: true, pipelineCount: 0, board: null, activeCardId: '', moving: false, onDragStart: () => {}, onDropCard: () => {}, onOpenCard: () => {} });
+  assert.equal(flatten(loading).filter((item) => String(item.props?.className ?? '').includes('animate-pulse')).length, 3);
+  assert.ok(findByText(PipelineBody({ error: '', moveError: '', isLoading: false, pipelineCount: 0, board: null, activeCardId: '', moving: false, onDragStart: () => {}, onDropCard: () => {}, onOpenCard: () => {} }), 'Nenhuma pipeline encontrada'));
+  assert.ok(findByText(PipelineBody({ error: 'Falha controlada', moveError: '', isLoading: false, pipelineCount: 1, board: null, activeCardId: '', moving: false, onDragStart: () => {}, onDropCard: () => {}, onOpenCard: () => {} }), 'Falha controlada'));
+});
+
+test('50. polling usa um único timer, pausa invisível, retoma visível e limpa ao desmontar', () => {
+  const { startPipelinePolling } = require('../app/pipeline/page.tsx');
+  let callback;
+  let cleared = 0;
+  let refreshes = 0;
+  let visibility = 'hidden';
+  const timers = { setInterval: (handler, delay) => { assert.equal(delay, 30000); assert.equal(callback, undefined); callback = handler; return 7; }, clearInterval: (id) => { assert.equal(id, 7); cleared += 1; } };
+  const cleanup = startPipelinePolling(() => { refreshes += 1; }, () => visibility, timers);
+  callback();
+  assert.equal(refreshes, 0);
+  visibility = 'visible';
+  callback();
+  assert.equal(refreshes, 1);
+  cleanup();
+  assert.equal(cleared, 1);
+});
