@@ -1031,6 +1031,11 @@ enum WhatsappAccountStatus {
   SUSPENDED
 }
 
+enum WhatsappProvider {
+  META_CLOUD
+  EVOLUTION
+}
+
 enum WhatsappConversationStatus {
   OPEN
   PENDING
@@ -1081,46 +1086,53 @@ enum WhatsappWebhookEventStatus {
 }
 
 model WhatsappAccount {
-  id                 String                 @id @default(cuid())
-  organizationId     String
-  name               String                 @db.VarChar(255)
-  phoneNumber        String                 @db.VarChar(32)
-  normalizedPhone    String                 @db.VarChar(32)
-  displayPhoneNumber String?                @db.VarChar(64)
-  verifiedName       String?                @db.VarChar(255)
-  phoneNumberId      String                 @unique @db.VarChar(128)
-  businessAccountId  String                 @db.VarChar(128)
-  appId              String?                @db.VarChar(128)
-  accessToken        String                 @db.Text
-  verifyToken        String                 @db.Text
-  appSecret          String?                @db.Text
-  webhookSecret      String?                @db.Text
-  apiVersion         String?                @db.VarChar(16)
-  qualityRating      String?                @db.VarChar(64)
-  messagingLimitTier String?                @db.VarChar(64)
-  status             WhatsappAccountStatus  @default(PENDING)
-  isDefault          Boolean                @default(false)
-  connectedAt        DateTime?
-  lastSyncAt         DateTime?
+  id                   String                 @id @default(cuid())
+  organizationId       String
+  name                 String                 @db.VarChar(255)
+  provider             WhatsappProvider       @default(META_CLOUD)
+  wabaId               String                 @db.VarChar(128)
+  phoneNumber          String                 @db.VarChar(32)
+  normalizedPhone      String                 @db.VarChar(32)
+  displayPhoneNumber   String?                @db.VarChar(64)
+  verifiedName         String?                @db.VarChar(255)
+  phoneNumberId        String                 @unique @db.VarChar(128)
+  businessAccountId    String?                @db.VarChar(128)
+  appId                String?                @db.VarChar(128)
+  accessToken          String                 @db.Text
+  tokenConfigured      Boolean                @default(true)
+  tokenLast4           String                 @db.VarChar(4)
+  verifyToken          String                 @db.Text
+  verifyTokenHash      String?                @unique @db.Char(64)
+  appSecret            String?                @db.Text
+  webhookSecret        String?                @db.Text
+  apiVersion           String?                @db.VarChar(16)
+  qualityRating        String?                @db.VarChar(64)
+  messagingLimitTier   String?                @db.VarChar(64)
+  status               WhatsappAccountStatus  @default(PENDING)
+  isDefault            Boolean                @default(false)
+  connectedAt          DateTime?
+  lastSyncAt           DateTime?
   lastConnectionTestAt DateTime?
-  lastConnectionError  String?              @db.VarChar(500)
-  createdByUserId    String?
-  createdAt          DateTime               @default(now())
-  updatedAt          DateTime               @updatedAt
-  deletedAt          DateTime?
-  organization       Organization           @relation(fields: [organizationId], references: [id])
-  createdByUser      User?                  @relation("WhatsappAccountCreatedBy", fields: [createdByUserId], references: [id])
-  templates          WhatsappTemplate[]
-  conversations      WhatsappConversation[]
-  messages           WhatsappMessage[]
-  webhookEvents      WhatsappWebhookEvent[]
-  campaigns          Campaign[]
-  messageQueues      MessageQueue[]
+  lastConnectionError  String?                @db.VarChar(500)
+  webhookSubscribedAt  DateTime?
+  createdByUserId      String?
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+  deletedAt            DateTime?
+  organization         Organization           @relation(fields: [organizationId], references: [id])
+  createdByUser        User?                  @relation("WhatsappAccountCreatedBy", fields: [createdByUserId], references: [id])
+  templates            WhatsappTemplate[]
+  conversations        WhatsappConversation[]
+  messages             WhatsappMessage[]
+  webhookEvents        WhatsappWebhookEvent[]
+  campaigns            Campaign[]
+  messageQueues        MessageQueue[]
 
-  @@index([organizationId, status])
+  @@index([organizationId, provider, status])
   @@index([organizationId, isDefault])
   @@index([organizationId, normalizedPhone])
   @@index([businessAccountId])
+  @@index([wabaId])
   @@index([deletedAt])
 }
 
@@ -1241,6 +1253,8 @@ model WhatsappWebhookEvent {
   id                String                     @id @default(cuid())
   organizationId    String
   whatsappAccountId String
+  wabaId            String?                    @db.VarChar(128)
+  phoneNumberId     String?                    @db.VarChar(128)
   provider          String                     @default("META_OFFICIAL") @db.VarChar(64)
   eventType         String                     @db.VarChar(64)
   deduplicationKey  String                     @db.VarChar(255)
@@ -1589,19 +1603,19 @@ model MessageQueue {
 }
 
 model MessageLog {
-  id          String             @id @default(cuid())
+  id             String             @id @default(cuid())
   organizationId String?
-  queueId     String
-  campaignId  String
-  recipientId String?
-  status      QueueStatus
-  message     String
-  response    Json?
-  createdAt   DateTime           @default(now())
-  organization Organization?      @relation(fields: [organizationId], references: [id])
-  queue       MessageQueue       @relation(fields: [queueId], references: [id], onDelete: Cascade)
-  campaign    Campaign           @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  recipient   CampaignRecipient? @relation(fields: [recipientId], references: [id])
+  queueId        String
+  campaignId     String
+  recipientId    String?
+  status         QueueStatus
+  message        String
+  response       Json?
+  createdAt      DateTime           @default(now())
+  organization   Organization?      @relation(fields: [organizationId], references: [id])
+  queue          MessageQueue       @relation(fields: [queueId], references: [id], onDelete: Cascade)
+  campaign       Campaign           @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  recipient      CampaignRecipient? @relation(fields: [recipientId], references: [id])
 
   @@index([organizationId])
   @@index([queueId])

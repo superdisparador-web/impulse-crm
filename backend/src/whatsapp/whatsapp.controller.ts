@@ -29,6 +29,7 @@ export class WhatsappController {
   @Patch('accounts/:id/status') @Permissions('whatsapp:accounts:update') updateAccountStatus(@Param('id') id: string, @Body() d: UpdateWhatsappAccountStatusDto, @CurrentUser() u: AuthenticatedUserRef) { return this.service.updateAccountStatus(id, d, u); }
   @Patch('accounts/:id/default') @Permissions('whatsapp:accounts:update') setDefaultAccount(@Param('id') id: string, @CurrentUser() u: AuthenticatedUserRef) { return this.service.setDefaultAccount(id, u); }
   @Post('accounts/:id/test') @Permissions('whatsapp:accounts:test') testAccountPost(@Param('id') id: string, @CurrentUser() u: AuthenticatedUserRef) { return this.service.testAccount(id, u); }
+  @Post('accounts/:id/test-connection') @Permissions('whatsapp:accounts:test') testConnection(@Param('id') id: string, @CurrentUser() u: AuthenticatedUserRef) { return this.service.testAccount(id, u); }
   @Post('accounts/:id/sync') @Permissions('whatsapp:accounts:test') syncAccount(@Param('id') id: string, @CurrentUser() u: AuthenticatedUserRef) { return this.service.syncAccount(id, u); }
   @Delete('accounts/:id') @Permissions('whatsapp:accounts:archive') deleteAccount(@Param('id') id: string, @CurrentUser() u: AuthenticatedUserRef) { return this.service.archiveAccount(id, u); }
   @Patch('accounts/:id/archive') @Permissions('whatsapp:accounts:archive') archive(@Param('id') id: string, @CurrentUser() u: AuthenticatedUserRef) { return this.service.archiveAccount(id, u); }
@@ -54,7 +55,7 @@ export class WhatsappController {
   @Post('templates/sync') @Permissions('whatsapp:templates:sync') sync(@Body() d: SyncWhatsappTemplatesDto, @CurrentUser() u: AuthenticatedUserRef) { return this.service.syncTemplates(d, u); }
 }
 @ApiTags('Webhooks WhatsApp Meta')
-@Controller('webhooks/whatsapp')
+@Controller(['webhooks/meta/whatsapp', 'webhooks/whatsapp'])
 export class WhatsappWebhookController {
   constructor(private readonly service: WhatsappService) {}
   @Get() verify(@Query('hub.mode') mode: string, @Query('hub.verify_token') token: string, @Query('hub.challenge') challenge: string) { return this.service.verifyWebhook(mode, token, challenge); }
