@@ -3,6 +3,7 @@ import { Type } from 'class-transformer';
 import { whatsappTemplateCategories, whatsappTemplateLanguages, whatsappTemplateStatuses } from './create-whatsapp-template.dto';
 
 export class ListWhatsappTemplatesDto {
+  @IsOptional() @IsString() whatsappAccountId?: string;
   @IsOptional() @IsString() search?: string;
   @IsOptional() @IsIn(whatsappTemplateStatuses) status?: string;
   @IsOptional() @IsIn(whatsappTemplateCategories) category?: string;

@@ -9,5 +9,6 @@ class TemplatesService {
   archiveTemplate(id: string) { return api<WhatsappTemplate>(`/whatsapp/templates/${id}/archive`, { method: 'PATCH' }); }
   restoreTemplate(id: string) { return api<WhatsappTemplate>(`/whatsapp/templates/${id}/restore`, { method: 'PATCH' }); }
   deleteTemplate(id: string) { return api.delete<{ success: boolean }>(`/whatsapp/templates/${id}`); }
+  syncTemplates(whatsappAccountId: string) { return api.post<import('@/types/templates').WhatsappTemplateSyncSummary>('/whatsapp/templates/sync', { whatsappAccountId }); }
 }
 export const templatesService = new TemplatesService();

@@ -7,8 +7,7 @@ test('whatsapp templates prisma model supports v1 fields and enums', () => {
   assert.match(schema, /model WhatsappTemplate \{/);
   for (const field of ['displayName', 'metaName', 'headerType', 'headerText', 'body', 'footer', 'buttons', 'metaTemplateId', 'isActive', 'archivedAt', 'deletedAt']) assert.match(schema, new RegExp(field));
   const statusBody = schema.match(/enum WhatsappTemplateStatus \{([\s\S]*?)\n\}/)[1];
-  for (const status of ['DRAFT', 'PENDING', 'APPROVED', 'REJECTED', 'DISABLED']) assert.match(statusBody, new RegExp(status));
-  assert.doesNotMatch(statusBody, /PAUSED|DELETED/);
+  for (const status of ['DRAFT', 'PENDING', 'APPROVED', 'REJECTED', 'DISABLED', 'PAUSED', 'IN_APPEAL', 'PENDING_DELETION', 'DELETED', 'LIMIT_EXCEEDED', 'UNKNOWN']) assert.match(statusBody, new RegExp(status));
 });
 
 test('whatsapp templates backend exposes CRUD, search, pagination, archive, restore and validation', () => {

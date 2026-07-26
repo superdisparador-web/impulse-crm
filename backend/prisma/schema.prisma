@@ -1076,6 +1076,12 @@ enum WhatsappTemplateStatus {
   APPROVED
   REJECTED
   DISABLED
+  PAUSED
+  IN_APPEAL
+  PENDING_DELETION
+  DELETED
+  LIMIT_EXCEEDED
+  UNKNOWN
 }
 
 enum WhatsappWebhookEventStatus {
@@ -1158,6 +1164,12 @@ model WhatsappTemplate {
   archivedAt         DateTime?
   parameterSchema    Json?
   rejectionReason    String?                @db.VarChar(500)
+  qualityScore       String?                @db.VarChar(64)
+  parameterFormat    String?                @db.VarChar(32)
+  previousCategory   String?                @db.VarChar(64)
+  createdAtMeta      DateTime?
+  metaStatus         String?                @db.VarChar(64)
+  webhookUpdatedAt   DateTime?
   lastSyncedAt       DateTime?
   createdAt          DateTime               @default(now())
   updatedAt          DateTime               @updatedAt
@@ -1167,6 +1179,7 @@ model WhatsappTemplate {
   campaigns          Campaign[]
 
   @@unique([organizationId, whatsappAccountId, name, language])
+  @@unique([organizationId, whatsappAccountId, metaTemplateId])
   @@index([organizationId, status])
   @@index([organizationId, category])
   @@index([organizationId, language])
