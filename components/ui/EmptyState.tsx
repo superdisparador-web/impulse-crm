@@ -1,5 +1,5 @@
 import { ReactNode } from "react";
-import { Inbox } from "lucide-react";
+import Image from "next/image";
 
 interface EmptyStateProps {
   title: string;
@@ -15,9 +15,20 @@ export default function EmptyState({
   action,
 }: EmptyStateProps) {
   return (
-    <div className="flex flex-col items-center justify-center px-6 py-14 text-center">
-      <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100 text-slate-500">
-        {icon ?? <Inbox size={22} />}
+    <div className="flex flex-col items-center justify-center px-4 py-10 text-center sm:px-6 sm:py-12">
+      <div className="relative mb-5 h-32 w-full max-w-52">
+        <Image
+          src="/branding/empty-state.png"
+          alt=""
+          fill
+          sizes="208px"
+          className="object-contain"
+        />
+        {icon && (
+          <div className="absolute bottom-0 right-2 flex h-11 w-11 items-center justify-center rounded-xl border border-white bg-white text-blue-600 shadow-md">
+            {icon}
+          </div>
+        )}
       </div>
 
       <h3 className="text-base font-semibold text-slate-900">

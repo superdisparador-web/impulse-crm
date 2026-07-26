@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Image from "next/image";
 import {
   AlertCircle,
   CalendarClock,
@@ -144,8 +145,13 @@ export default function DashboardPage() {
       <div className="space-y-6">
         <DashboardHeader />
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-8 text-slate-600 shadow-sm">
-          Carregando indicadores do dashboard...
+        <div className="relative flex min-h-52 items-end overflow-hidden rounded-3xl border border-slate-200/80 bg-slate-950 p-6 shadow-md sm:p-8" aria-live="polite" aria-busy="true">
+          <Image src="/branding/loader-background.png" alt="" fill priority sizes="(max-width: 1024px) 100vw, 80vw" className="object-cover opacity-60" />
+          <div className="absolute inset-0 bg-slate-950/35" />
+          <div className="relative flex items-center gap-3 rounded-2xl border border-white/10 bg-slate-950/70 px-4 py-3 text-white backdrop-blur-md">
+            <span aria-hidden="true" className="h-5 w-5 animate-spin rounded-full border-2 border-blue-200/30 border-t-blue-300 motion-reduce:animate-pulse" />
+            <p className="font-medium">Carregando indicadores do dashboard...</p>
+          </div>
         </div>
       </div>
     );
@@ -254,8 +260,16 @@ export default function DashboardPage() {
   ];
 
   return (
-    <div className="space-y-8">
-      <DashboardHeader />
+    <div className="relative isolate space-y-7 overflow-hidden rounded-3xl p-1 sm:p-3">
+      <Image src="/branding/dashboard-wallpaper.png" alt="" fill sizes="(max-width: 1024px) 100vw, 80vw" className="-z-10 object-cover opacity-[0.07]" />
+
+      <section className="relative min-h-60 overflow-hidden rounded-3xl border border-slate-800/20 bg-slate-950 shadow-lg">
+        <Image src="/branding/dashboard-hero.png" alt="" fill priority sizes="(max-width: 1024px) 100vw, 80vw" className="object-cover object-center" />
+        <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/85 to-slate-950/10" />
+        <div className="relative flex min-h-60 max-w-2xl items-end p-6 text-white sm:p-8 [&_h1]:text-2xl [&_h1]:text-white sm:[&_h1]:text-3xl [&_p]:text-slate-200">
+          <DashboardHeader />
+        </div>
+      </section>
 
       <KpiGrid items={kpis} />
 
