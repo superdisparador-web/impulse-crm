@@ -48,7 +48,7 @@ async function refreshAccessToken(): Promise<string> {
 
 function requestHeaders(options: RequestInit, token: string | null) {
   const headers = new Headers(options.headers);
-  if (!headers.has("Content-Type")) headers.set("Content-Type", "application/json");
+  if (!headers.has("Content-Type") && !(options.body instanceof FormData)) headers.set("Content-Type", "application/json");
   if (token) headers.set("Authorization", `Bearer ${token}`);
   return headers;
 }
@@ -97,6 +97,8 @@ export async function api<T>(
 
   return response.json();
 }
+
+api.blob = async function blob(endpoint:string):Promise<Blob>{let response=await request(endpoint,{},getAccessToken());if(isAuthenticationError(response)){response=await request(endpoint,{},await refreshAccessToken());}if(!response.ok)throw new Error('Não foi possível baixar o arquivo.');return response.blob();};
 
 api.get = function get<T>(endpoint: string): Promise<T> {
   return api<T>(endpoint);

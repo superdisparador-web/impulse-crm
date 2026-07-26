@@ -1,4 +1,4 @@
-export type UserRole = "ADMIN" | "CORRETOR";
+export type UserRole = "ADMIN" | "CORRETOR" | "GLOBAL_ADMIN" | "ORG_ADMIN" | "MANAGER" | "BROKER";
 
 export interface UserOrganization {
   id: string;

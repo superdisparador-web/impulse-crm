@@ -854,6 +854,7 @@ model User {
   createdWhatsappMessages       WhatsappMessage[]      @relation("WhatsappMessageCreatedBy")
   createdDistributionLists      DistributionList[]     @relation("DistributionListCreatedBy")
   pipelines                     Pipeline[]
+  campaignAgents                CampaignAgent[]
 
   @@index([organizationId])
   @@index([organizationId, status])
@@ -1501,6 +1502,21 @@ model Campaign {
   deletedAt          DateTime?
   organization       Organization        @relation(fields: [organizationId], references: [id])
   createdBy          User                @relation("CampaignCreatedBy", fields: [createdById], references: [id])
+  updatedById        String?
+  currentStep        Int                 @default(1)
+  category           String?             @db.VarChar(32)
+  internalNotes      String?
+  variableMappings   Json?
+  destinationConfig  Json?
+  listConfirmedAt    DateTime?
+  reviewedAt         DateTime?
+  mediaStorageKey    String?             @db.VarChar(500)
+  mediaOriginalName  String?             @db.VarChar(255)
+  mediaMimeType      String?             @db.VarChar(128)
+  mediaSize          Int?
+  mediaSha256        String?             @db.Char(64)
+  import             CampaignImport?
+  agents             CampaignAgent[]
   whatsappAccount    WhatsappAccount?    @relation(fields: [whatsappAccountId], references: [id])
   whatsappTemplate   WhatsappTemplate?   @relation(fields: [whatsappTemplateId], references: [id])
   filters            CampaignFilter[]
@@ -1535,34 +1551,84 @@ model CampaignFilter {
 }
 
 model CampaignRecipient {
-  id             String                  @id @default(cuid())
-  campaignId     String
-  leadId         String?
-  phone          String                  @db.VarChar(32)
-  name           String?                 @db.VarChar(255)
-  status         CampaignRecipientStatus @default(PENDING)
-  errorMessage   String?
-  messageId      String?                 @db.VarChar(255)
-  assignedUserId String?
-  queuedAt       DateTime?
-  sentAt         DateTime?
-  deliveredAt    DateTime?
-  readAt         DateTime?
-  clickedAt      DateTime?
-  failedAt       DateTime?
-  createdAt      DateTime                @default(now())
-  updatedAt      DateTime                @updatedAt
-  campaign       Campaign                @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  lead           Lead?                   @relation(fields: [leadId], references: [id])
-  assignedUser   User?                   @relation(fields: [assignedUserId], references: [id])
-  messageQueues  MessageQueue[]
-  messageLogs    MessageLog[]
+  id                     String                  @id @default(cuid())
+  campaignId             String
+  leadId                 String?
+  phone                  String                  @db.VarChar(32)
+  organizationId         String
+  originalRowNumber      Int?
+  originalData           Json?
+  phoneOriginal          String?                 @db.VarChar(64)
+  invalidReason          String?                 @db.VarChar(64)
+  duplicateOfRecipientId String?
+  name                   String?                 @db.VarChar(255)
+  status                 CampaignRecipientStatus @default(PENDING)
+  errorMessage           String?
+  messageId              String?                 @db.VarChar(255)
+  assignedUserId         String?
+  queuedAt               DateTime?
+  sentAt                 DateTime?
+  deliveredAt            DateTime?
+  readAt                 DateTime?
+  clickedAt              DateTime?
+  failedAt               DateTime?
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
+  campaign               Campaign                @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  lead                   Lead?                   @relation(fields: [leadId], references: [id])
+  assignedUser           User?                   @relation(fields: [assignedUserId], references: [id])
+  messageQueues          MessageQueue[]
+  messageLogs            MessageLog[]
 
   @@unique([campaignId, leadId])
   @@index([campaignId])
+  @@index([organizationId, campaignId, status])
   @@index([leadId])
   @@index([status])
   @@index([assignedUserId])
+}
+
+model CampaignImport {
+  id               String   @id @default(cuid())
+  campaignId       String   @unique
+  organizationId   String
+  storageKey       String   @unique @db.VarChar(500)
+  originalName     String   @db.VarChar(255)
+  mimeType         String   @db.VarChar(128)
+  size             Int
+  sha256           String   @db.Char(64)
+  status           String   @default("UPLOADED") @db.VarChar(32)
+  headers          Json?
+  columnMapping    Json?
+  sample           Json?
+  totalRows        Int      @default(0)
+  validRows        Int      @default(0)
+  invalidRows      Int      @default(0)
+  duplicateRows    Int      @default(0)
+  ddiCorrectedRows Int      @default(0)
+  missingNameRows  Int      @default(0)
+  errorReason      String?  @db.VarChar(255)
+  createdById      String
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  campaign         Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, sha256])
+}
+
+model CampaignAgent {
+  id         String   @id @default(cuid())
+  campaignId String
+  userId     String
+  position   Int
+  weight     Int      @default(1)
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id])
+
+  @@unique([campaignId, userId])
+  @@index([campaignId, position])
 }
 
 enum QueueStatus {

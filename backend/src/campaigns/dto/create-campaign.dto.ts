@@ -9,4 +9,6 @@ export class CreateCampaignDto {
   @IsEnum(CampaignType) campaignType: CampaignType;
   @IsOptional() @IsDateString() scheduledAt?: string;
   @IsOptional() @IsArray() @ValidateNested({ each: true }) @Type(() => CampaignFilterDto) filters?: CampaignFilterDto[];
+  @IsOptional() @IsString() whatsappAccountId?: string;
+  @IsOptional() @IsString() internalNotes?: string;
 }

@@ -9,5 +9,7 @@ export class UpdateCampaignDto {
   @IsOptional() @IsEnum(CampaignType) campaignType?: CampaignType;
   @IsOptional() @IsEnum(CampaignStatus) status?: CampaignStatus;
   @IsOptional() @IsDateString() scheduledAt?: string | null;
+  @IsOptional() @IsString() whatsappAccountId?: string | null;
+  @IsOptional() @IsString() internalNotes?: string | null;
   @IsOptional() @IsArray() @ValidateNested({ each: true }) @Type(() => CampaignFilterDto) filters?: CampaignFilterDto[];
 }
