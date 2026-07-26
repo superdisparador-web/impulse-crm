@@ -72,5 +72,7 @@ export interface WhatsappListParams {
   state?: 'active' | 'inactive' | 'archived' | 'all';
   page?: number;
   pageSize?: number;
+  whatsappAccountId?: string;
+  category?: string;
 }
 export interface SyncWhatsappTemplatesData { accountId: string; }

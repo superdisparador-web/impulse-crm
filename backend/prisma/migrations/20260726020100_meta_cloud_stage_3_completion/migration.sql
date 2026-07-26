@@ -1,0 +1,6 @@
+ALTER TABLE "Campaign"
+ADD COLUMN "mediaStorageKey" VARCHAR(500),
+ADD COLUMN "mediaOriginalName" VARCHAR(255),
+ADD COLUMN "mediaMimeType" VARCHAR(128),
+ADD COLUMN "mediaSize" INTEGER,
+ADD COLUMN "mediaSha256" CHAR(64);

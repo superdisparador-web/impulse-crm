@@ -16,13 +16,52 @@ test('campaign list supports pagination, search, filters, archive and restore ac
   assert.match(listPage, /archiveCampaign/);
 });
 
-test('campaign wizard has information, filters and summary behavioral steps', () => {
-  assert.match(wizardPage, /Informações/);
+test('campaign wizard has four accessible preparation steps', () => {
+  assert.match(wizardPage, /Informações básicas/);
   assert.match(wizardPage, /Marketing/);
   assert.match(wizardPage, /Utilidade/);
   assert.match(wizardPage, /Autenticação/);
-  assert.match(wizardPage, /Quantidade estimada de contatos/);
+  assert.match(wizardPage, /Lista de contatos/);
+  assert.match(wizardPage, /Template e configurações/);
+  assert.match(wizardPage, /Pré-visualização completa do WhatsApp/);
+  assert.match(wizardPage, /aria-current/);
+  assert.match(wizardPage, /SALVAR CAMPANHA COMO RASCUNHO/);
   assert.match(wizardPage, /Salvar rascunho/);
+});
+
+test('campaign wizard keeps state while moving back and blocks incomplete continuation', () => {
+  assert.match(wizardPage, /setStep\(s=>s-1\)/);
+  assert.match(wizardPage, /!summary\?\.valid\|\|!listConfirmed/);
+  assert.match(wizardPage, /beforeunload/);
+});
+
+test('campaign wizard exposes CSV upload, hygiene, samples and safe exports', () => {
+  assert.match(wizardPage, /accept="\.csv,text\/csv"/);
+  assert.match(wizardPage, /Higienizar lista/);
+  assert.match(wizardPage, /Amostra válida/);
+  assert.match(wizardPage, /downloadList/);
+});
+
+test('campaign wizard maps every normalized variable including buttonIndex', () => {
+  assert.match(wizardPage, /selectedTemplate\?\.variables\.map/);
+  assert.match(wizardPage, /buttonIndex/);
+  for (const source of ['COLUMN','FIXED','LEAD_NAME','LEAD_PHONE']) assert.match(wizardPage, new RegExp(source));
+});
+
+test('campaign wizard supports media, complete preview and destinations', () => {
+  assert.match(wizardPage, /uploadMedia/);
+  assert.match(wizardPage, /headerText/);
+  assert.match(wizardPage, /template\?\.body/);
+  assert.match(wizardPage, /template\?\.footer/);
+  assert.match(wizardPage, /template\?\.buttons/);
+  for (const mode of ['FIXED_URL','AGENT_FIXED','ROUND_ROBIN']) assert.match(wizardPage, new RegExp(mode));
+});
+
+test('campaign draft reopens and final review remains draft-only', () => {
+  assert.match(wizardPage, /getCampaignById/);
+  assert.match(wizardPage, /currentStep/);
+  assert.match(wizardPage, /SALVAR CAMPANHA COMO RASCUNHO/);
+  assert.match(wizardPage, /Nenhuma mensagem será enviada/);
 });
 
 test('campaign frontend service exposes CRUD and restore endpoints', () => {
