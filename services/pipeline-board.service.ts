@@ -1,12 +1,13 @@
 import { api } from "@/services/api";
-import { PipelineBoard, PipelineMovePayload, PipelineSummary } from "@/types/pipeline-board";
+import { PipelineBoard, PipelineFilters, PipelineMovePayload, PipelineSummary } from "@/types/pipeline-board";
 
 export function listPipelines(): Promise<PipelineSummary[]> {
   return api.get<PipelineSummary[]>("/pipeline");
 }
 
-export function getPipelineBoard(pipelineId: string): Promise<PipelineBoard> {
-  return api.get<PipelineBoard>(`/pipeline/${pipelineId}/board`);
+export function getPipelineBoard(pipelineId: string, filters: PipelineFilters = {}): Promise<PipelineBoard> {
+  const query = new URLSearchParams(Object.entries(filters).filter(([, value]) => value !== undefined && value !== "").map(([key, value]) => [key, String(value)]));
+  return api.get<PipelineBoard>(`/pipeline/${pipelineId}/board${query.size ? `?${query}` : ""}`);
 }
 
 export function movePipelineCard(cardId: string, stageId: string, position: number): Promise<PipelineBoard | { ok: boolean }> {

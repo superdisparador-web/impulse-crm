@@ -10,6 +10,7 @@ import { UpdateCampaignDto } from './dto/update-campaign.dto';
 import { CampaignsService } from './campaigns.service';
 import { DestinationDto, ListMappingDto, ReviewDto, StepDto, TemplateConfigurationDto } from './dto/prepare-campaign.dto';
 import { CampaignReasonDto, ScheduleCampaignDto } from './dto/operate-campaign.dto';
+import { CampaignAudienceEstimateDto, CampaignSegmentationDto } from './dto/campaign-segmentation.dto';
 
 type AuthRequest = Request & { user?: { id?: string } };
 type UploadedCampaignFile = { buffer: Buffer; originalname: string; mimetype: string; size: number };
@@ -20,6 +21,9 @@ export class CampaignsController {
   private userId(req: AuthRequest) { return req.user?.id ?? ''; }
   @Get() findAll(@Req() req: AuthRequest, @Query() query: ListCampaignsDto) { return this.campaignsService.findAll(this.userId(req), query); }
   @Post('estimate') estimate(@Req() req: AuthRequest, @Body() data: EstimateCampaignDto) { return this.campaignsService.estimate(this.userId(req), data.filters); }
+  @Post(':id/audience/estimate') estimateAudience(@Req() req:AuthRequest,@Param('id') id:string,@Body() data:CampaignAudienceEstimateDto){return this.campaignsService.estimateAudience(this.userId(req),id,data);}
+  @Post(':id/audience/materialize') materializeAudience(@Req() req:AuthRequest,@Param('id') id:string,@Body() data:CampaignSegmentationDto){return this.campaignsService.materializeAudience(this.userId(req),id,data);}
+  @Get(':id/operation-estimate') operationEstimate(@Req() req:AuthRequest,@Param('id') id:string){return this.campaignsService.operationEstimate(this.userId(req),id);}
   @Get(':id') findOne(@Req() req: AuthRequest, @Param('id') id: string) { return this.campaignsService.findOne(this.userId(req), id); }
   @Post() create(@Req() req: AuthRequest, @Body() data: CreateCampaignDto) { return this.campaignsService.create(this.userId(req), data); }
   @Patch(':id') update(@Req() req: AuthRequest, @Param('id') id: string, @Body() data: UpdateCampaignDto) { return this.campaignsService.update(this.userId(req), id, data); }

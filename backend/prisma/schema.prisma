@@ -805,6 +805,7 @@ model Organization {
   managerMetrics        ManagerMetric[]
   whatsappMetrics       WhatsappMetric[]
   campaignSecureLinks   CampaignSecureLink[]
+  campaignClickEvents   CampaignClickEvent[]
 
   @@index([name])
   @@index([document])
@@ -857,6 +858,9 @@ model User {
   createdDistributionLists      DistributionList[]     @relation("DistributionListCreatedBy")
   pipelines                     Pipeline[]
   campaignAgents                CampaignAgent[]
+  agentAvailability             AgentAvailability?     @relation("AgentAvailabilityUser")
+  assignedLeadDistributions     LeadDistribution[]     @relation("LeadDistributionAssignedUser")
+  managedLeadDistributions      LeadDistribution[]     @relation("LeadDistributionManagerUser")
 
   @@index([organizationId])
   @@index([organizationId, status])
@@ -1548,6 +1552,7 @@ model Campaign {
   messageLogs        MessageLog[]
   leadDistributions  LeadDistribution[]
   secureLinks        CampaignSecureLink[]
+  clickEvents        CampaignClickEvent[]
 
   @@index([organizationId])
   @@index([status])
@@ -1614,6 +1619,8 @@ model CampaignRecipient {
   messageQueues          MessageQueue[]
   messageLogs            MessageLog[]
   secureLink             CampaignSecureLink?
+  leadDistributions      LeadDistribution[]
+  clickEvents            CampaignClickEvent[]
 
   @@unique([campaignId, leadId])
   @@index([campaignId])
@@ -1624,19 +1631,23 @@ model CampaignRecipient {
 }
 
 model CampaignSecureLink {
-  id             String            @id @default(cuid())
+  id             String               @id @default(cuid())
   organizationId String
   campaignId     String
-  recipientId    String            @unique
+  recipientId    String               @unique
   assignedUserId String?
-  tokenHash      String            @unique @db.Char(64)
+  tokenHash      String               @unique @db.Char(64)
   expiresAt      DateTime
   revokedAt      DateTime?
-  createdAt      DateTime          @default(now())
-  organization   Organization      @relation(fields: [organizationId], references: [id])
-  campaign       Campaign          @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  recipient      CampaignRecipient @relation(fields: [recipientId], references: [id], onDelete: Cascade)
-  assignedUser   User?             @relation(fields: [assignedUserId], references: [id])
+  createdAt      DateTime             @default(now())
+  firstClickedAt DateTime?
+  totalClicks    Int                  @default(0)
+  uniqueClicks   Int                  @default(0)
+  organization   Organization         @relation(fields: [organizationId], references: [id])
+  campaign       Campaign             @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  recipient      CampaignRecipient    @relation(fields: [recipientId], references: [id], onDelete: Cascade)
+  assignedUser   User?                @relation(fields: [assignedUserId], references: [id])
+  clicks         CampaignClickEvent[]
 
   @@index([organizationId, campaignId])
   @@index([assignedUserId])
@@ -2252,6 +2263,28 @@ enum DistributionTriggerType {
   MANUAL
 }
 
+enum AgentAvailabilityStatus {
+  AVAILABLE
+  PAUSED
+  OFF_DUTY
+  INACTIVE
+}
+
+enum LeadAttendanceStatus {
+  NEW
+  VIEWED
+  CONTACT_STARTED
+  NO_RESPONSE
+  INTERESTED
+  SCHEDULED
+  VISIT_COMPLETED
+  DOCUMENTATION
+  PROPOSAL
+  SALE
+  LOST
+  INVALID
+}
+
 enum DistributionImportMode {
   ADD
   REPLACE
@@ -2321,8 +2354,11 @@ model LeadDistribution {
   id                   String                  @id @default(cuid())
   organizationId       String
   campaignId           String?
-  distributionListId   String
+  distributionListId   String?
   distributionMemberId String?
+  recipientId          String?                 @unique
+  assignedUserId       String?
+  managerUserId        String?
   leadId               String?
   recipientPhoneE164   String                  @db.VarChar(32)
   triggerType          DistributionTriggerType @default(CAMPAIGN_BUTTON)
@@ -2335,13 +2371,24 @@ model LeadDistribution {
   attempts             Int                     @default(0)
   messagePayload       Json?
   distributedAt        DateTime?
+  attendanceStatus     LeadAttendanceStatus    @default(NEW)
+  slaDueAt             DateTime?
+  firstUpdatedAt       DateTime?
+  nextFollowUpAt       DateTime?
+  manuallyReleasedAt   DateTime?
   createdAt            DateTime                @default(now())
   updatedAt            DateTime                @updatedAt
   organization         Organization            @relation(fields: [organizationId], references: [id])
   campaign             Campaign?               @relation(fields: [campaignId], references: [id])
-  distributionList     DistributionList        @relation(fields: [distributionListId], references: [id])
+  distributionList     DistributionList?       @relation(fields: [distributionListId], references: [id])
   distributionMember   DistributionMember?     @relation(fields: [distributionMemberId], references: [id])
   lead                 Lead?                   @relation(fields: [leadId], references: [id])
+  recipient            CampaignRecipient?      @relation(fields: [recipientId], references: [id])
+  assignedUser         User?                   @relation("LeadDistributionAssignedUser", fields: [assignedUserId], references: [id])
+  managerUser          User?                   @relation("LeadDistributionManagerUser", fields: [managerUserId], references: [id])
+  clicks               CampaignClickEvent[]
+  history              DistributionHistory[]
+  followUps            DistributionFollowUp[]
 
   @@unique([organizationId, idempotencyKey])
   @@index([organizationId, campaignId, createdAt])
@@ -2349,6 +2396,86 @@ model LeadDistribution {
   @@index([organizationId, distributionMemberId, createdAt])
   @@index([organizationId, recipientPhoneE164])
   @@index([organizationId, status, createdAt])
+}
+
+model CampaignClickEvent {
+  id              String             @id @default(cuid())
+  organizationId  String
+  campaignId      String
+  recipientId     String
+  secureLinkId    String
+  distributionId  String?
+  messageId       String?
+  clickedAt       DateTime           @default(now())
+  fingerprintHash String             @db.Char(64)
+  ipHash          String?            @db.Char(64)
+  userAgent       String?            @db.VarChar(180)
+  origin          String             @default("CAMPAIGN_BUTTON") @db.VarChar(64)
+  isUnique        Boolean            @default(false)
+  isRepeated      Boolean            @default(false)
+  redirectStatus  String             @db.VarChar(32)
+  finalUrlHash    String?            @db.Char(64)
+  organization    Organization       @relation(fields: [organizationId], references: [id])
+  campaign        Campaign           @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  recipient       CampaignRecipient  @relation(fields: [recipientId], references: [id], onDelete: Cascade)
+  secureLink      CampaignSecureLink @relation(fields: [secureLinkId], references: [id], onDelete: Cascade)
+  distribution    LeadDistribution?  @relation(fields: [distributionId], references: [id])
+
+  @@index([organizationId, campaignId, clickedAt])
+  @@index([recipientId, clickedAt])
+}
+
+model AgentAvailability {
+  userId         String                  @id
+  organizationId String
+  status         AgentAvailabilityStatus @default(AVAILABLE)
+  changedAt      DateTime                @default(now())
+  changedById    String?
+  reason         String?                 @db.VarChar(500)
+  user           User                    @relation("AgentAvailabilityUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, status])
+}
+
+model DistributionSettings {
+  organizationId         String   @id
+  requirePreviousUpdates Boolean  @default(false)
+  firstContactMinutes    Int      @default(15)
+  firstUpdateMinutes     Int      @default(60)
+  nextFollowUpMinutes    Int      @default(1440)
+  fallbackUrl            String?  @db.VarChar(500)
+  updatedAt              DateTime @updatedAt
+}
+
+model DistributionHistory {
+  id             String           @id @default(cuid())
+  organizationId String
+  distributionId String
+  actorUserId    String?
+  action         String           @db.VarChar(80)
+  before         Json?
+  after          Json?
+  reason         String?          @db.VarChar(500)
+  createdAt      DateTime         @default(now())
+  distribution   LeadDistribution @relation(fields: [distributionId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, distributionId, createdAt])
+}
+
+model DistributionFollowUp {
+  id                String               @id @default(cuid())
+  organizationId    String
+  distributionId    String
+  answeredById      String
+  contactAttempted  String               @db.VarChar(32)
+  customerResponded String               @db.VarChar(32)
+  status            LeadAttendanceStatus
+  notes             String?              @db.VarChar(1000)
+  nextFollowUpAt    DateTime?
+  createdAt         DateTime             @default(now())
+  distribution      LeadDistribution     @relation(fields: [distributionId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, distributionId, createdAt])
 }
 
 enum AnalyticsEventSource {
