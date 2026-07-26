@@ -1,4 +1,4 @@
-export type UserRole = 'ADMIN' | 'CORRETOR';
+export type UserRole = "ADMIN" | "CORRETOR";
 
 export interface UserOrganization {
   id: string;
@@ -31,13 +31,19 @@ export interface UserFormData {
 
 export interface UserListResponse {
   items: User[];
-  meta: { total: number; page: number; limit: number; totalPages: number };
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
 }
 
 export interface ListUsersParams {
   page?: number;
   limit?: number;
   search?: string;
-  active?: boolean | '';
+  active?: boolean | "";
   organizationId?: string;
+  role?: UserRole;
 }

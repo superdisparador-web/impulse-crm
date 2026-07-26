@@ -10,7 +10,10 @@ export interface AuthenticatedUser {
 }
 
 export interface LoginResponse {
-  access_token: string;
+  accessToken: string;
+  refreshToken: string;
+  tokenType: string;
+  expiresIn: string;
   user: AuthenticatedUser;
 }
 
@@ -23,7 +26,8 @@ export async function login(email: string, password: string) {
     }),
   });
 
-  localStorage.setItem("token", response.access_token);
+  localStorage.setItem("token", response.accessToken);
+  localStorage.setItem("refreshToken", response.refreshToken);
   localStorage.setItem("user", JSON.stringify(response.user));
 
   return response;
@@ -31,16 +35,22 @@ export async function login(email: string, password: string) {
 
 export function logout() {
   localStorage.removeItem("token");
+  localStorage.removeItem("refreshToken");
   localStorage.removeItem("user");
 }
 
 export function getToken() {
+  if (typeof window === "undefined") return null;
   return localStorage.getItem("token");
 }
 
 export function getCurrentUser(): AuthenticatedUser | null {
+  if (typeof window === "undefined") return null;
+
   const value = localStorage.getItem("user");
+
   if (!value) return null;
+
   try {
     return JSON.parse(value) as AuthenticatedUser;
   } catch {
@@ -51,6 +61,7 @@ export function getCurrentUser(): AuthenticatedUser | null {
 
 export function isGlobalAdmin() {
   const user = getCurrentUser();
+
   return user?.role === "ADMIN" && !user.organizationId;
 }
 

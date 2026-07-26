@@ -1,5 +1,5 @@
 import UsersPage from "@/components/users/UsersPage";
 
 export default function Page() {
-  return <UsersPage mode="users" />;
+  return <UsersPage mode="corretores" />;
 }

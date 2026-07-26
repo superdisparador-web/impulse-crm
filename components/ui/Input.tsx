@@ -2,8 +2,7 @@
 
 import { forwardRef, InputHTMLAttributes } from "react";
 
-interface InputProps
-  extends InputHTMLAttributes<HTMLInputElement> {
+interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   label?: string;
   error?: string;
 }
@@ -13,7 +12,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
     return (
       <div className="w-full">
         {label && (
-          <label className="mb-2 block text-sm font-medium text-slate-300">
+          <label className="mb-2 block text-sm font-medium text-slate-700">
             {label}
           </label>
         )}
@@ -23,26 +22,27 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
           {...props}
           className={`
             w-full
-            rounded-lg
+            rounded-xl
             border
-            border-slate-700
-            bg-slate-800
+            border-slate-300
+            bg-white
             px-4
             py-3
-            text-white
-            outline-none
+            text-slate-900
+            shadow-sm
             transition
-            placeholder:text-slate-500
-            focus:border-blue-500
-            focus:ring-2
-            focus:ring-blue-500/20
+            outline-none
+            placeholder:text-slate-400
+            focus:border-blue-600
+            focus:ring-4
+            focus:ring-blue-100
             ${error ? "border-red-500" : ""}
             ${className}
           `}
         />
 
         {error && (
-          <p className="mt-2 text-sm text-red-400">
+          <p className="mt-2 text-sm text-red-600">
             {error}
           </p>
         )}

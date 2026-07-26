@@ -42,33 +42,33 @@ export default function Modal({
     };
   }, [isOpen, onClose]);
 
-  if (!isOpen) {
-    return null;
-  }
+  if (!isOpen) return null;
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-6"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-6"
       onClick={onClose}
     >
       <div
-        className={`w-full ${widthClasses[width]} rounded-2xl bg-slate-900 border border-slate-700 shadow-2xl`}
+        className={`w-full ${widthClasses[width]} rounded-2xl border border-slate-200 bg-white shadow-2xl`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between border-b border-slate-700 px-6 py-4">
-          <h2 className="text-xl font-semibold text-white">
+        <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+          <h2 className="text-xl font-semibold text-slate-900">
             {title}
           </h2>
 
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-white text-2xl transition"
+            className="rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
           >
-            ×
+            ✕
           </button>
         </div>
 
-        <div className="p-6">{children}</div>
+        <div className="p-6">
+          {children}
+        </div>
       </div>
     </div>
   );
