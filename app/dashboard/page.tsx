@@ -265,10 +265,6 @@ export default function DashboardPage() {
 
       <section className="relative min-h-60 overflow-hidden rounded-3xl border border-slate-800/20 bg-slate-950 shadow-lg">
         <Image src="/branding/dashboard-hero.png" alt="" fill priority sizes="(max-width: 1024px) 100vw, 80vw" className="object-cover object-center" />
-        <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/85 to-slate-950/10" />
-        <div className="relative flex min-h-60 max-w-2xl items-end p-6 text-white sm:p-8 [&_h1]:text-2xl [&_h1]:text-white sm:[&_h1]:text-3xl [&_p]:text-slate-200">
-          <DashboardHeader />
-        </div>
       </section>
 
       <KpiGrid items={kpis} />
