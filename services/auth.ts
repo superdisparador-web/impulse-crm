@@ -1,13 +1,13 @@
 import { api } from "./api";
-import { UserRole } from "@/types/user";
+import {
+  getAccessToken,
+  getSession,
+  login as startSession,
+  logout as endSession,
+  SessionUser,
+} from "./session";
 
-export interface AuthenticatedUser {
-  id: string;
-  name: string;
-  email: string;
-  role: UserRole;
-  organizationId?: string | null;
-}
+export type AuthenticatedUser = SessionUser;
 
 export interface LoginResponse {
   accessToken: string;
@@ -26,37 +26,21 @@ export async function login(email: string, password: string) {
     }),
   });
 
-  localStorage.setItem("token", response.accessToken);
-  localStorage.setItem("refreshToken", response.refreshToken);
-  localStorage.setItem("user", JSON.stringify(response.user));
+  startSession(response);
 
   return response;
 }
 
 export function logout() {
-  localStorage.removeItem("token");
-  localStorage.removeItem("refreshToken");
-  localStorage.removeItem("user");
+  endSession();
 }
 
 export function getToken() {
-  if (typeof window === "undefined") return null;
-  return localStorage.getItem("token");
+  return getAccessToken();
 }
 
 export function getCurrentUser(): AuthenticatedUser | null {
-  if (typeof window === "undefined") return null;
-
-  const value = localStorage.getItem("user");
-
-  if (!value) return null;
-
-  try {
-    return JSON.parse(value) as AuthenticatedUser;
-  } catch {
-    logout();
-    return null;
-  }
+  return getSession()?.user ?? null;
 }
 
 export function isGlobalAdmin() {
