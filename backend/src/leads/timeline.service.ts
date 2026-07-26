@@ -1,40 +1,68 @@
-import { Injectable } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { BadRequestException, Injectable } from '@nestjs/common';
+import { LeadEventType, Prisma } from '@prisma/client';
+import { AccessContext } from '../auth/access-context.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { LeadTimelineQueryDto } from './dto/lead-timeline.dto';
 
-const timelineEventInclude = { actorUser: { select: { id: true, name: true, email: true } } } satisfies Prisma.LeadEventInclude;
+export type NormalizedTimelineEvent = { id:string; dedupeKey:string; type:string; title:string; description?:string|null; source:string; occurredAt:Date; actor?:{id:string;name:string|null}|null; campaign?:{name:string}|null; details?:Record<string, unknown>; manual:boolean };
+type UserSummary={id:string;name:string|null};
+type LeadEventRow={id:string;idempotencyKey:string|null;eventType:string;description:string;occurredAt:Date;actorUserId:string|null;actorUser:UserSummary|null;payload:unknown};
+type ActivityRow={id:string;type:string;title:string;description:string|null;note:string|null;createdAt:Date;completedAt:Date|null;status:string;result:string|null;nextFollowUpAt:Date|null;visibility:string;createdByUser:UserSummary;responsibleUser:UserSummary};
+type DistributionRow={id:string;recipientId:string|null;status:string;createdAt:Date;distributedAt:Date|null;slaDueAt:Date|null;campaign:{name:string}|null;assignedUser:UserSummary|null;history:Array<{id:string;action:string;reason:string|null;createdAt:Date;actorUserId:string|null;before:unknown;after:unknown}>;followUps:Array<{id:string;notes:string|null;createdAt:Date;status:string;nextFollowUpAt:Date|null;contactAttempted:string;customerResponded:string}>;clicks:Array<{id:string;recipientId:string;clickedAt:Date;isUnique:boolean;isRepeated:boolean;redirectStatus:string}>};
+const user = { id:true, name:true } satisfies Prisma.UserSelect;
+const safeKeys = new Set(['from','to','fromStageId','toStageId','reason','title','status','nextFollowUpAt','previousAssignedUserId','assignedUserId','managerUserId','slaDueAt']);
 
 @Injectable()
 export class TimelineService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async forLead(leadId: string, organizationId: string) {
-    const [leadEvents, recipients, messages, dealEvents] = await Promise.all([
-      this.prisma.leadEvent.findMany({ where: { leadId, organizationId }, include: timelineEventInclude, orderBy: { occurredAt: 'desc' } }),
-      this.prisma.campaignRecipient.findMany({ where: { leadId, organizationId }, select: { id: true, status: true, sentAt: true, deliveredAt: true, readAt: true, clickedAt: true, failedAt: true, campaign: { select: { id: true, name: true } } } }),
-      this.prisma.whatsappMessage.findMany({ where: { leadId, organizationId }, select: { id: true, direction: true, status: true, sentAt: true, deliveredAt: true, readAt: true, failedAt: true, createdAt: true, conversation: { select: { assignedUser: { select: { id: true, name: true } } } } }, orderBy: { createdAt: 'desc' } }),
-      this.prisma.dealEvent.findMany({ where: { organizationId, deal: { leadId } }, include: { actorUser: { select: { id: true, name: true, email: true } }, deal: { select: { id: true, title: true } } }, orderBy: { occurredAt: 'desc' } }),
+  async forLead(leadId:string, organizationId:string, ctx:AccessContext, query:LeadTimelineQueryDto={}) {
+    const limit=query.limit??30, order=query.order??'desc', cursor=this.decodeCursor(query.cursor);
+    const from=query.from?new Date(query.from):undefined,to=query.to?new Date(query.to):undefined;
+    const dateWhere={...(from?{gte:from}:{}),...(to?{lte:to}:{}),...(cursor?(order==='desc'?{lte:cursor.date}:{gte:cursor.date}):{})};
+    const typeSources:Record<string,string[]>={CAMPAIGN_SENT:['CAMPAIGNS'],CAMPAIGN_CLICKED:['DISTRIBUTION'],LEAD_DISTRIBUTED:['DISTRIBUTION'],FOLLOW_UP_COMPLETED:['DISTRIBUTION'],NOTE_CREATED:['ACTIVITIES'],APPOINTMENT_CREATED:['ACTIVITIES'],APPOINTMENT_COMPLETED:['ACTIVITIES'],STAGE_CHANGED:['LEADS','PIPELINE','AUDIT'],STATUS_CHANGED:['LEADS','AUDIT'],ASSIGNMENT_CHANGED:['LEADS','DISTRIBUTION','AUDIT']};
+    const hasDateWhere=Object.keys(dateWhere).length>0,take=limit+1,allows=(source:string)=>(!query.source||query.source===source)&&(!query.type||!typeSources[query.type]||typeSources[query.type].includes(source));
+    const search=query.search?.trim(),leadEventTypes:Record<string,LeadEventType|LeadEventType[]>={STATUS_CHANGED:'LEAD_STATUS_CHANGED',STAGE_CHANGED:'LEAD_STATUS_CHANGED',ASSIGNMENT_CHANGED:['LEAD_ASSIGNED','LEAD_UNASSIGNED','LEAD_MANAGER_CHANGED']},activityAnd:Prisma.LeadActivityWhereInput[]=[];
+    const selectedLeadTypes=query.type?.startsWith('LEAD_')?query.type as LeadEventType:leadEventTypes[query.type??''];
+    const leadTypeWhere:Prisma.LeadEventWhereInput=selectedLeadTypes?{eventType:Array.isArray(selectedLeadTypes)?{in:selectedLeadTypes}:selectedLeadTypes}:{};
+    if(query.type==='NOTE_CREATED')activityAnd.push({type:'NOTE'});
+    if(query.type==='APPOINTMENT_COMPLETED')activityAnd.push({status:'COMPLETED'});
+    if(search)activityAnd.push({OR:[{title:{contains:search,mode:'insensitive'}},{description:{contains:search,mode:'insensitive'}},{note:{contains:search,mode:'insensitive'}},{result:{contains:search,mode:'insensitive'}}]});
+    if(!this.canReadPrivate(ctx))activityAnd.push({OR:[{visibility:'TEAM'},{createdByUserId:ctx.id}]});
+    const [events,activities,distributions,recipients,audits,messages,dealEvents]=await Promise.all([
+      allows('LEADS')?this.prisma.leadEvent.findMany({where:{leadId,organizationId,...(hasDateWhere?{occurredAt:dateWhere}:{}),...(search?{description:{contains:search,mode:'insensitive'}}:{}),...leadTypeWhere},include:{actorUser:{select:user}},orderBy:[{occurredAt:order},{id:order}],take}):Promise.resolve([]),
+      allows('ACTIVITIES')?this.prisma.leadActivity.findMany({where:{leadId,organizationId,archivedAt:null,...(hasDateWhere?{createdAt:dateWhere}:{}),...(activityAnd.length?{AND:activityAnd}:{})},include:{createdByUser:{select:user},responsibleUser:{select:user}},orderBy:[{createdAt:order},{id:order}],take}):Promise.resolve([]),
+      allows('DISTRIBUTION')?this.prisma.leadDistribution.findMany({where:{leadId,organizationId,...(hasDateWhere?{createdAt:dateWhere}:{}),...(search?{OR:[{campaign:{name:{contains:search,mode:'insensitive'}}},{history:{some:{reason:{contains:search,mode:'insensitive'}}}},{followUps:{some:{notes:{contains:search,mode:'insensitive'}}}}]}:{})},include:{campaign:{select:{name:true}},assignedUser:{select:user},history:{orderBy:{createdAt:order},take},followUps:{orderBy:{createdAt:order},take},clicks:{orderBy:{clickedAt:order},take}},orderBy:[{createdAt:order},{id:order}],take}):Promise.resolve([]),
+      allows('CAMPAIGNS')?this.prisma.campaignRecipient.findMany({where:{leadId,campaign:{organizationId},...(hasDateWhere?{createdAt:dateWhere}:{}),...(search?{campaign:{organizationId,name:{contains:search,mode:'insensitive'}}}:{})},select:{id:true,createdAt:true,sentAt:true,campaign:{select:{name:true}}},orderBy:[{createdAt:order},{id:order}],take}):Promise.resolve([]),
+      allows('AUDIT')?this.prisma.auditLog.findMany({where:{organizationId,entityType:{in:['Lead','PipelineLead','LeadActivity']},entityId:leadId,...(hasDateWhere?{occurredAt:dateWhere}:{}),...(search?{action:{contains:search,mode:'insensitive'}}:{})},include:{actorUser:{select:user}},orderBy:[{occurredAt:order},{id:order}],take}):Promise.resolve([]),
+      allows('WHATSAPP')?this.prisma.whatsappMessage.findMany({where:{leadId,organizationId,...(hasDateWhere?{createdAt:dateWhere}:{})},select:{id:true,direction:true,status:true,sentAt:true,createdAt:true},orderBy:[{createdAt:order},{id:order}],take}):Promise.resolve([]),
+      allows('PIPELINE')?this.prisma.dealEvent.findMany({where:{organizationId,deal:{leadId},...(hasDateWhere?{occurredAt:dateWhere}:{})},include:{actorUser:{select:user}},orderBy:[{occurredAt:order},{id:order}],take}):Promise.resolve([]),
     ]);
-
-    const campaignItems = recipients.flatMap((recipient) => [
-      recipient.sentAt && { id: `${recipient.id}:sent`, source: 'CAMPAIGNS' as const, type: 'SENT', occurredAt: recipient.sentAt, campaign: recipient.campaign },
-      recipient.deliveredAt && { id: `${recipient.id}:delivered`, source: 'CAMPAIGNS' as const, type: 'DELIVERED', occurredAt: recipient.deliveredAt, campaign: recipient.campaign },
-      recipient.readAt && { id: `${recipient.id}:read`, source: 'CAMPAIGNS' as const, type: 'READ', occurredAt: recipient.readAt, campaign: recipient.campaign },
-      recipient.clickedAt && { id: `${recipient.id}:clicked`, source: 'CAMPAIGNS' as const, type: 'CLICKED', occurredAt: recipient.clickedAt, campaign: recipient.campaign },
-      recipient.failedAt && { id: `${recipient.id}:failed`, source: 'CAMPAIGNS' as const, type: 'ERROR', occurredAt: recipient.failedAt, campaign: recipient.campaign },
-    ].filter((item): item is NonNullable<typeof item> => Boolean(item)));
-
-    const items = [
-      ...leadEvents.map((event) => ({ id: event.id, source: 'LEADS' as const, type: event.eventType, occurredAt: event.occurredAt, event })),
-      ...campaignItems,
-      ...messages.map((message) => ({ id: message.id, source: 'WHATSAPP' as const, type: message.direction === 'INBOUND' ? 'FIRST_SERVICE' : message.status, occurredAt: message.sentAt ?? message.createdAt, message })),
-      ...dealEvents.map((event) => ({ id: event.id, source: 'PIPELINE' as const, type: event.eventType, occurredAt: event.occurredAt, event })),
-    ].sort((a, b) => b.occurredAt.getTime() - a.occurredAt.getTime());
-
-    return {
-      leadId,
-      items,
-      note: 'TimelineService consolida dinamicamente eventos existentes e não armazena dados próprios.',
-    };
+    const normalized:NormalizedTimelineEvent[]=[
+      ...((events as LeadEventRow[]).filter(e=>!String(e.eventType).startsWith('LEAD_ACTIVITY_')).map(e=>this.event(e))),
+      ...activities.flatMap(a=>this.activity(a)),
+      ...distributions.flatMap(d=>this.distribution(d)),
+      ...recipients.flatMap(r=>r.sentAt?[{id:`recipient:${r.id}:sent`,dedupeKey:`CAMPAIGN_SENT:${r.id}`,type:'CAMPAIGN_SENT',title:'Campanha enviada',source:'CAMPAIGNS',occurredAt:r.sentAt,campaign:r.campaign,manual:false}]:[]),
+      ...audits.map(a=>({id:`audit:${a.id}`,dedupeKey:`AUDIT:${a.action}:${a.entityId}:${a.occurredAt.toISOString()}`,type:this.mapType(a.action),title:this.title(this.mapType(a.action)),description:a.action,source:'AUDIT',occurredAt:a.occurredAt,actor:a.actorUser,details:{...this.safe(a.before),...this.safe(a.after),...this.safe(a.metadata)},manual:Boolean(a.actorUserId)})),
+      ...messages.map(message=>({id:`whatsapp:${message.id}`,dedupeKey:`WHATSAPP:${message.id}`,type:message.direction==='INBOUND'?'FIRST_CONTACT':`WHATSAPP_${message.status}`,title:message.direction==='INBOUND'?'Contato recebido':'Mensagem WhatsApp',source:'WHATSAPP',occurredAt:message.sentAt??message.createdAt,details:{direction:message.direction,status:message.status},manual:false})),
+      ...dealEvents.map(event=>({id:`deal:${event.id}`,dedupeKey:`DEAL:${event.id}`,type:this.mapType(event.eventType),title:this.title(this.mapType(event.eventType)),source:'PIPELINE',occurredAt:event.occurredAt,actor:event.actorUser,details:this.safe(event.payload),manual:Boolean(event.actorUserId)})),
+    ];
+    const cursorFiltered=cursor?normalized.filter(item=>order==='desc'?(item.occurredAt<cursor.date||(item.occurredAt.getTime()===cursor.date.getTime()&&item.id<cursor.id)):(item.occurredAt>cursor.date||(item.occurredAt.getTime()===cursor.date.getTime()&&item.id>cursor.id))):normalized;
+    const filtered=this.filter(this.dedupe(cursorFiltered),query).sort((a,b)=>order==='desc'?b.occurredAt.getTime()-a.occurredAt.getTime()||b.id.localeCompare(a.id):a.occurredAt.getTime()-b.occurredAt.getTime()||a.id.localeCompare(b.id));
+    const items=filtered.slice(0,limit), last=items.at(-1);
+    return {leadId,items:items.map(({dedupeKey,...item})=>({...item,occurredAt:item.occurredAt.toISOString()})),pageInfo:{limit,hasMore:filtered.length>limit,nextCursor:filtered.length>limit&&last?this.encodeCursor(last):null},order};
   }
+
+  private event(e:LeadEventRow):NormalizedTimelineEvent { const payload=this.safe(e.payload),type=payload.fromStageId||payload.toStageId||e.description.toLowerCase().includes('movido para')?'STAGE_CHANGED':this.mapType(e.eventType); return {id:`lead:${e.id}`,dedupeKey:e.idempotencyKey||`LEAD:${e.id}`,type,title:this.title(type),description:e.description,source:'LEADS',occurredAt:e.occurredAt,actor:e.actorUser,details:payload,manual:Boolean(e.actorUserId)}; }
+  private activity(a:ActivityRow):NormalizedTimelineEvent[] { const created:NormalizedTimelineEvent={id:`activity:${a.id}:created`,dedupeKey:`ACTIVITY_CREATED:${a.id}`,type:a.type==='NOTE'?'NOTE_CREATED':'APPOINTMENT_CREATED',title:a.title,description:a.description||a.note,source:'ACTIVITIES',occurredAt:a.createdAt,actor:a.createdByUser,details:{activityType:a.type,status:a.status,result:a.result,nextFollowUpAt:a.nextFollowUpAt,responsibleUser:a.responsibleUser?.name,visibility:a.visibility},manual:true}; return a.completedAt?[created,{...created,id:`activity:${a.id}:completed`,dedupeKey:`ACTIVITY_COMPLETED:${a.id}`,type:'APPOINTMENT_COMPLETED',title:`${a.title} concluída`,occurredAt:a.completedAt}]:[created]; }
+  private distribution(d:DistributionRow):NormalizedTimelineEvent[] { const base:NormalizedTimelineEvent={id:`distribution:${d.id}`,dedupeKey:`LEAD_DISTRIBUTED:${d.id}`,type:'LEAD_DISTRIBUTED',title:'Lead distribuído',source:'DISTRIBUTION',occurredAt:d.distributedAt||d.createdAt,actor:null,campaign:d.campaign,details:{status:d.status,assignedUser:d.assignedUser?.name,slaDueAt:d.slaDueAt},manual:false}; const history=d.history.map(h=>({id:`distribution-history:${h.id}`,dedupeKey:`DISTRIBUTION_HISTORY:${h.id}`,type:this.mapType(h.action),title:this.title(this.mapType(h.action)),description:h.reason,source:'DISTRIBUTION',occurredAt:h.createdAt,details:{...this.safe(h.before),...this.safe(h.after),reason:h.reason},manual:Boolean(h.actorUserId)})); const follow=d.followUps.map(f=>({id:`follow-up:${f.id}`,dedupeKey:`FOLLOW_UP:${f.id}`,type:'FOLLOW_UP_COMPLETED',title:'Acompanhamento registrado',description:f.notes,source:'DISTRIBUTION',occurredAt:f.createdAt,details:{status:f.status,nextFollowUpAt:f.nextFollowUpAt,contactAttempted:f.contactAttempted,customerResponded:f.customerResponded},manual:true})); const clicks=d.clicks.map(c=>({id:`click:${c.id}`,dedupeKey:`CAMPAIGN_CLICKED:${c.id}`,type:'CAMPAIGN_CLICKED',title:'Cliente clicou na campanha',source:'CAMPAIGNS',occurredAt:c.clickedAt,campaign:d.campaign,details:{unique:c.isUnique,repeated:c.isRepeated,redirectStatus:c.redirectStatus},manual:false})); return [base,...history,...follow,...clicks]; }
+  private dedupe(items:NormalizedTimelineEvent[]) { const seen=new Set<string>(), result:NormalizedTimelineEvent[]=[]; for(const item of items){if(seen.has(item.dedupeKey))continue;const signature=this.structuredSignature(item);if(item.source==='AUDIT'&&signature&&result.some(existing=>existing.source!=='AUDIT'&&this.structuredSignature(existing)===signature&&Math.abs(existing.occurredAt.getTime()-item.occurredAt.getTime())<=1000))continue;seen.add(item.dedupeKey);result.push(item);}return result; }
+  private structuredSignature(item:NormalizedTimelineEvent){const details=item.details??{},fields=['from','to','fromStageId','toStageId','previousAssignedUserId','assignedUserId','managerUserId'];const transitions=Object.fromEntries(fields.filter(key=>details[key]!==undefined).map(key=>[key,details[key]]));if(!Object.keys(transitions).length)return null;return JSON.stringify({type:item.type,actor:item.actor?.id??null,...transitions});}
+  private filter(items:NormalizedTimelineEvent[],q:LeadTimelineQueryDto) { const term=q.search?.toLowerCase(); return items.filter(i=>(!q.type||i.type===q.type)&&(!q.userId||i.actor?.id===q.userId)&&(!q.source||i.source===q.source)&&(!q.from||i.occurredAt>=new Date(q.from))&&(!q.to||i.occurredAt<=new Date(q.to))&&(!q.notesOnly||i.type==='NOTE_CREATED')&&(!q.stagesOnly||i.type==='STAGE_CHANGED')&&(!q.activitiesOnly||i.source==='ACTIVITIES')&&(!q.mode||q.mode==='ALL'||(q.mode==='MANUAL')===i.manual)&&(!term||`${i.title} ${i.description??''}`.toLowerCase().includes(term))); }
+  private mapType(value:string) { const upper=value.toUpperCase(); if(upper.includes('STAGE'))return'STAGE_CHANGED';if(upper.includes('STATUS'))return'STATUS_CHANGED';if(upper.includes('ASSIGN'))return'ASSIGNMENT_CHANGED';if(upper.includes('SLA'))return'SLA_UPDATED';if(upper.includes('LOST'))return'LEAD_LOST';if(upper.includes('CONVERT'))return'SALE_COMPLETED';if(upper.includes('ACTIVITY_COMPLETED'))return'APPOINTMENT_COMPLETED';if(upper.includes('ACTIVITY'))return'APPOINTMENT_UPDATED';return upper; }
+  private title(type:string) { return type.replaceAll('_',' ').toLowerCase().replace(/^./,c=>c.toUpperCase()); }
+  private safe(value:unknown):Record<string,unknown> { if(!value||typeof value!=='object'||Array.isArray(value))return{}; return Object.fromEntries(Object.entries(value as Record<string,unknown>).filter(([key])=>safeKeys.has(key))); }
+  private canReadPrivate(ctx:AccessContext){return ctx.global||ctx.permissions.includes('*')||ctx.permissions.includes('leads:read-all');}
+  private encodeCursor(item:NormalizedTimelineEvent){return Buffer.from(JSON.stringify({date:item.occurredAt.toISOString(),id:item.id})).toString('base64url');}
+  private decodeCursor(cursor?:string){if(!cursor)return null;try{const parsed=JSON.parse(Buffer.from(cursor,'base64url').toString());const date=new Date(parsed.date);if(!Number.isFinite(date.getTime())||typeof parsed.id!=='string')throw new Error();return{date,id:parsed.id};}catch{throw new BadRequestException('Cursor da timeline é inválido');}}
 }

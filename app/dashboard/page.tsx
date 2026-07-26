@@ -24,6 +24,7 @@ import KpiGrid, {
 import ListCard from "@/components/dashboard/ListCard";
 import { dashboardService } from "@/services/dashboard.service";
 import { DashboardResponse } from "@/types/dashboard";
+import CommercialPendingAlert from "@/components/dashboard/CommercialPendingAlert";
 
 const statusLabel: Record<string, string> = {
   DRAFT: "Rascunho",
@@ -267,6 +268,8 @@ export default function DashboardPage() {
         <Image src="/branding/dashboard-hero.png" alt="" fill priority sizes="(max-width: 1024px) 100vw, 80vw" className="object-cover object-center" />
 
       </section>
+
+      <CommercialPendingAlert />
 
       <KpiGrid items={kpis} />
 

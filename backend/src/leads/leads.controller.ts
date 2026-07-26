@@ -13,6 +13,7 @@ import { UpdateLeadStatusDto } from './dto/update-lead-status.dto';
 import { UpdateLeadTemperatureDto } from './dto/update-lead-temperature.dto';
 import { UpdateLeadDto } from './dto/update-lead.dto';
 import { SetLeadManagerDto } from './dto/set-lead-manager.dto';
+import { LeadTimelineQueryDto } from './dto/lead-timeline.dto';
 import { LeadsService } from './leads.service';
 
 type AuthRequest = Request & { user?: { id: string; role?: string } };
@@ -24,7 +25,8 @@ export class LeadsController {
   @Get('duplicates') @Permissions('leads:manage-duplicates') duplicates(@Query() query: ListLeadsDto, @Req() req: AuthRequest) { return this.leadsService.duplicates(query, req.user!); }
   @Get() @Permissions('leads:read') findAll(@Query() query: ListLeadsDto, @Req() req: AuthRequest) { return this.leadsService.findAll(query, req.user!); }
   @Get(':id') @Permissions('leads:read') findOne(@Param('id') id: string, @Req() req: AuthRequest) { return this.leadsService.findOne(id, req.user!); }
-  @Get(':id/timeline') @Permissions('leads:history:read') timeline(@Param('id') id: string, @Req() req: AuthRequest) { return this.leadsService.getTimeline(id, req.user!); }
+  @Get(':id/timeline') @Permissions('leads:history:read') timeline(@Param('id') id: string, @Query() query: LeadTimelineQueryDto, @Req() req: AuthRequest) { return this.leadsService.getTimeline(id, query, req.user!); }
+  @Get(':id/commercial-summary') @Permissions('leads:read') commercialSummary(@Param('id') id: string, @Req() req: AuthRequest) { return this.leadsService.commercialSummary(id, req.user!); }
   @Post() @Permissions('leads:create') create(@Body() data: CreateLeadDto, @Req() req: AuthRequest) { return this.leadsService.create(data, req.user!); }
   @Patch(':id') @Permissions('leads:update') update(@Param('id') id: string, @Body() data: UpdateLeadDto, @Req() req: AuthRequest) { return this.leadsService.update(id, data, req.user!); }
   @Patch(':id/assign') @Permissions('leads:assign') assign(@Param('id') id: string, @Body() data: AssignLeadDto, @Req() req: AuthRequest) { return this.leadsService.assign(id, data.assignedUserId ?? null, req.user!); }

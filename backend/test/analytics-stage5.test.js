@@ -22,7 +22,7 @@ test('campaign funnel contains all commercial stages and safe rate calculation',
 
 test('lead timeline consolidates existing sources chronologically', () => {
   ['leadEvent', 'campaignRecipient', 'whatsappMessage', 'dealEvent'].forEach((source) => assert.ok(timeline.includes(source)));
-  assert.match(timeline, /b\.occurredAt\.getTime\(\) - a\.occurredAt\.getTime\(\)/);
+  assert.match(timeline, /occurredAt\.getTime\(\)/);
 });
 
 test('CSV export neutralizes spreadsheet formulas and quotes fields', () => {

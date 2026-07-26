@@ -20,10 +20,10 @@ test('broker and manager dashboards share the same responsive implementation', (
   assert.match(dashboard, /sm:grid-cols-2 xl:grid-cols-4/);
 });
 
-test('visual timeline consumes the existing lead timeline with filters and progressive pagination', () => {
-  const timeline = read('app/leads/[id]/timeline/page.tsx');
+test('visual timeline consumes the official lead timeline with filters and cursor pagination', () => {
+  const timeline = read('app/leads/[id]/page.tsx');
   assert.match(read('services/lead.service.ts'), /\/leads\/\$\{id\}\/timeline/);
-  ['Pesquisar timeline', 'Filtrar origem', 'Carregar mais eventos', 'Mensagem enviada', 'Mensagem entregue', 'Mensagem lida', 'Link acessado'].forEach((label) => assert.ok(timeline.includes(label)));
+  ['Buscar na timeline', 'Filtrar origem', 'Carregar mais', 'Resumo comercial', 'Registrar atividade'].forEach((label) => assert.ok(timeline.includes(label)));
 });
 
 test('reports expose visual commercial filters and safe CSV while leaving XLSX disabled', () => {

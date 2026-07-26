@@ -10,6 +10,7 @@ import { UpdateLeadActivityDto } from './dto/update-lead-activity.dto';
 import { UpdateLeadDto } from './dto/update-lead.dto';
 import { AuditService } from '../audit/audit.service';
 import { TimelineService } from './timeline.service';
+import { LeadTimelineQueryDto } from './dto/lead-timeline.dto';
 import { AnalyticsEventsService } from '../analytics/analytics-events.service';
 
 const allowedAssigneeRoles: Role[] = [Role.CORRETOR, Role.ORG_ADMIN, Role.MANAGER, Role.BROKER];
@@ -84,7 +85,8 @@ export class LeadsService {
 
   async findOne(id: string, user: UserRef) {
     const ctx = await this.access.resolve(user);
-    const lead = await this.prisma.lead.findFirst({ where: { id, ...this.archiveWhere(false), ...this.visibilityWhere(ctx) }, include: leadDetailInclude });
+    const activityVisibility = this.canReadPrivate(ctx) ? {} : { OR: [{ visibility: 'TEAM' }, { createdByUserId: ctx.id }] };
+    const lead = await this.prisma.lead.findFirst({ where: { id, ...this.archiveWhere(false), ...this.visibilityWhere(ctx) }, include: { ...leadDetailInclude, activities: { ...leadDetailInclude.activities, where: { archivedAt: null, ...activityVisibility } } } });
     if (!lead) throw new NotFoundException('Lead não encontrado');
     return lead;
   }
@@ -216,10 +218,11 @@ export class LeadsService {
     const lead = await this.findOne(leadId, user);
     await this.ensureAssignedUser(lead.organizationId, data.responsibleUserId);
     const activity = await this.prisma.$transaction(async (tx) => {
-      const created = await tx.leadActivity.create({ data: { leadId, organizationId: lead.organizationId, title: data.title.trim(), dueAt: new Date(data.dueAt), status: data.status, priority: data.priority, note: data.note?.trim() || null, responsibleUserId: data.responsibleUserId, createdByUserId: user.id } });
+      const created = await tx.leadActivity.create({ data: { leadId, organizationId: lead.organizationId, title: data.title.trim(), dueAt: new Date(data.dueAt), status: data.status, priority: data.priority, note: data.note?.trim() || null, type: data.type ?? 'FOLLOW_UP', description: data.description?.trim() || null, result: data.result?.trim() || null, visibility: data.visibility ?? 'TEAM', nextFollowUpAt: data.nextFollowUpAt ? new Date(data.nextFollowUpAt) : null, reminderMinutes: data.reminderMinutes, responsibleUserId: data.responsibleUserId, createdByUserId: user.id } });
       await tx.leadEvent.create({ data: { leadId, organizationId: lead.organizationId, eventType: LeadEventType.LEAD_ACTIVITY_CREATED, description: 'Atividade criada', actorUserId: user.id, payload: { activityId: created.id, title: created.title } } });
       return created;
     });
+    await this.audit.record({ organizationId: lead.organizationId, actorUserId: user.id, module: 'leads', entityType: 'LeadActivity', entityId: activity.id, action: 'lead.activity_created', after: { leadId, type: activity.type, title: activity.title, visibility: activity.visibility, dueAt: activity.dueAt } });
     return activity;
   }
 
@@ -227,7 +230,8 @@ export class LeadsService {
     const lead = await this.findOne(leadId, user);
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
-    const where = { leadId, organizationId: lead.organizationId, ...(query.status ? { status: query.status } : {}), ...(query.responsibleUserId ? { responsibleUserId: query.responsibleUserId } : {}) };
+    const ctx = await this.access.resolve(user);
+    const where = { leadId, organizationId: lead.organizationId, archivedAt: null, ...(!this.canReadPrivate(ctx) ? { OR: [{ visibility: 'TEAM' }, { createdByUserId: ctx.id }] } : {}), ...(query.status ? { status: query.status } : {}), ...(query.responsibleUserId ? { responsibleUserId: query.responsibleUserId } : {}) };
     const [items, total] = await this.prisma.$transaction([
       this.prisma.leadActivity.findMany({ where, include: { responsibleUser: { select: safeUserSelect }, createdByUser: { select: safeUserSelect } }, orderBy: { dueAt: 'asc' }, skip: (page - 1) * limit, take: limit }),
       this.prisma.leadActivity.count({ where }),
@@ -238,22 +242,38 @@ export class LeadsService {
 
   async updateActivity(leadId: string, activityId: string, data: UpdateLeadActivityDto, user: UserRef) {
     const lead = await this.findOne(leadId, user);
-    const current = await this.prisma.leadActivity.findFirst({ where: { id: activityId, leadId, organizationId: lead.organizationId } });
+    const ctx = await this.access.resolve(user);
+    const current = await this.prisma.leadActivity.findFirst({ where: { id: activityId, leadId, organizationId: lead.organizationId, archivedAt: null, ...(!this.canReadPrivate(ctx) ? { OR: [{ visibility: 'TEAM' }, { createdByUserId: ctx.id }] } : {}) } });
     if (!current) throw new NotFoundException('Atividade não encontrada');
     if (data.responsibleUserId) await this.ensureAssignedUser(lead.organizationId, data.responsibleUserId);
     const status = data.status;
     const completedAt = data.completedAt === null ? null : data.completedAt ? new Date(data.completedAt) : status === LeadActivityStatus.COMPLETED && !current.completedAt ? new Date() : undefined;
     const activity = await this.prisma.$transaction(async (tx) => {
-      const updated = await tx.leadActivity.update({ where: { id: activityId }, data: { title: data.title?.trim(), dueAt: data.dueAt ? new Date(data.dueAt) : undefined, status, priority: data.priority, note: data.note === undefined ? undefined : data.note?.trim() || null, completedAt, responsibleUserId: data.responsibleUserId } });
+      const updated = await tx.leadActivity.update({ where: { id: activityId }, data: { title: data.title?.trim(), dueAt: data.dueAt ? new Date(data.dueAt) : undefined, status, priority: data.priority, note: data.note === undefined ? undefined : data.note?.trim() || null, result: data.result?.trim(), nextFollowUpAt: data.nextFollowUpAt === null ? null : data.nextFollowUpAt ? new Date(data.nextFollowUpAt) : undefined, completedAt, responsibleUserId: data.responsibleUserId } });
       await tx.leadEvent.create({ data: { leadId, organizationId: lead.organizationId, eventType: updated.status === LeadActivityStatus.COMPLETED ? LeadEventType.LEAD_ACTIVITY_COMPLETED : LeadEventType.LEAD_ACTIVITY_UPDATED, description: updated.status === LeadActivityStatus.COMPLETED ? 'Atividade concluída' : 'Atividade atualizada', actorUserId: user.id, payload: { activityId, changes: data as Prisma.InputJsonObject } } });
       return updated;
     });
+    await this.audit.record({ organizationId: lead.organizationId, actorUserId: user.id, module: 'leads', entityType: 'LeadActivity', entityId: activity.id, action: 'lead.activity_updated', before: { status: current.status, completedAt: current.completedAt }, after: { status: activity.status, completedAt: activity.completedAt, result: activity.result } });
     return activity;
   }
 
-  async getTimeline(id: string, user: UserRef) {
+  async getTimeline(id: string, query: LeadTimelineQueryDto, user: UserRef) {
     const lead = await this.findOne(id, user);
-    return this.timeline.forLead(id, lead.organizationId);
+    const ctx = await this.access.resolve(user);
+    return this.timeline.forLead(id, lead.organizationId, ctx, query);
+  }
+
+  async commercialSummary(id: string, user: UserRef) {
+    const lead = await this.findOne(id, user);
+    const [card, distribution, stageChanges, contacts, followUps] = await Promise.all([
+      this.prisma.pipelineLead.findFirst({ where: { leadId:id, organizationId:lead.organizationId, deletedAt:null }, include:{ stage:{select:{id:true,name:true}}, pipeline:{select:{id:true,name:true}} }, orderBy:{updatedAt:'desc'} }),
+      this.prisma.leadDistribution.findFirst({ where:{leadId:id,organizationId:lead.organizationId}, include:{campaign:{select:{name:true}},followUps:{orderBy:{createdAt:'desc'},take:1}}, orderBy:{createdAt:'desc'} }),
+      this.prisma.leadEvent.count({where:{leadId:id,organizationId:lead.organizationId,description:{contains:'movido para'}}}),
+      this.prisma.leadActivity.count({where:{leadId:id,organizationId:lead.organizationId,type:{in:['CALL','WHATSAPP','EMAIL','MEETING']},archivedAt:null}}),
+      this.prisma.leadActivity.count({where:{leadId:id,organizationId:lead.organizationId,type:'FOLLOW_UP',archivedAt:null}}),
+    ]);
+    const now=Date.now(), metadata=this.metadata(lead.metadata), next=lead.activities.filter(activity=>activity.status!=='COMPLETED'&&activity.status!=='CANCELED').sort((a,b)=>a.dueAt.getTime()-b.dueAt.getTime())[0];
+    return { lead:{id:lead.id,name:lead.name,phone:this.maskPhone(lead.phone),email:lead.email,source:lead.source,temperature:lead.temperature,status:lead.status,development:metadata.development??metadata.empreendimento??null,region:metadata.region??metadata.regiao??null,neighborhood:metadata.neighborhood??metadata.bairro??null,assignedUser:lead.assignedUser,managerUser:lead.managerUser,createdAt:lead.createdAt,updatedAt:lead.updatedAt}, pipeline:card?{id:card.pipeline.id,cardId:card.id,name:card.pipeline.name,stageId:card.stage.id,stage:card.stage.name,enteredStageAt:card.enteredStageAt}:null, distribution:distribution?{id:distribution.id,campaign:distribution.campaign?.name??null,code:distribution.triggerId??distribution.id.slice(-8).toUpperCase(),slaDueAt:distribution.slaDueAt,nextFollowUpAt:distribution.followUps[0]?.nextFollowUpAt??distribution.nextFollowUpAt}:null, summary:{daysInFunnel:Math.floor((now-lead.createdAt.getTime())/86400000),daysInStage:card?Math.floor((now-card.enteredStageAt.getTime())/86400000):0,totalInteractions:lead._count.events+lead._count.activities,lastInteractionAt:lead.lastInteractionAt??lead.updatedAt,nextActivity:next?{id:next.id,title:next.title,dueAt:next.dueAt,status:next.status}:null,stageChanges,contacts,followUps,slaStatus:distribution?.slaDueAt?(distribution.firstUpdatedAt?'MET':distribution.slaDueAt.getTime()<now?'OVERDUE':'ON_TIME'):null} };
   }
 
   private archiveWhere(archived?: boolean): Prisma.LeadWhereInput {
@@ -261,10 +281,14 @@ export class LeadsService {
     return { deletedAt: null };
   }
 
+  private canReadPrivate(ctx: AccessContext) { return ctx.global || ctx.permissions.includes('*') || ctx.permissions.includes('leads:read-all'); }
+  private metadata(value: unknown) { return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {}; }
+  private maskPhone(value?: string | null) { const digits=value?.replace(/\D/g,'')??''; return digits.length>4 ? `${'*'.repeat(Math.max(0,digits.length-4))}${digits.slice(-4)}` : value??null; }
+
   private visibilityWhere(ctx: AccessContext): Prisma.LeadWhereInput {
     const tenant = this.scopeWhere(ctx);
     if (ctx.global || ctx.permissions.includes('leads:read-all') || ctx.permissions.includes('*')) return tenant;
-    return { ...tenant, OR: [{ assignedUserId: ctx.id }, { createdByUserId: ctx.id }] };
+    return { ...tenant, OR: [{ assignedUserId: ctx.id }, { managerUserId: ctx.id }, { createdByUserId: ctx.id }] };
   }
 
   private scopeWhere(ctx: AccessContext): Prisma.LeadWhereInput {

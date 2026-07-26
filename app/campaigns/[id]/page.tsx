@@ -4,18 +4,19 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { campaignsService } from "@/services/campaigns.service";
-import { Campaign, CampaignProgress } from "@/types/campaign";
+import { Campaign } from "@/types/campaign";
 import { OperationalRecipient } from "@/types/campaign";
 import Modal from "@/components/ui/Modal";
 import { CampaignIntelligence } from "@/components/analytics/CampaignIntelligence";
-import { canCancelCampaign, primaryCampaignAction, shouldPollCampaign } from "../campaign-operational-ui.mjs";
+import { canCancelCampaign, primaryCampaignAction } from "../campaign-operational-ui.mjs";
+import { useCampaignProgress } from "@/hooks/useCampaignProgress";
 
 export default function CampaignDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [campaign, setCampaign] = useState<Campaign | null>(null);
   const [error, setError] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
-  const [progress, setProgress] = useState<CampaignProgress | null>(null);
+
   const [recipients,setRecipients]=useState<OperationalRecipient[]>([]);
   const [recipientPage,setRecipientPage]=useState(1);
   const [recipientPages,setRecipientPages]=useState(1);
@@ -54,8 +55,9 @@ export default function CampaignDetailPage() {
 
   useEffect(()=>{let active=true;void campaignsService.recipients(id,{page:recipientPage,search:recipientSearch,status:recipientStatus||undefined}).then(result=>{if(active){setRecipients(result.items);setRecipientPages(result.meta.totalPages);}}).catch(error=>{if(active)setError(error instanceof Error?error.message:"Erro ao carregar destinatários.");});return()=>{active=false};},[id,recipientPage,recipientSearch,recipientStatus]);
 
-  const campaignStatus=campaign?.status;
-  useEffect(()=>{if(!shouldPollCampaign(campaignStatus,false))return;let busy=false;const refresh=async()=>{if(!shouldPollCampaign(campaignStatus,document.hidden)||busy)return;busy=true;try{const value=await campaignsService.progress(id);setProgress(value);setCampaign(current=>current?{...current,status:value.status}:current);}finally{busy=false;}};void refresh();const timer=setInterval(()=>void refresh(),5000);return()=>clearInterval(timer);},[id,campaignStatus]);
+  const persistedStatus=campaign?.status;
+  const {progress,error:progressError}=useCampaignProgress(id,persistedStatus);
+  const campaignStatus=progress?.status??persistedStatus;
 
   async function operate(action:"validate"|"start"|"pause"|"resume"){if(actionLoading)return;setActionLoading(true);setError("");try{if(action==="validate"){const result=await campaignsService.validateCampaign(id);if(!result.valid)throw new Error(result.reasons.map(r=>r.message).join("; "));setCampaign(await campaignsService.getCampaignById(id));}else setCampaign(await ({start:campaignsService.startCampaign,pause:campaignsService.pauseCampaign,resume:campaignsService.resumeCampaign}[action]).call(campaignsService,id));}catch(err){setError(err instanceof Error?err.message:"Não foi possível executar a ação.");}finally{setActionLoading(false);}}
 
@@ -82,7 +84,7 @@ export default function CampaignDetailPage() {
     return (
       <main>
         <div className="rounded border border-red-800 bg-red-950/50 p-3 text-red-200">
-          {error}
+          {error||progressError}
         </div>
       </main>
     );
@@ -97,20 +99,21 @@ export default function CampaignDetailPage() {
     ["Enviadas", progress?.sent??campaign.totalSent],
     ["Entregues", progress?.delivered??campaign.totalDelivered],
     ["Lidas", progress?.read??campaign.totalRead],
+    ["Cliques", progress?.clicked??campaign.totalClicked],
     ["Falhas temporárias", progress?.failedRetryable??0],
     ["Falhas permanentes", progress?.failedPermanent??campaign.totalFailed],
     ["Cancelados", progress?.canceled??0],
     ["Desconhecidos", progress?.unknown??0],
     ["Pendentes", progress?.pending??0],
   ] as const;
-  const action=primaryCampaignAction(campaign.status) as "validate"|"start"|"pause"|"resume"|null;
+  const action=primaryCampaignAction(campaignStatus) as "validate"|"start"|"pause"|"resume"|null;
 
   return (
     <main className="space-y-6">
       <div className="flex justify-between gap-4">
         <div>
           <h1 className="text-4xl font-bold">{campaign.name}</h1>
-          <p className="text-slate-400">Status: {campaign.status}</p>
+          <p className="text-slate-400">Status: {campaignStatus}</p>
         </div>
         <div className="flex gap-2">
           {action&&<button className="rounded bg-emerald-700 px-4 py-2 disabled:opacity-50" disabled={actionLoading} onClick={()=>action==="validate"||action==="resume"?void operate(action):setModal(action)}>{action==="validate"?"Validar":action==="start"?"Iniciar":action==="pause"?"Pausar":"Retomar"}</button>}
@@ -121,7 +124,9 @@ export default function CampaignDetailPage() {
           >
             Editar
           </Link>}
-          {canCancelCampaign(campaign.status)&&<button
+          <button className="rounded bg-slate-800 px-4 py-2" disabled={actionLoading} onClick={()=>void campaignsService.duplicateCampaign(id).then(copy=>location.assign(`/campaigns/new?draft=${copy.id}`)).catch(err=>setError(err instanceof Error?err.message:"Erro ao duplicar campanha."))}>Duplicar campanha</button>
+          <button className="rounded bg-slate-800 px-4 py-2" disabled={actionLoading} onClick={()=>void campaignsService.archiveCampaign(id,!campaign.archivedAt).then(setCampaign).catch(err=>setError(err instanceof Error?err.message:"Erro ao arquivar campanha."))}>{campaign.archivedAt?"Desarquivar":"Arquivar"}</button>
+          {canCancelCampaign(campaignStatus)&&<button
             className="rounded bg-red-900 px-4 py-2 disabled:opacity-50"
             disabled={actionLoading || ["COMPLETED","COMPLETED_WITH_ERRORS","CANCELED"].includes(campaign.status)}
             onClick={() => setModal("cancel")}
@@ -132,11 +137,11 @@ export default function CampaignDetailPage() {
         </div>
       </div>
 
-      {progress&&<section className="rounded-xl bg-slate-900 p-4" aria-label="Progresso da campanha"><div className="mb-2 flex justify-between"><strong>Progresso operacional</strong><span>{progress.percentCompleted}%</span></div><div className="h-2 overflow-hidden rounded bg-slate-700"><div className="h-full bg-emerald-500 transition-all" style={{width:`${progress.percentCompleted}%`}} /></div><p className="mt-2 text-sm text-slate-400">{progress.completed} concluídos · {progress.pending} pendentes · {progress.averagePerSecond}/s · previsão {progress.estimatedCompletionAt?new Date(progress.estimatedCompletionAt).toLocaleString():"-"} · atualizado em {new Date(progress.updatedAt).toLocaleString()}</p></section>}
+      {progress&&<section className="rounded-xl bg-slate-900 p-4" aria-label="Progresso da campanha"><div className="mb-2 flex justify-between"><strong>Progresso operacional</strong><span>{progress.percentCompleted}%</span></div><div className="h-2 overflow-hidden rounded bg-slate-700"><div className="h-full bg-emerald-500 transition-all" style={{width:`${progress.percentCompleted}%`}} /></div><p className="mt-2 text-sm text-slate-400">{progress.completed} concluídos · {progress.pending} pendentes · velocidade atual {progress.currentPerMinute??0}/min · média {progress.averagePerMinute??Math.round(progress.averagePerSecond*60)}/min · ETA {progress.etaSeconds??"-"}s · previsão {progress.estimatedCompletionAt?new Date(progress.estimatedCompletionAt).toLocaleString():"-"} · atualizado em {new Date(progress.updatedAt).toLocaleString()}</p></section>}
 
-      {error && (
+      {(error||progressError) && (
         <div className="rounded border border-red-800 bg-red-950/50 p-3 text-red-200">
-          {error}
+          {error||progressError}
         </div>
       )}
 

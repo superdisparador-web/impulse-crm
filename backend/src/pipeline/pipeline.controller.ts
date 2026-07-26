@@ -4,20 +4,20 @@ import { Request } from 'express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Roles } from '../auth/roles/roles.decorator';
 import { RolesGuard } from '../auth/roles/roles.guard';
-import { AddCardDto, CreatePipelineDto, CreateStageDto, ListPipelinesDto, MoveCardDto, ReorderStagesDto, UpdatePipelineDto, UpdateStageDto } from './dto/pipeline.dto';
+import { AddCardDto, CreatePipelineDto, CreateStageDto, ListPipelinesDto, MoveCardDto, PipelineBoardQueryDto, ReorderStagesDto, UpdatePipelineDto, UpdateStageDto } from './dto/pipeline.dto';
 import { PipelineService } from './pipeline.service';
 
 type AuthRequest = Request & { user?: { id: string; role?: Role } };
 
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Role.ADMIN, Role.CORRETOR)
+@Roles(Role.ADMIN, Role.GLOBAL_ADMIN, Role.ORG_ADMIN, Role.MANAGER, Role.BROKER, Role.CORRETOR)
 @Controller('pipeline')
 export class PipelineController {
   constructor(private readonly service: PipelineService) {}
 
   @Post() createPipeline(@Body() data: CreatePipelineDto, @Req() req: AuthRequest) { return this.service.createPipeline(data, req.user!); }
   @Get() listPipelines(@Query() query: ListPipelinesDto, @Req() req: AuthRequest) { return this.service.listPipelines(query, req.user!); }
-  @Get(':pipelineId/board') board(@Param('pipelineId') pipelineId: string, @Req() req: AuthRequest) { return this.service.board(pipelineId, req.user!); }
+  @Get(':pipelineId/board') board(@Param('pipelineId') pipelineId: string, @Query() query: PipelineBoardQueryDto, @Req() req: AuthRequest) { return this.service.board(pipelineId, req.user!, query); }
   @Get(':pipelineId/stages') listStages(@Param('pipelineId') pipelineId: string, @Req() req: AuthRequest) { return this.service.listStages(pipelineId, req.user!); }
   @Post(':pipelineId/stages') createStage(@Param('pipelineId') pipelineId: string, @Body() data: CreateStageDto, @Req() req: AuthRequest) { return this.service.createStage(pipelineId, data, req.user!); }
   @Patch(':pipelineId/stages/reorder') reorderStages(@Param('pipelineId') pipelineId: string, @Body() data: ReorderStagesDto, @Req() req: AuthRequest) { return this.service.reorderStages(pipelineId, data, req.user!); }

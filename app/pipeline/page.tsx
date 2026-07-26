@@ -5,9 +5,28 @@ import { DropTarget } from "@/components/pipeline/KanbanBoard";
 import { PipelineBody } from "@/components/pipeline/PipelineBody";
 import { LeadDrawer } from "@/components/leads/LeadDrawer";
 import { PipelineHeader } from "@/components/pipeline/PipelineHeader";
+import { PipelineFilters } from "@/components/pipeline/PipelineFilters";
+import { PipelineMetrics } from "@/components/pipeline/PipelineMetrics";
 import { findCardStage, getErrorMessage, isLatestBoardResponse, moveCard, selectInitialPipelineId, sortBoard } from "@/components/pipeline/pipeline-utils";
 import { getPipelineBoard, listPipelines, movePipelineCard } from "@/services/pipeline-board.service";
-import { PipelineBoard, PipelineSummary } from "@/types/pipeline-board";
+import { PipelineBoard, PipelineFilters as Filters, PipelineSummary } from "@/types/pipeline-board";
+
+export function startPipelinePolling(refresh: () => void, visibility: () => DocumentVisibilityState, timers: Pick<typeof window, "setInterval" | "clearInterval">, delay = 30_000) {
+  const intervalId = timers.setInterval(() => { if (visibility() === "visible") refresh(); }, delay);
+  return () => timers.clearInterval(intervalId);
+}
+
+export async function persistOptimisticPipelineMove(board: PipelineBoard, target: DropTarget, persist: (cardId: string, stageId: string, position: number) => Promise<unknown>, update: (board: PipelineBoard) => void, reportError: (message: string) => void) {
+  const sourceStage = findCardStage(board, target.cardId);
+  const nextBoard = moveCard(board, { cardId: target.cardId, destinationStageId: target.stageId, destinationIndex: target.index });
+  const movedCard = nextBoard.stages.find((stage) => stage.id === target.stageId)?.cards.find((card) => card.id === target.cardId);
+  if (!sourceStage || !movedCard) return false;
+  const previousPosition = sourceStage.cards.find((card) => card.id === target.cardId)?.position;
+  if (sourceStage.id === target.stageId && movedCard.position === previousPosition) return false;
+  update(nextBoard);
+  try { await persist(target.cardId, target.stageId, movedCard.position); return true; }
+  catch (error) { update(board); reportError(error instanceof Error && error.message ? error.message : "Não foi possível movimentar o card. A alteração foi desfeita."); return false; }
+}
 
 export default function PipelinePage() {
   const [pipelines, setPipelines] = useState<PipelineSummary[]>([]);
@@ -22,6 +41,8 @@ export default function PipelinePage() {
   const [moveError, setMoveError] = useState("");
   const [selectedCardId, setSelectedCardId] = useState("");
   const boardRequestRef = useRef(0);
+  const [filters, setFilters] = useState<Filters>({ sla: "ALL", limit: 50 });
+  const [appliedFilters, setAppliedFilters] = useState<Filters>({ sla: "ALL", limit: 50 });
 
   const loadBoard = useCallback(async (pipelineId: string, refresh = false) => {
     const requestId = boardRequestRef.current + 1;
@@ -30,7 +51,7 @@ export default function PipelinePage() {
     setRefreshing(refresh);
     setError("");
     try {
-      const data = sortBoard(await getPipelineBoard(pipelineId));
+      const data = sortBoard(await getPipelineBoard(pipelineId, appliedFilters));
       if (isLatestBoardResponse(boardRequestRef.current, requestId)) setBoard(data);
     } catch (err) {
       if (isLatestBoardResponse(boardRequestRef.current, requestId)) {
@@ -43,7 +64,7 @@ export default function PipelinePage() {
         setRefreshing(false);
       }
     }
-  }, []);
+  }, [appliedFilters]);
 
   const loadPipelines = useCallback(async () => {
     setLoadingPipelines(true);
@@ -65,6 +86,10 @@ export default function PipelinePage() {
   }, [loadBoard]);
 
   useEffect(() => { const timeoutId = window.setTimeout(() => { void loadPipelines(); }, 0); return () => window.clearTimeout(timeoutId); }, [loadPipelines]);
+  useEffect(() => {
+    if (!selectedPipelineId) return;
+    return startPipelinePolling(() => { void loadBoard(selectedPipelineId, true); }, () => document.visibilityState, window);
+  }, [loadBoard, selectedPipelineId]);
 
   async function selectPipeline(pipelineId: string) {
     setSelectedPipelineId(pipelineId);
@@ -74,22 +99,10 @@ export default function PipelinePage() {
 
   async function handleMove(target: DropTarget) {
     if (!board || movingCardId || target.cardId === "") return;
-    const previousBoard = board;
-    const sourceStage = findCardStage(previousBoard, target.cardId);
-    const nextBoard = moveCard(previousBoard, { cardId: target.cardId, destinationStageId: target.stageId, destinationIndex: target.index });
-    const destinationStage = nextBoard.stages.find((stage) => stage.id === target.stageId);
-    const movedCard = destinationStage?.cards.find((card) => card.id === target.cardId);
-    if (!sourceStage || !destinationStage || !movedCard) return;
-    if (sourceStage.id === target.stageId && movedCard.position === previousBoard.stages.find((stage) => stage.id === sourceStage.id)?.cards.find((card) => card.id === target.cardId)?.position) return;
-
     setMoveError("");
     setMovingCardId(target.cardId);
-    setBoard(nextBoard);
     try {
-      await movePipelineCard(target.cardId, target.stageId, movedCard.position);
-    } catch (err) {
-      setBoard(previousBoard);
-      setMoveError(err instanceof Error && err.message ? err.message : "Não foi possível movimentar o card. A alteração foi desfeita.");
+      await persistOptimisticPipelineMove(board, target, movePipelineCard, setBoard, setMoveError);
     } finally {
       setMovingCardId("");
       setActiveCardId("");
@@ -99,5 +112,5 @@ export default function PipelinePage() {
   const isLoading = loadingPipelines || loadingBoard;
   const selectedCard = board?.stages.flatMap((stage) => stage.cards.map((card) => ({ ...card, stageId: stage.id }))).find((card) => card.id === selectedCardId) ?? null;
 
-  return <main className="space-y-6"><PipelineHeader pipelines={pipelines} selectedPipelineId={selectedPipelineId} loading={isLoading} refreshing={refreshing} onSelectPipeline={(pipelineId) => { void selectPipeline(pipelineId); }} onRefresh={() => { if (selectedPipelineId) void loadBoard(selectedPipelineId, true); }} /><PipelineBody error={error} moveError={moveError} isLoading={isLoading} pipelineCount={pipelines.length} board={board} activeCardId={activeCardId} moving={Boolean(movingCardId)} onDragStart={setActiveCardId} onDropCard={(target) => { void handleMove(target); }} onOpenCard={setSelectedCardId} /><LeadDrawer card={selectedCard} board={board} onClose={() => setSelectedCardId("")} onArchived={() => { if (selectedPipelineId) void loadBoard(selectedPipelineId, true); }} /></main>;
+  return <main className="space-y-6"><PipelineHeader pipelines={pipelines} selectedPipelineId={selectedPipelineId} loading={isLoading} refreshing={refreshing} onSelectPipeline={(pipelineId) => { void selectPipeline(pipelineId); }} onRefresh={() => { if (selectedPipelineId) void loadBoard(selectedPipelineId, true); }} /><PipelineFilters value={filters} onChange={setFilters} onApply={() => setAppliedFilters(filters)} onClear={() => { const clean: Filters = { sla: "ALL", limit: 50 }; setFilters(clean); setAppliedFilters(clean); }} /><PipelineMetrics metrics={board?.metrics} /><PipelineBody error={error} moveError={moveError} isLoading={isLoading} pipelineCount={pipelines.length} board={board} activeCardId={activeCardId} moving={Boolean(movingCardId)} onDragStart={setActiveCardId} onDropCard={(target) => { void handleMove(target); }} onOpenCard={setSelectedCardId} /><LeadDrawer card={selectedCard} board={board} onClose={() => setSelectedCardId("")} onArchived={() => { if (selectedPipelineId) void loadBoard(selectedPipelineId, true); }} /></main>;
 }

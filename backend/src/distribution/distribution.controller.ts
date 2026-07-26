@@ -9,6 +9,7 @@ import { CreateDistributionListDto, UpdateDistributionListDto } from './dto/dist
 import { CreateDistributionMemberDto, ReorderDistributionListsDto, UpdateDistributionMemberDto } from './dto/distribution-member.dto';
 import { ImportDistributionMembersDto } from './dto/import-distribution-members.dto';
 import { ListDistributionsDto } from './dto/list-distributions.dto';
+import { AvailabilityDto, DistributionSettingsDto, FollowUpDto, ListReceivedLeadsDto, ManualReleaseDto, ReassignLeadDto, UpdateAttendanceDto } from './dto/commercial-follow-up.dto';
 
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller()
@@ -28,4 +29,16 @@ export class DistributionController {
   @Get('distributions') @Permissions('distribution.assignment.read') distributions(@Query() q:ListDistributionsDto,@CurrentUser() u:AuthenticatedUserRef){return this.service.distributions(q,u)}
   @Get('distributions/:id') @Permissions('distribution.assignment.read') distribution(@Param('id') id:string,@CurrentUser() u:AuthenticatedUserRef){return this.service.distribution(id,u)}
   @Post('distributions/:id/retry') @Permissions('distribution.assignment.retry') retry(@Param('id') id:string,@CurrentUser() u:AuthenticatedUserRef){return this.service.retry(id,u)}
+  @Get('distributed-leads') received(@Query()q:ListReceivedLeadsDto,@CurrentUser()u:AuthenticatedUserRef){return this.service.receivedLeads(q,u)}
+  @Get('distributed-leads/metrics') metrics(@CurrentUser()u:AuthenticatedUserRef){return this.service.commercialMetrics(u)}
+  @Get('distributed-leads/:id') receivedDetail(@Param('id')id:string,@CurrentUser()u:AuthenticatedUserRef){return this.service.receivedLead(id,u)}
+  @Patch('distributed-leads/:id/status') attendance(@Param('id')id:string,@Body()d:UpdateAttendanceDto,@CurrentUser()u:AuthenticatedUserRef){return this.service.updateAttendance(id,d,u)}
+  @Post('distributed-leads/:id/follow-up') followUp(@Param('id')id:string,@Body()d:FollowUpDto,@CurrentUser()u:AuthenticatedUserRef){return this.service.answerFollowUp(id,d,u)}
+  @Post('distributed-leads/:id/reassign') reassign(@Param('id')id:string,@Body()d:ReassignLeadDto,@CurrentUser()u:AuthenticatedUserRef){return this.service.reassign(id,d,u)}
+  @Post('distributed-leads/:id/release') release(@Param('id')id:string,@Body()d:ManualReleaseDto,@CurrentUser()u:AuthenticatedUserRef){return this.service.manualRelease(id,d,u)}
+  @Get('agent-availability') availability(@CurrentUser()u:AuthenticatedUserRef){return this.service.availability(u)}
+  @Patch('agent-availability/:userId') setAvailability(@Param('userId')userId:string,@Body()d:AvailabilityDto,@CurrentUser()u:AuthenticatedUserRef){return this.service.setAvailability(userId,d,u)}
+  @Get('distribution-settings') settings(@CurrentUser()u:AuthenticatedUserRef){return this.service.settings(u)}
+  @Patch('distribution-settings') updateSettings(@Body()d:DistributionSettingsDto,@CurrentUser()u:AuthenticatedUserRef){return this.service.updateSettings(d,u)}
+
 }

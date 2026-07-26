@@ -1,5 +1,5 @@
 import { LeadActivityPriority, LeadActivityStatus } from '@prisma/client';
-import { IsDateString, IsEnum, IsOptional, IsString } from 'class-validator';
+import { IsDateString, IsEnum, IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class UpdateLeadActivityDto {
   @IsOptional() @IsString() title?: string;
@@ -9,4 +9,6 @@ export class UpdateLeadActivityDto {
   @IsOptional() @IsString() note?: string | null;
   @IsOptional() @IsDateString() completedAt?: string | null;
   @IsOptional() @IsString() responsibleUserId?: string;
+  @IsOptional() @IsString() @MaxLength(500) result?: string;
+  @IsOptional() @IsDateString() nextFollowUpAt?: string | null;
 }

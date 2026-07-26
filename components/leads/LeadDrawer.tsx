@@ -359,6 +359,8 @@ export function LeadDrawer({
           onClose={requestClose}
         />
 
+        <div className="border-b border-slate-800 px-5 py-3"><a href={`/leads/${selectedLeadId}?from=pipeline`} className="text-sm font-semibold text-blue-300 hover:text-blue-200">Abrir ficha comercial completa</a></div>
+
         <nav
           className="border-b border-slate-800 bg-slate-950 px-4"
           aria-label="Navegação da ficha do lead"

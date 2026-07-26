@@ -16,6 +16,16 @@ export interface CampaignFilters { page?:number; limit?:number; search?:string; 
 export interface CampaignListResponse { items:Campaign[]; meta:{ total:number; page:number; limit:number; totalPages:number }; }
 export interface CampaignEstimateResponse { estimatedContacts:number; }
 export interface CampaignProgress {campaignId:string;status:CampaignStatus;total:number;valid:number;queued:number;processing:number;sent:number;delivered:number;read:number;failedRetryable:number;failedPermanent:number;canceled:number;pending:number;unknown:number;completed:number;percentCompleted:number;averagePerSecond:number;estimatedCompletionAt?:string|null;updatedAt:string;}
+export type CampaignAudienceMode='CSV'|'SEGMENTATION';
+export type SaoPauloRegion='NORTE'|'SUL'|'LESTE'|'OESTE'|'CENTRO';
+export interface CampaignSegmentationFilters {region?:SaoPauloRegion;neighborhood?:string;development?:string;minPrice?:number;maxPrice?:number;minIncome?:number;maxIncome?:number;bedrooms?:number;hasParking?:boolean;hasBalcony?:boolean;mcmv?:boolean;managerId?:string;brokerId?:string;source?:string;status?:string;temperature?:string;dateFrom?:string;dateTo?:string;}
+export interface CampaignDurationEstimate {messages:number;speedPerMinute:number;concurrency:number;effectivePerMinute:number;durationMinutes:number;estimatedEndAt:string;}
+export interface CampaignCostEstimate extends CampaignDurationEstimate {category:CampaignType;costPerMessage:number|null;estimatedCost:number|null;costConfigured:boolean;}
+export interface CampaignAudienceEstimate {totalEncontrado:number;totalElegivel:number;duplicadosRemovidos:number;invalidosRemovidos:number;semTelefone:number;filtrosAplicados:CampaignSegmentationFilters;operation:CampaignCostEstimate;}
+export interface CampaignAudienceMaterializationResult extends Omit<CampaignAudienceEstimate,'operation'> {totalMaterializado:number;}
+export interface CampaignValidationIssue {code:string;field:string;message:string;severity:'ERROR'|'WARNING';step:number;}
+export interface CampaignValidationResult {valid:boolean;reasons:CampaignValidationIssue[];issuesByStep:Record<string,CampaignValidationIssue[]>;validRecipients:number;status:CampaignStatus;}
+export interface CampaignProgressMetrics extends CampaignProgress {clicked?:number;currentPerMinute?:number;averagePerMinute?:number;etaSeconds?:number|null;}
 export interface OperationalRecipient {id:string;name?:string|null;phone:string;status:CampaignRecipientStatus;assignedUser?:Pick<User,'id'|'name'>|null;attemptCount:number;queuedAt?:string|null;processingAt?:string|null;sentAt?:string|null;deliveredAt?:string|null;readAt?:string|null;failedAt?:string|null;errorCategory?:string|null;errorMessage?:string|null;}
 export interface OperationalRecipients {items:OperationalRecipient[];meta:{page:number;limit:number;total:number;totalPages:number};}
 
