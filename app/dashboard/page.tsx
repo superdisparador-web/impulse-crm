@@ -263,8 +263,9 @@ export default function DashboardPage() {
     <div className="relative isolate space-y-7 overflow-hidden rounded-3xl p-1 sm:p-3">
       <Image src="/branding/dashboard-wallpaper.png" alt="" fill sizes="(max-width: 1024px) 100vw, 80vw" className="-z-10 object-cover opacity-[0.07]" />
 
-      <section className="relative min-h-60 overflow-hidden rounded-3xl border border-slate-800/20 bg-slate-950 shadow-lg">
+      <section className="relative min-h-64 overflow-hidden rounded-3xl border border-blue-950/15 bg-slate-950 shadow-[0_24px_60px_-30px_rgba(15,23,42,0.6)] sm:min-h-72">
         <Image src="/branding/dashboard-hero.png" alt="" fill priority sizes="(max-width: 1024px) 100vw, 80vw" className="object-cover object-center" />
+
       </section>
 
       <KpiGrid items={kpis} />

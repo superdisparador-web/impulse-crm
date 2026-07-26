@@ -1,0 +1,13 @@
+ALTER TYPE "CampaignStatus" ADD VALUE IF NOT EXISTS 'VALIDATING';
+ALTER TYPE "CampaignStatus" ADD VALUE IF NOT EXISTS 'READY';
+ALTER TYPE "CampaignStatus" ADD VALUE IF NOT EXISTS 'QUEUED';
+ALTER TYPE "CampaignStatus" ADD VALUE IF NOT EXISTS 'COMPLETED_WITH_ERRORS';
+ALTER TYPE "CampaignRecipientStatus" ADD VALUE IF NOT EXISTS 'PROCESSING';
+ALTER TYPE "CampaignRecipientStatus" ADD VALUE IF NOT EXISTS 'FAILED_RETRYABLE';
+ALTER TYPE "CampaignRecipientStatus" ADD VALUE IF NOT EXISTS 'FAILED_PERMANENT';
+ALTER TYPE "CampaignRecipientStatus" ADD VALUE IF NOT EXISTS 'CANCELED';
+ALTER TYPE "CampaignRecipientStatus" ADD VALUE IF NOT EXISTS 'UNKNOWN';
+ALTER TABLE "Campaign" ADD COLUMN "canceledAt" TIMESTAMP(3), ADD COLUMN "pausedAt" TIMESTAMP(3), ADD COLUMN "resumedAt" TIMESTAMP(3), ADD COLUMN "scheduledByUserId" TEXT, ADD COLUMN "pausedByUserId" TEXT, ADD COLUMN "resumedByUserId" TEXT, ADD COLUMN "canceledByUserId" TEXT;
+ALTER TABLE "CampaignRecipient" ADD COLUMN "processingAt" TIMESTAMP(3), ADD COLUMN "canceledAt" TIMESTAMP(3), ADD COLUMN "lastAttemptAt" TIMESTAMP(3), ADD COLUMN "nextRetryAt" TIMESTAMP(3), ADD COLUMN "attemptCount" INTEGER NOT NULL DEFAULT 0, ADD COLUMN "errorCode" VARCHAR(128), ADD COLUMN "errorCategory" VARCHAR(64), ADD COLUMN "externalMessageId" VARCHAR(255), ADD COLUMN "idempotencyKey" VARCHAR(255), ADD COLUMN "workerJobId" VARCHAR(255);
+CREATE UNIQUE INDEX "CampaignRecipient_idempotencyKey_key" ON "CampaignRecipient"("idempotencyKey");
+CREATE UNIQUE INDEX "MessageQueue_campaignId_recipientId_key" ON "MessageQueue"("campaignId", "recipientId");

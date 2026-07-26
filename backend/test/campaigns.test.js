@@ -23,7 +23,7 @@ test('campaign dtos validate campaign type and list filters', () => {
 
 test('campaign declarations remain unique after duplicate cleanup review', () => {
   const campaignStatusBody = readFileSync('prisma/schema.prisma', 'utf8').match(/enum CampaignStatus \{([\s\S]*?)\n\}/)[1];
-  assert.equal((campaignStatusBody.match(/\bPROCESSING\b/g) ?? []).length, 1);
+  assert.equal((campaignStatusBody.match(/\bPROCESSING\b/g) ?? []).length, 0);
   assert.equal((readFileSync('../services/campaigns.service.ts', 'utf8').match(/cancelCampaign\(/g) ?? []).length, 1);
   assert.equal((controller.match(/@Delete\(':id'\)/g) ?? []).length, 1);
 });

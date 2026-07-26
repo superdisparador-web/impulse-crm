@@ -18,6 +18,7 @@ import { WhatsappWindowPolicy } from './policies/whatsapp-window.policy';
 import { WhatsappCredentialCryptoService } from './security/credential-crypto.service';
 import { redactSecrets, sanitizeError } from './security/redact';
 import { parseMetaTemplateComponents, toSafeTemplate } from './templates/template-components';
+import { classifyMetaError } from '../messaging/meta-error-classifier';
 
 const selectAccount = { id: true, organizationId: true, name: true, provider: true, wabaId: true, phoneNumber: true, normalizedPhone: true, displayPhoneNumber: true, verifiedName: true, phoneNumberId: true, businessAccountId: true, appId: true, apiVersion: true, status: true, isDefault: true, qualityRating: true, messagingLimitTier: true, connectedAt: true, lastSyncAt: true, lastConnectionTestAt: true, lastConnectionError: true, webhookSubscribedAt: true, tokenConfigured: true, tokenLast4: true, createdByUserId: true, createdAt: true, updatedAt: true, deletedAt: true };
 function randomVerifyToken() { return randomBytes(24).toString('hex'); }
@@ -113,19 +114,22 @@ export class WhatsappService {
 
     if (msg) {
       const status = this.mapStatus(s.status);
-      if (statusRank[status] >= statusRank[msg.status] || status === 'FAILED') {
+      const eventAt=new Date(Number(s.timestamp||Date.now()/1000)*1000);
+      const failureAllowed=status==='FAILED'&&!['READ','DELIVERED'].includes(msg.status)&&(!msg.sentAt||eventAt>=msg.sentAt);
+      if (status && ((status!=='FAILED'&&statusRank[status] >= statusRank[msg.status]) || failureAllowed)) {
         await this.prisma.whatsappMessage.update({
           where: { id: msg.id },
           data: {
             status: status as never,
-            deliveredAt: status === 'DELIVERED' ? new Date() : undefined,
-            readAt: status === 'READ' ? new Date() : undefined,
-            failedAt: status === 'FAILED' ? new Date() : undefined,
+            deliveredAt: status === 'DELIVERED' ? eventAt : undefined,
+            readAt: status === 'READ' ? eventAt : undefined,
+            failedAt: status === 'FAILED' ? eventAt : undefined,
             errorCode: s.errors?.[0]?.code?.toString(),
             errorMessage: s.errors?.[0]?.title?.slice(0, 500),
           },
         });
         await this.updateDistributionFromWhatsappMessage(msg, status, s.errors?.[0]?.title);
+        const recipientId=msg.metadata?.recipientId;const classified=classifyMetaError(s.errors?.[0]?.title||s.errors?.[0]?.message||'Meta status failed');if(recipientId)await this.prisma.campaignRecipient.updateMany({where:{id:recipientId,organizationId:account.organizationId,externalMessageId:s.id,...(status==='DELIVERED'?{status:{in:['SENT','DELIVERED']}}:status==='READ'?{status:{in:['SENT','DELIVERED','READ']}}:status==='FAILED'?{status:{notIn:['READ','DELIVERED']}}:{})},data:{status:status==='FAILED'?(classified.retryable?'FAILED_RETRYABLE':'FAILED_PERMANENT'):status as never,deliveredAt:status==='DELIVERED'?eventAt:undefined,readAt:status==='READ'?eventAt:undefined,failedAt:status==='FAILED'?eventAt:undefined,errorCode:s.errors?.[0]?.code?.toString(),errorCategory:status==='FAILED'?classified.category:undefined,errorMessage:status==='FAILED'?classified.message:undefined,nextRetryAt:status==='FAILED'&&classified.retryable?new Date():undefined}});
       }
     }
 
@@ -136,7 +140,7 @@ export class WhatsappService {
   }
   private async updateDistributionFromWhatsappMessage(msg:any,status:string,errorMessage?:string){ const distributionId=msg.metadata?.distributionId; if(!distributionId) return; await this.prisma.leadDistribution.update({where:{id:distributionId},data:{status:status==='FAILED'?'FAILED' as never:status==='DELIVERED'?'DELIVERED' as never:status==='READ'?'READ' as never:'CONTACT_SENT' as never,errorMessage:errorMessage?.slice(0,500)??null}}).catch(()=>undefined); }
   private mapType(t:string){ return ({text:'TEXT',image:'IMAGE',document:'DOCUMENT',audio:'AUDIO',video:'VIDEO',location:'LOCATION',interactive:'INTERACTIVE',contacts:'CONTACTS'} as any)[t]||'UNKNOWN'; }
-  private mapStatus(s:string){ return ({sent:'SENT',delivered:'DELIVERED',read:'READ',failed:'FAILED'} as any)[s]||'SENT'; }
+  private mapStatus(s:string){ return ({sent:'SENT',delivered:'DELIVERED',read:'READ',failed:'FAILED'} as any)[s]||null; }
   private async findOrCreateLead(org:string,phone:string,name?:string){ const existing=await this.prisma.lead.findFirst({where:{organizationId:org,normalizedPhone:phone,deletedAt:null}}); if(existing) return existing; const lead=await this.prisma.lead.create({data:{organizationId:org,phone,normalizedPhone:phone,name:name||null,source:'WHATSAPP' as never,createdByUserId:null,lastInteractionAt:new Date()}}); await this.prisma.leadEvent.create({data:{organizationId:org,leadId:lead.id,eventType:'LEAD_CREATED' as never,description:'Lead criado automaticamente por mensagem WhatsApp oficial',idempotencyKey:`whatsapp-auto-lead:${org}:${phone}`,payload:{source:'WHATSAPP'}}}).catch(()=>undefined); return lead; }
   private async ensureUser(org:string,userId:string){ const u=await this.prisma.user.findFirst({where:{id:userId,organizationId:org,status:'ACTIVE',deletedAt:null}}); if(!u) throw new BadRequestException('WHATSAPP_USER_NOT_IN_ORGANIZATION'); }
 }
