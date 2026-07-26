@@ -91,15 +91,15 @@ export default function Sidebar() {
   return (
     <aside className="relative flex h-dvh w-20 shrink-0 flex-col overflow-hidden border-r border-white/10 bg-[linear-gradient(180deg,#071225_0%,#0a1730_52%,#07111f_100%)] shadow-[8px_0_32px_-20px_rgba(2,6,23,0.55)] transition-[width] duration-300 lg:w-64">
       <div className="pointer-events-none absolute inset-x-0 top-0 h-64 bg-[radial-gradient(circle_at_top,_rgba(37,99,235,0.18),_transparent_68%)]" />
-      <div className="relative flex min-h-20 items-center border-b border-white/8 px-3 lg:px-5">
-        <Link href="/dashboard" className="flex w-full justify-center rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 lg:justify-start" aria-label="Impulse CRM — Dashboard">
+      <div className="relative flex min-h-24 items-center border-b border-white/8 px-2 lg:min-h-28 lg:px-3">
+        <Link href="/dashboard" className="flex w-full justify-center overflow-hidden rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400" aria-label="Impulse CRM — Dashboard">
           <Image
             src="/branding/impulse-logo-horizontal.png"
             alt="Impulse CRM"
             width={1536}
             height={1024}
             priority
-            className="h-12 w-12 object-contain lg:h-14 lg:w-44 lg:object-left"
+            className="h-16 w-16 scale-[1.65] object-cover object-center lg:h-24 lg:w-full lg:scale-125"
           />
         </Link>
       </div>
