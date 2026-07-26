@@ -1,3 +1,4 @@
+// Schema canônico consolidado: cada model, enum e type possui uma única definição.
 generator client {
   provider = "prisma-client-js"
 }
