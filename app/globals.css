@@ -1,8 +1,25 @@
-@import "@fontsource/inter/400.css";
-@import "@fontsource/inter/500.css";
-@import "@fontsource/inter/600.css";
-@import "@fontsource/inter/700.css";
 @import "tailwindcss";
+
+@keyframes brand-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.brand-enter {
+  animation: brand-enter 420ms ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brand-enter {
+    animation: none;
+  }
+}
 
 :root {
   /* Marca Impulse CRM */

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
 import {
   Building2,
@@ -15,6 +16,8 @@ import {
   UserRoundCog,
   Users,
 } from "lucide-react";
+
+const Image = dynamic(() => import("next/image"));
 
 export const sidebarMenu = [
   {
@@ -86,28 +89,21 @@ export default function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="flex h-screen w-72 shrink-0 flex-col border-r border-slate-800 bg-slate-950">
-      <div className="border-b border-slate-800 px-6 py-5">
-        <Link href="/dashboard" className="block">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 text-lg font-bold text-white shadow-lg shadow-blue-950/40">
-              I
-            </div>
-
-            <div>
-              <h1 className="text-lg font-bold tracking-tight text-white">
-                Impulse CRM
-              </h1>
-
-              <p className="text-xs text-slate-400">
-                Gestão inteligente
-              </p>
-            </div>
-          </div>
+    <aside className="flex h-screen w-20 shrink-0 flex-col border-r border-slate-800/80 bg-slate-950 shadow-xl shadow-slate-950/10 transition-[width] duration-300 lg:w-64">
+      <div className="flex min-h-20 items-center border-b border-slate-800/80 px-3 lg:px-5">
+        <Link href="/dashboard" className="flex w-full justify-center rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400 lg:justify-start" aria-label="Impulse CRM — Dashboard">
+          <Image
+            src="/branding/impulse-logo-horizontal.png"
+            alt="Impulse CRM"
+            width={1536}
+            height={1024}
+            priority
+            className="h-12 w-12 object-contain lg:h-14 lg:w-44 lg:object-left"
+          />
         </Link>
       </div>
 
-      <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
+      <nav aria-label="Navegação principal" className="flex-1 space-y-1.5 overflow-y-auto px-2.5 py-4 lg:px-3">
         {sidebarMenu.map((item) => {
           const Icon = item.icon;
           const active = isRouteActive(pathname, item.href);
@@ -117,10 +113,11 @@ export default function Sidebar() {
               key={item.href}
               href={item.href}
               aria-current={active ? "page" : undefined}
-              className={`group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ${
+              title={item.title}
+              className={`group flex min-h-11 items-center justify-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-400/80 lg:justify-start ${
                 active
-                  ? "bg-blue-600 text-white shadow-sm shadow-blue-950/40"
-                  : "text-slate-300 hover:bg-slate-800 hover:text-white"
+                  ? "bg-blue-600 text-white shadow-md shadow-blue-950/30"
+                  : "text-slate-300 hover:bg-slate-800/80 hover:text-white"
               }`}
             >
               <Icon
@@ -128,18 +125,18 @@ export default function Sidebar() {
                 className={
                   active
                     ? "text-white"
-                    : "text-slate-400 transition group-hover:text-white"
+                    : "text-slate-400 transition-colors group-hover:text-blue-300"
                 }
               />
 
-              <span>{item.title}</span>
+              <span className="hidden lg:inline">{item.title}</span>
             </Link>
           );
         })}
       </nav>
 
-      <div className="border-t border-slate-800 p-4">
-        <div className="rounded-xl border border-slate-800 bg-slate-900 px-4 py-3">
+      <div className="hidden border-t border-slate-800/80 p-3 lg:block">
+        <div className="rounded-xl border border-slate-800 bg-slate-900/80 px-4 py-3 shadow-inner">
           <p className="text-sm font-semibold text-white">
             Rodrigo Lopes
           </p>
