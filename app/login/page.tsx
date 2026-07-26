@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { login } from "@/services/auth";
 
@@ -12,6 +12,16 @@ export default function LoginPage() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("session") === "expired") {
+      const timeout = window.setTimeout(() => {
+        setError("Sua sessão expirou. Faça login novamente.");
+      }, 0);
+      window.history.replaceState({}, "", "/login");
+      return () => window.clearTimeout(timeout);
+    }
+  }, []);
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();

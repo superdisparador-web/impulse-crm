@@ -1,24 +1,87 @@
+import { clearSession, getAccessToken, getRefreshToken, updateTokens } from "./session";
+
 const API_URL = "http://localhost:3000";
+const SESSION_EXPIRED_MESSAGE = "Sua sessão expirou. Faça login novamente.";
+
+interface RefreshResponse {
+  accessToken: string;
+  refreshToken?: string;
+}
+
+let refreshPromise: Promise<string> | null = null;
+
+function redirectToLogin() {
+  clearSession();
+  if (typeof window !== "undefined" && window.location.pathname !== "/login") {
+    window.location.assign("/login?session=expired");
+  }
+}
+
+async function refreshAccessToken(): Promise<string> {
+  if (refreshPromise) return refreshPromise;
+
+  refreshPromise = (async () => {
+    const refreshToken = getRefreshToken();
+    if (!refreshToken) throw new Error(SESSION_EXPIRED_MESSAGE);
+
+    const response = await fetch(`${API_URL}/auth/refresh`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refreshToken }),
+    });
+
+    if (!response.ok) throw new Error(SESSION_EXPIRED_MESSAGE);
+
+    const tokens = (await response.json()) as RefreshResponse;
+    if (!tokens.accessToken) throw new Error(SESSION_EXPIRED_MESSAGE);
+    updateTokens(tokens.accessToken, tokens.refreshToken);
+    return tokens.accessToken;
+  })().catch((error: unknown) => {
+    redirectToLogin();
+    throw error instanceof Error ? error : new Error(SESSION_EXPIRED_MESSAGE);
+  }).finally(() => {
+    refreshPromise = null;
+  });
+
+  return refreshPromise;
+}
+
+function requestHeaders(options: RequestInit, token: string | null) {
+  const headers = new Headers(options.headers);
+  if (!headers.has("Content-Type")) headers.set("Content-Type", "application/json");
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+  return headers;
+}
+
+async function request(endpoint: string, options: RequestInit, token: string | null) {
+  return fetch(`${API_URL}${endpoint}`, {
+    ...options,
+    headers: requestHeaders(options, token),
+  });
+}
+
+export function isAuthenticationError(response: Response) {
+  if (response.status === 401 || response.status === 419 || response.status === 440) return true;
+  return response.headers?.has("WWW-Authenticate") === true;
+}
 
 export async function api<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const token =
-    typeof window !== "undefined"
-      ? localStorage.getItem("token")
-      : null;
+  let response = await request(endpoint, options, getAccessToken());
+  const path = endpoint.split("?", 1)[0];
+  const skipsRefresh = path === "/auth/login" || path === "/auth/register" || path === "/auth/refresh";
 
-  const response = await fetch(`${API_URL}${endpoint}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...(token && {
-        Authorization: `Bearer ${token}`,
-      }),
-      ...options.headers,
-    },
-  });
+  if (isAuthenticationError(response) && !skipsRefresh) {
+    const accessToken = await refreshAccessToken();
+    response = await request(endpoint, options, accessToken);
+
+    if (isAuthenticationError(response)) {
+      redirectToLogin();
+      throw new Error(SESSION_EXPIRED_MESSAGE);
+    }
+  }
 
   if (!response.ok) {
     const errorText = await response.text();

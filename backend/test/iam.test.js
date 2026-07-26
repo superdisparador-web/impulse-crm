@@ -31,7 +31,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 test('RBAC hardening migration seeds permissions roles migrates legacy users and enforces partial unique indexes', () => {
-  const sql = fs.readFileSync(path.join(__dirname, '../prisma/migrations/20260722020000_harden_rbac_multitenancy/migration.sql'), 'utf8');
+  const sql = fs.readFileSync(path.join(__dirname, '../prisma/migrations/20260724000000_initial_baseline/migration.sql'), 'utf8');
   assert.match(sql, /RbacRole_global_code_key/);
   assert.match(sql, /Organization_slug_lower_active_key/);
   assert.match(sql, /INSERT INTO "Permission"/);
@@ -39,7 +39,7 @@ test('RBAC hardening migration seeds permissions roles migrates legacy users and
 });
 
 test('status hardening migration prevents invalid active and archived combinations', () => {
-  const sql = fs.readFileSync(path.join(__dirname, '../prisma/migrations/20260722020000_harden_rbac_multitenancy/migration.sql'), 'utf8');
+  const sql = fs.readFileSync(path.join(__dirname, '../prisma/migrations/20260724000000_initial_baseline/migration.sql'), 'utf8');
   assert.match(sql, /Organization_status_active_consistency/);
   assert.match(sql, /User_status_active_consistency/);
 });
