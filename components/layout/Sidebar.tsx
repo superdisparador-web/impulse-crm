@@ -9,6 +9,7 @@ import {
   FileText,
   KanbanSquare,
   LayoutDashboard,
+  ChartNoAxesCombined,
   Megaphone,
   MessageCircle,
   Send,
@@ -29,6 +30,16 @@ export const sidebarMenu = [
     title: "Leads",
     href: "/leads",
     icon: Users,
+  },
+  {
+    title: "Analytics",
+    href: "/analytics",
+    icon: ChartNoAxesCombined,
+  },
+  {
+    title: "Relatórios",
+    href: "/reports",
+    icon: FileText,
   },
   {
     title: "Pipeline",

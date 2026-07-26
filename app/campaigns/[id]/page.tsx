@@ -7,6 +7,7 @@ import { campaignsService } from "@/services/campaigns.service";
 import { Campaign, CampaignProgress } from "@/types/campaign";
 import { OperationalRecipient } from "@/types/campaign";
 import Modal from "@/components/ui/Modal";
+import { CampaignIntelligence } from "@/components/analytics/CampaignIntelligence";
 import { canCancelCampaign, primaryCampaignAction, shouldPollCampaign } from "../campaign-operational-ui.mjs";
 
 export default function CampaignDetailPage() {
@@ -174,6 +175,8 @@ export default function CampaignDetailPage() {
           </div>
         ))}
       </section>
+
+      <CampaignIntelligence campaignId={id} contacts={progress?.total ?? campaign.totalContacts ?? 0} sent={progress?.sent ?? campaign.totalSent ?? 0} delivered={progress?.delivered ?? campaign.totalDelivered ?? 0} read={progress?.read ?? campaign.totalRead ?? 0} clicked={campaign.totalClicked ?? 0} />
 
       <section className="rounded-xl border border-slate-800">
         <div className="flex flex-wrap items-center gap-3 p-4"><h2 className="mr-auto text-xl font-semibold">Destinatários e erros</h2><input aria-label="Buscar destinatário" className="rounded bg-slate-900 p-2" placeholder="Nome ou telefone" value={recipientSearch} onChange={e=>{setRecipientSearch(e.target.value);setRecipientPage(1)}}/><select aria-label="Filtrar status" className="rounded bg-slate-900 p-2" value={recipientStatus} onChange={e=>{setRecipientStatus(e.target.value);setRecipientPage(1)}}><option value="">Todos os status</option>{["PENDING","QUEUED","PROCESSING","SENT","DELIVERED","READ","FAILED_RETRYABLE","FAILED_PERMANENT","CANCELED","UNKNOWN"].map(status=><option key={status}>{status}</option>)}</select></div>
