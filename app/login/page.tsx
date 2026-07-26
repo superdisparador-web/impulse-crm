@@ -42,27 +42,13 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-slate-950 px-4 py-10">
-      <Image
-        src="/branding/login-background.png"
-        alt=""
-        fill
-        priority
-        sizes="100vw"
-        className="object-cover object-center"
-      />
-      <div className="absolute inset-0 bg-slate-950/60" />
-      <Image
-        src="/branding/impulse-astronaut.png"
-        alt=""
-        width={1024}
-        height={1536}
-        sizes="(min-width: 1280px) 360px, 0px"
-        className="pointer-events-none absolute bottom-0 left-[6%] z-[1] hidden h-[68vh] w-auto object-contain opacity-80 drop-shadow-2xl xl:block"
-      />
+    <main
+      className="relative flex min-h-dvh items-center justify-center bg-[#020817] bg-cover bg-center px-4 py-6 before:absolute before:inset-0 before:bg-slate-950/10 before:content-[''] sm:px-6"
+      style={{ backgroundImage: "url('/branding/login-background.png')" }}
+    >
       <form
         onSubmit={handleLogin}
-        className="brand-enter relative z-10 w-full max-w-md rounded-3xl border border-white/15 bg-slate-950/80 p-6 shadow-[0_24px_80px_-28px_rgba(2,6,23,0.9)] backdrop-blur-xl sm:p-9 xl:ml-[32%]"
+        className="brand-enter relative z-10 flex min-h-[560px] w-full max-w-[520px] flex-col justify-center rounded-3xl border border-white/15 bg-[rgba(8,14,28,0.78)] px-6 py-8 shadow-[0_32px_100px_-24px_rgba(0,0,0,0.75)] backdrop-blur-2xl sm:min-h-[610px] sm:px-12 sm:py-10"
       >
         <Image
           src="/branding/impulse-logo-horizontal.png"
@@ -70,33 +56,48 @@ export default function LoginPage() {
           width={1536}
           height={1024}
           priority
-          className="mx-auto mb-8 h-16 w-auto max-w-full object-contain sm:h-20"
+          className="mx-auto h-[76px] w-[228px] object-cover object-center sm:h-[82px] sm:w-[245px]"
         />
 
+        <h1 className="mt-5 text-center text-3xl font-bold tracking-[-0.025em] text-white sm:text-[34px]">
+          Bem-vindo de volta!
+        </h1>
+        <p className="mb-9 mt-3 text-center text-base text-slate-300 sm:text-lg">
+          Acesse sua conta para continuar
+        </p>
+
+        <label htmlFor="email" className="mb-2.5 text-sm font-medium text-slate-100">
+          E-mail
+        </label>
         <input
+          id="email"
           type="email"
           aria-label="E-mail"
           autoComplete="email"
           required
-          placeholder="E-mail"
+          placeholder="seuemail@empresa.com"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="mb-4 h-12 w-full rounded-xl border border-slate-600/80 bg-slate-900/80 px-4 text-white shadow-inner outline-none transition duration-200 hover:border-slate-500 focus:border-blue-400 focus:bg-slate-900 focus:ring-4 focus:ring-blue-500/20"
+          className="h-14 w-full rounded-2xl border border-slate-500/60 bg-slate-950/55 px-4 text-white shadow-inner outline-none transition duration-200 placeholder:text-slate-500 hover:border-slate-400/70 focus:border-blue-400 focus:bg-slate-950/75 focus:ring-4 focus:ring-blue-500/15"
         />
 
+        <label htmlFor="password" className="mb-2.5 mt-5 text-sm font-medium text-slate-100">
+          Senha
+        </label>
         <input
+          id="password"
           type="password"
           aria-label="Senha"
           autoComplete="current-password"
           required
-          placeholder="Senha"
+          placeholder="Digite sua senha"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="mb-4 h-12 w-full rounded-xl border border-slate-600/80 bg-slate-900/80 px-4 text-white shadow-inner outline-none transition duration-200 hover:border-slate-500 focus:border-blue-400 focus:bg-slate-900 focus:ring-4 focus:ring-blue-500/20"
+          className="h-14 w-full rounded-2xl border border-slate-500/60 bg-slate-950/55 px-4 text-white shadow-inner outline-none transition duration-200 placeholder:text-slate-500 hover:border-slate-400/70 focus:border-blue-400 focus:bg-slate-950/75 focus:ring-4 focus:ring-blue-500/15"
         />
 
         {error && (
-          <p role="alert" className="mb-4 rounded-xl border border-red-400/25 bg-red-500/10 px-3 py-2.5 text-sm text-red-200">
+          <p role="alert" className="mt-4 rounded-xl border border-red-400/25 bg-red-500/10 px-3 py-2.5 text-sm text-red-200">
             {error}
           </p>
         )}
@@ -105,9 +106,8 @@ export default function LoginPage() {
           type="submit"
           disabled={loading}
           aria-busy={loading}
-          className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 font-semibold text-white shadow-lg shadow-blue-950/30 transition duration-200 hover:-translate-y-0.5 hover:bg-blue-500 hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-blue-400/30 disabled:translate-y-0 disabled:cursor-wait disabled:opacity-70"
+          className="mt-7 h-14 w-full rounded-[14px] bg-gradient-to-r from-blue-700 via-blue-600 to-blue-500 px-4 text-lg font-semibold text-white shadow-lg shadow-blue-950/40 transition duration-200 hover:-translate-y-0.5 hover:from-blue-600 hover:via-blue-500 hover:to-cyan-500 hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-blue-400/30 disabled:translate-y-0 disabled:cursor-wait disabled:opacity-70"
         >
-          {loading && <span aria-hidden="true" className="h-4 w-4 animate-spin rounded-full border-2 border-white/35 border-t-white motion-reduce:animate-none" />}
           {loading ? "Entrando..." : "Entrar"}
         </button>
       </form>
