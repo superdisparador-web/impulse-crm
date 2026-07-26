@@ -1,4 +1,5 @@
 import { api } from './api';
+import { LeadTimelineEvent } from '@/types/analytics';
 import { Lead, LeadActivity, LeadActivityFormData, LeadFormData, LeadListParams, LeadListResponse, LeadStatus, LeadTemperature } from '@/types/lead';
 
 function toQueryString(params: object) {
@@ -11,7 +12,7 @@ function toQueryString(params: object) {
 class LeadService {
   getAll(params: LeadListParams = {}) { return api.get<LeadListResponse>(`/leads${toQueryString(params)}`); }
   getById(id: string) { return api.get<Lead>(`/leads/${id}`); }
-  getTimeline(id: string) { return api.get<{ leadId: string; items: Lead['events']; note: string }>(`/leads/${id}/timeline`); }
+  getTimeline(id: string) { return api.get<{ leadId: string; items: LeadTimelineEvent[]; note: string }>(`/leads/${id}/timeline`); }
   create(data: LeadFormData) { return api.post<Lead>('/leads', data); }
   update(id: string, data: Partial<LeadFormData>) { return api<Lead>(`/leads/${id}`, { method: 'PATCH', body: JSON.stringify(data) }); }
   assign(id: string, assignedUserId: string | null) { return api<Lead>(`/leads/${id}/assign`, { method: 'PATCH', body: JSON.stringify({ assignedUserId }) }); }

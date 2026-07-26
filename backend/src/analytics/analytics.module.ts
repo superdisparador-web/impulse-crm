@@ -7,6 +7,7 @@ import { AnalyticsController } from './analytics.controller';
 import { AnalyticsService } from './analytics.service';
 import { AnalyticsRollupJob } from './jobs/analytics-rollup.job';
 import { AnalyticsRepository } from './repositories/analytics.repository';
+import { AnalyticsInsightsService } from './analytics-insights.service';
 
-@Module({ imports: [PrismaModule, IamModule], controllers: [AnalyticsController], providers: [AccessContextService, AnalyticsService, AnalyticsEventsService, AnalyticsRepository, AnalyticsRollupJob], exports: [AnalyticsService, AnalyticsEventsService] })
+@Module({ imports: [PrismaModule, IamModule], controllers: [AnalyticsController], providers: [AccessContextService, AnalyticsService, AnalyticsInsightsService, AnalyticsEventsService, AnalyticsRepository, AnalyticsRollupJob], exports: [AnalyticsService, AnalyticsEventsService] })
 export class AnalyticsModule {}
