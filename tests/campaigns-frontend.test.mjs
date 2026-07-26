@@ -4,7 +4,7 @@ import test from 'node:test';
 import { canCancelCampaign, primaryCampaignAction, shouldPollCampaign } from '../app/campaigns/campaign-operational-ui.mjs';
 
 const listPage = readFileSync('app/campaigns/page.tsx', 'utf8');
-const wizardPage = readFileSync('app/campaigns/new/page.tsx', 'utf8');
+const wizardPage = ['app/campaigns/new/page.tsx','components/campaigns/wizard/CampaignWizard.tsx','components/campaigns/wizard/CampaignMessagePreview.tsx','components/campaigns/wizard/CampaignDestinationEditor.tsx','components/campaigns/wizard/CampaignInfoStep.tsx','components/campaigns/wizard/WizardProgress.tsx'].map(path=>readFileSync(path,'utf8')).join('\n');
 const service = readFileSync('services/campaigns.service.ts', 'utf8');
 
 test('campaign list supports pagination, search, filters, archive and restore actions', () => {

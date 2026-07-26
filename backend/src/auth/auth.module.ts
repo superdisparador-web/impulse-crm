@@ -40,6 +40,6 @@ const authProviders: Provider[] = [AuthService, JwtStrategy, LocalStrategy, Acce
   imports: [UsersModule, ...resolveThrottlerImports(), PassportModule, JwtModule.registerAsync({ imports: [ConfigModule], inject: [ConfigService], useFactory: (configService: ConfigService) => ({ secret: getJwtAccessSecret({ JWT_ACCESS_SECRET: configService.get<string>('JWT_ACCESS_SECRET'), JWT_REFRESH_SECRET: configService.get<string>('JWT_REFRESH_SECRET') }), signOptions: { expiresIn: configService.get('JWT_ACCESS_TTL') ?? '15m' } }) })],
   controllers: [AuthController],
   providers: authProviders,
-  exports: [AuthService, AccessContextService, PasswordService],
+  exports: [AuthService, AccessContextService, PasswordService, AuthThrottlerGuard],
 })
 export class AuthModule {}
