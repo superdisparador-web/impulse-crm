@@ -24,12 +24,13 @@ export default function Card({
       className={`
         rounded-2xl
         border
-        border-slate-200
-        bg-white
-        shadow-sm
+        border-slate-200/80
+        bg-white/95
+        shadow-[0_1px_3px_rgba(15,23,42,0.04),0_10px_28px_-20px_rgba(15,23,42,0.2)]
         transition
         duration-200
-        hover:shadow-md
+        hover:border-slate-300/80
+        hover:shadow-[0_12px_32px_-20px_rgba(15,23,42,0.28)]
         ${paddingClasses[padding]}
         ${className}
       `}

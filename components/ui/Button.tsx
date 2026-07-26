@@ -26,7 +26,7 @@ interface ButtonProps
 
 const variants: Record<Variant, string> = {
   primary:
-    "border border-blue-600 bg-blue-600 text-white shadow-sm hover:border-blue-700 hover:bg-blue-700",
+    "border border-blue-600 bg-gradient-to-b from-blue-500 to-blue-600 text-white shadow-sm shadow-blue-900/15 hover:border-blue-700 hover:from-blue-600 hover:to-blue-700 hover:shadow-md",
 
   secondary:
     "border border-slate-200 bg-white text-slate-700 shadow-sm hover:bg-slate-50",
@@ -73,10 +73,10 @@ export default function Button({
         items-center
         justify-center
         gap-2
-        rounded-lg
+        rounded-xl
         font-semibold
-        transition-colors
-        duration-150
+        transition-all
+        duration-200
         outline-none
         focus-visible:ring-2
         focus-visible:ring-blue-500

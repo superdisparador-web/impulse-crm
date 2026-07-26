@@ -40,15 +40,16 @@ const Select = forwardRef<HTMLSelectElement, SelectProps>(
             w-full
             rounded-xl
             border
-            border-slate-300
-            bg-white
+            border-slate-200
+            bg-slate-50/70
             px-4
             py-3
             text-slate-900
-            shadow-sm
+            shadow-[inset_0_1px_2px_rgba(15,23,42,0.025)]
             outline-none
-            transition
+            transition-all
             focus:border-blue-600
+            focus:bg-white
             focus:ring-4
             focus:ring-blue-100
             ${error ? "border-red-500" : ""}

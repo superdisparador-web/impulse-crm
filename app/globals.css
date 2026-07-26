@@ -32,7 +32,7 @@
   --impulse-sidebar: #0f172a;
   --impulse-sidebar-hover: #1e293b;
   --impulse-sidebar-active: #2563eb;
-  --impulse-page: #f4f7fb;
+  --impulse-page: #f5f7fb;
   --impulse-surface: #ffffff;
   --impulse-surface-muted: #f8fafc;
 
@@ -109,6 +109,12 @@ body {
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 180ms;
 }
 
 button,
