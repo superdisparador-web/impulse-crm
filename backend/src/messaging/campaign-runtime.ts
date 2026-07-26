@@ -1,0 +1,6 @@
+export type WeightedAgent={userId:string;weight:number};
+export function weightedAgentAt(agents:WeightedAgent[],cursor:number){const pool=agents.flatMap(agent=>Array.from({length:Math.max(1,agent.weight)},()=>agent.userId));return pool.length?pool[Math.max(0,cursor)%pool.length]:null;}
+export function mediaHeader(headerType:string,mediaId?:string|null){if(!['IMAGE','VIDEO','DOCUMENT'].includes(headerType))return null;if(!mediaId)throw new Error('CAMPAIGN_MEDIA_REQUIRED');const type=headerType.toLowerCase();return{type:'header',parameters:[{type,[type]:{id:mediaId}}]};}
+export function finalRecipientStatus(status:string){return['SENT','DELIVERED','READ','FAILED','FAILED_PERMANENT','CANCELED','SKIPPED','UNKNOWN'].includes(status);}
+
+export function dynamicUrlSuffix(templateUrl:string,configuredUrl:string){const marker=templateUrl.match(/{{\s*\d+\s*}}/);if(!marker)throw new Error('CAMPAIGN_TEMPLATE_DYNAMIC_URL_REQUIRED');const base=templateUrl.slice(0,marker.index);if(!configuredUrl.startsWith(base))throw new Error('CAMPAIGN_DESTINATION_BASE_MISMATCH');const suffix=configuredUrl.slice(base.length);if(!suffix||suffix.length>1024)throw new Error('CAMPAIGN_DESTINATION_SUFFIX_INVALID');return suffix;}

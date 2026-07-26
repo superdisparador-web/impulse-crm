@@ -1,8 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import { MetaContact, MetaSendResult, MetaTemplate, MetaWhatsappClient } from './meta-whatsapp.client';
+import { MetaContact, MetaMediaUpload, MetaSendResult, MetaTemplate, MetaWhatsappClient } from './meta-whatsapp.client';
+import { WhatsappCredentialCryptoService } from '../security/credential-crypto.service';
 
 @Injectable()
 export class MetaWhatsappHttpClient extends MetaWhatsappClient {
+  constructor(private readonly crypto:WhatsappCredentialCryptoService){super();}
   private readonly graphVersion = process.env.META_GRAPH_API_VERSION || 'v23.0';
   private readonly timeoutMs = Number(process.env.META_WHATSAPP_TIMEOUT_MS || 8000);
   private readonly maxTemplatePages = Number(process.env.META_TEMPLATE_MAX_PAGES || 100);
@@ -13,7 +15,7 @@ export class MetaWhatsappHttpClient extends MetaWhatsappClient {
     if (url.protocol !== 'https:' || url.hostname !== 'graph.facebook.com') throw new Error('WHATSAPP_META_PAGING_URL_INVALID');
     url.searchParams.delete('access_token');
     const controller = new AbortController(); const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
-    try { const res = await fetch(url, { ...init, signal: controller.signal, headers: { 'content-type': 'application/json', authorization: `Bearer ${token}`, ...(init.headers || {}) } }); const body: unknown = await res.json().catch(() => ({})); if (!res.ok) throw new Error(this.sanitizeMetaError(body, res.status)); return body as T; }
+    try { const res = await fetch(url, { ...init, signal: controller.signal, headers: { ...(init.body instanceof FormData?{}:{'content-type':'application/json'}), authorization: `Bearer ${token}`, ...(init.headers || {}) } }); const body: unknown = await res.json().catch(() => ({})); if (!res.ok) throw new Error(this.sanitizeMetaError(body, res.status)); return body as T; }
     catch (error) { if ((error as Error).name === 'AbortError') throw new Error('WHATSAPP_META_REQUEST_TIMEOUT'); throw error; }
     finally { clearTimeout(timeout); }
   }
@@ -24,6 +26,7 @@ export class MetaWhatsappHttpClient extends MetaWhatsappClient {
   sendTemplate(i:{accessToken:string;phoneNumberId:string;to:string;name:string;language:string;components?:unknown[]}):Promise<MetaSendResult>{ return this.message(`/${i.phoneNumberId}/messages`,i.accessToken,{messaging_product:'whatsapp',to:i.to,type:'template',template:{name:i.name,language:{code:i.language},components:i.components||[]}}); }
   sendContacts(i:{accessToken:string;phoneNumberId:string;to:string;contacts:MetaContact[]}):Promise<MetaSendResult>{ return this.message(`/${i.phoneNumberId}/messages`,i.accessToken,{messaging_product:'whatsapp',to:i.to,type:'contacts',contacts:i.contacts.map(c=>({name:{formatted_name:c.displayName},phones:[{phone:c.phoneE164.replace('+',''),type:'CELL',wa_id:c.phoneE164.replace('+','')}]}))}); }
   sendMedia(i:{accessToken:string;phoneNumberId:string;to:string;type:string;mediaId:string;caption?:string}):Promise<MetaSendResult>{ return this.message(`/${i.phoneNumberId}/messages`,i.accessToken,{messaging_product:'whatsapp',to:i.to,type:i.type,[i.type]:{id:i.mediaId,caption:i.caption}}); }
+  async uploadMedia(i:{encryptedAccessToken:string;phoneNumberId:string;apiVersion?:string|null;bytes:Uint8Array;mimeType:string;fileName:string}):Promise<MetaMediaUpload>{const token=this.crypto.decrypt(i.encryptedAccessToken);const form=new FormData();form.set('messaging_product','whatsapp');form.set('type',i.mimeType);form.set('file',new Blob([i.bytes as BlobPart],{type:i.mimeType}),i.fileName);const r=await this.request<{id?:string}>(`/${encodeURIComponent(i.phoneNumberId)}/media`,token,{method:'POST',body:form,headers:{}},i.apiVersion);if(!r.id)throw new Error('WHATSAPP_META_MEDIA_ID_MISSING');return{mediaId:r.id};}
   async syncTemplates(input: { accessToken: string; businessAccountId: string; apiVersion?: string | null }): Promise<MetaTemplate[]> {
     const fields='id,name,language,category,status,components,quality_score,rejected_reason,parameter_format,previous_category,created_time';
     let next:string|undefined=`/${encodeURIComponent(input.businessAccountId)}/message_templates?fields=${fields}&limit=100`;

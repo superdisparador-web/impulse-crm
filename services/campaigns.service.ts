@@ -1,6 +1,6 @@
 import { api } from './api';
-import { AddRecipientsPayload, Campaign, CampaignEstimateResponse, CampaignFilter, CampaignFilters, CampaignListResponse, CreateCampaignPayload, UpdateCampaignPayload } from '@/types/campaign';
-function qs(params: CampaignFilters = {}) { const s = new URLSearchParams(); Object.entries(params).forEach(([k,v]) => { if (v !== undefined && v !== '') s.set(k, String(v)); }); const q=s.toString(); return q ? `?${q}` : ''; }
+import { AddRecipientsPayload, Campaign, CampaignEstimateResponse, CampaignFilter, CampaignFilters, CampaignListResponse, CampaignProgress, CreateCampaignPayload, OperationalRecipients, UpdateCampaignPayload } from '@/types/campaign';
+function qs(params: object = {}) { const s = new URLSearchParams(); Object.entries(params).forEach(([k,v]) => { if (v !== undefined && v !== '') s.set(k, String(v)); }); const q=s.toString(); return q ? `?${q}` : ''; }
 class CampaignsService {
   getCampaigns(params: CampaignFilters = {}) { return api.get<CampaignListResponse>(`/campaigns${qs(params)}`); }
   getCampaignById(id:string) { return api.get<Campaign>(`/campaigns/${id}`); }
@@ -13,7 +13,15 @@ class CampaignsService {
   removeRecipient(id:string, recipientId:string) { return api.delete<{success:boolean}>(`/campaigns/${id}/recipients/${recipientId}`); }
   scheduleCampaign(id:string, scheduledAt:string) { return api.post<Campaign>(`/campaigns/${id}/schedule`, { scheduledAt }); }
   duplicateCampaign(id:string) { return api.post<Campaign>(`/campaigns/${id}/duplicate`, {}); }
-  cancelCampaign(id:string) { return api.post<Campaign>(`/campaigns/${id}/cancel`, {}); }
+  cancelCampaign(id:string,reason?:string) { return api.post<Campaign>(`/campaigns/${id}/cancel`, {reason}); }
+  validateCampaign(id:string){return api.post<{valid:boolean;reasons:{code:string;message:string}[]}>(`/campaigns/${id}/validate`,{});}
+  startCampaign(id:string){return api.post<Campaign>(`/campaigns/${id}/start`,{});}
+  pauseCampaign(id:string){return api.post<Campaign>(`/campaigns/${id}/pause`,{});}
+  resumeCampaign(id:string){return api.post<Campaign>(`/campaigns/${id}/resume`,{});}
+  progress(id:string){return api.get<CampaignProgress>(`/campaigns/${id}/progress`);}
+  recipients(id:string,params:{status?:string;search?:string;assignedUserId?:string;error?:string;attempt?:number;page?:number;limit?:number}={}){return api.get<OperationalRecipients>(`/campaigns/${id}/recipients${qs(params)}`);}
+  report(id:string){return api.get<Record<string,unknown>>(`/campaigns/${id}/report`);}
+  async downloadResults(id:string){const blob=await api.blob(`/campaigns/${id}/results.csv`),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='resultados-campanha.csv';a.click();URL.revokeObjectURL(url);}
   estimate(filters:CampaignFilter[]) { return api.post<CampaignEstimateResponse>('/campaigns/estimate', { filters }); }
   saveStep(id:string,currentStep:number){return api<Campaign>(`/campaigns/${id}/step`,{method:'PATCH',body:JSON.stringify({currentStep})});}
   uploadList(id:string,file:File){const body=new FormData();body.append('file',file);return api<CampaignImport>(`/campaigns/${id}/list/upload`,{method:'POST',body});}
