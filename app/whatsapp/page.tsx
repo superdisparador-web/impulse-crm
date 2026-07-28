@@ -1,24 +1,78 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
-import { Archive, CheckCircle2, Edit, Plus, RefreshCw, RotateCcw, Search, Star, X } from "lucide-react";
+import {
+  AlertCircle,
+  CheckCircle2,
+  MessageCircleMore,
+  Plus,
+  X,
+} from "lucide-react";
+import {
+  AccountFilters,
+  AccountModal,
+  AccountTable,
+  AccountView,
+  ArchiveModal,
+} from "@/components/whatsapp";
 import { whatsappService } from "@/services/whatsapp.service";
-import { WhatsappAccount, WhatsappAccountFormData, WhatsappAccountStatus } from "@/types/whatsapp";
+import {
+  WhatsappAccount,
+  WhatsappAccountFormData,
+  WhatsappAccountStatus,
+} from "@/types/whatsapp";
 
-const statusLabels: Record<WhatsappAccountStatus, string> = { ACTIVE: "Ativa", INACTIVE: "Inativa", PENDING: "Pendente", ERROR: "Erro", DISCONNECTED: "Desconectada", SUSPENDED: "Suspensa" };
-const emptyForm: WhatsappAccountFormData = { name: "", phoneNumber: "", wabaId: "", businessAccountId: "", phoneNumberId: "", credential: "", verifyToken: "", apiVersion: "v20.0", active: true };
+const statusLabels: Record<WhatsappAccountStatus, string> = {
+  ACTIVE: "Ativa",
+  INACTIVE: "Inativa",
+  PENDING: "Pendente",
+  ERROR: "Erro",
+  DISCONNECTED: "Desconectada",
+  SUSPENDED: "Suspensa",
+};
 
-function formatDate(value?: string | null) { if (!value) return "Nunca"; return new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(new Date(value)); }
-function generateVerifyToken() { const bytes = new Uint8Array(24); window.crypto.getRandomValues(bytes); return Array.from(bytes, (value) => value.toString(16).padStart(2, "0")).join(""); }
-function mask(value?: string | null) { if (!value) return "—"; if (value.length <= 6) return "••••"; return `${value.slice(0, 3)}••••${value.slice(-3)}`; }
+const emptyForm: WhatsappAccountFormData = {
+  name: "",
+  phoneNumber: "",
+  wabaId: "",
+  businessAccountId: "",
+  phoneNumberId: "",
+  credential: "",
+  verifyToken: "",
+  apiVersion: "v20.0",
+  active: true,
+};
+
+function formatDate(value?: string | null) {
+  if (!value) return "Nunca";
+  return new Intl.DateTimeFormat("pt-BR", {
+    dateStyle: "short",
+    timeStyle: "short",
+  }).format(new Date(value));
+}
+
+function generateVerifyToken() {
+  const bytes = new Uint8Array(24);
+  window.crypto.getRandomValues(bytes);
+  return Array.from(bytes, (value) => value.toString(16).padStart(2, "0")).join(
+    "",
+  );
+}
+
+function mask(value?: string | null) {
+  if (!value) return "—";
+  if (value.length <= 6) return "••••";
+  return `${value.slice(0, 3)}••••${value.slice(-3)}`;
+}
 
 export default function WhatsappPage() {
   const [accounts, setAccounts] = useState<WhatsappAccount[]>([]);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
-  const [state, setState] = useState<"active" | "inactive" | "archived" | "all" | "">("");
+  const [state, setState] = useState<AccountView>("");
   const [page, setPage] = useState(1);
   const [pageSize] = useState(10);
+  const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -27,45 +81,362 @@ export default function WhatsappPage() {
   const [error, setError] = useState("");
   const [editing, setEditing] = useState<WhatsappAccount | null>(null);
   const [form, setForm] = useState<WhatsappAccountFormData>(emptyForm);
-  const [confirmArchive, setConfirmArchive] = useState<WhatsappAccount | null>(null);
+  const [confirmArchive, setConfirmArchive] = useState<WhatsappAccount | null>(
+    null,
+  );
   const addButtonRef = useRef<HTMLButtonElement>(null);
   const firstInputRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
-    const controller = new AbortController();
-    setLoading(true); setError("");
+    setLoading(true);
+    setError("");
     try {
-      const result = await whatsappService.getAccounts({ search, status, state: state || undefined, page, pageSize });
-      if (!controller.signal.aborted) { setAccounts(result.items); setTotalPages(result.totalPages); }
-    } catch (err) { if (!controller.signal.aborted) setError(err instanceof Error ? err.message : "Erro ao carregar contas WhatsApp."); }
-    finally { if (!controller.signal.aborted) setLoading(false); }
-    return () => controller.abort();
+      const result = await whatsappService.getAccounts({
+        search,
+        status,
+        state: state || undefined,
+        page,
+        pageSize,
+      });
+      setAccounts(result.items);
+      setTotal(result.total);
+      setTotalPages(result.totalPages || 1);
+    } catch (reason) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : "Não foi possível carregar as contas WhatsApp.",
+      );
+    } finally {
+      setLoading(false);
+    }
   }, [page, pageSize, search, state, status]);
 
-  useEffect(() => { const id = window.setTimeout(() => { void load(); }, 0); return () => window.clearTimeout(id); }, [load]);
-  useEffect(() => { if (editing) firstInputRef.current?.focus(); }, [editing]);
+  useEffect(() => {
+    const timer = window.setTimeout(() => void load(), 0);
+    return () => window.clearTimeout(timer);
+  }, [load]);
+
+  useEffect(() => {
+    if (editing) firstInputRef.current?.focus();
+  }, [editing]);
+
+  useEffect(() => {
+    if (!message) return;
+    const timer = window.setTimeout(() => setMessage(""), 5000);
+    return () => window.clearTimeout(timer);
+  }, [message]);
 
   function openForm(account?: WhatsappAccount) {
-    setEditing(account ?? { id: "", organizationId: "", provider: "META_CLOUD", tokenConfigured: false, ...emptyForm, status: "PENDING", isDefault: false, normalizedPhone: "", createdAt: "", updatedAt: "", phoneNumber: "" } as WhatsappAccount);
-    setForm(account ? { name: account.name, phoneNumber: account.phoneNumber, wabaId: account.wabaId, businessAccountId: account.businessAccountId || "", phoneNumberId: account.phoneNumberId, credential: "", verifyToken: "", apiVersion: account.apiVersion || "v20.0", active: account.status === "ACTIVE" } : { ...emptyForm, verifyToken: generateVerifyToken() });
+    setError("");
+    setEditing(
+      account ??
+        ({
+          id: "",
+          organizationId: "",
+          provider: "META_CLOUD",
+          tokenConfigured: false,
+          ...emptyForm,
+          status: "PENDING",
+          isDefault: false,
+          normalizedPhone: "",
+          createdAt: "",
+          updatedAt: "",
+          phoneNumber: "",
+        } as WhatsappAccount),
+    );
+    setForm(
+      account
+        ? {
+            name: account.name,
+            phoneNumber: account.phoneNumber,
+            wabaId: account.wabaId,
+            businessAccountId: account.businessAccountId || "",
+            phoneNumberId: account.phoneNumberId,
+            credential: "",
+            verifyToken: "",
+            apiVersion: account.apiVersion || "v20.0",
+            active: account.status === "ACTIVE",
+          }
+        : { ...emptyForm, verifyToken: generateVerifyToken() },
+    );
   }
-  function closeForm() { setEditing(null); setForm(emptyForm); addButtonRef.current?.focus(); }
-  async function submit(event: FormEvent) {
-    event.preventDefault(); if (saving) return; setSaving(true); setError("");
-    const payload = { ...form, name: form.name.trim(), phoneNumber: form.phoneNumber?.trim(), wabaId: form.wabaId.trim(), businessAccountId: form.businessAccountId?.trim(), phoneNumberId: form.phoneNumberId.trim(), credential: form.credential?.trim(), apiVersion: form.apiVersion?.trim() };
-    if (!payload.name || !payload.wabaId || !payload.phoneNumberId || (!editing?.id && !payload.credential)) { setError("Preencha nome, WABA ID, Phone Number ID e token na criação."); setSaving(false); return; }
-    try { if (editing?.id) await whatsappService.updateAccount(editing.id, payload.credential ? payload : { ...payload, credential: undefined }); else await whatsappService.createAccount(payload); setMessage("Conta salva com sucesso."); closeForm(); await load(); }
-    catch (err) { setError(err instanceof Error ? err.message : "Erro ao salvar conta."); }
-    finally { setSaving(false); }
-  }
-  async function runAction(id: string, action: () => Promise<unknown>, ok: string) { if (busyId) return; setBusyId(id); setError(""); try { await action(); setMessage(ok); await load(); } catch (err) { setError(err instanceof Error ? err.message : "Erro ao executar ação."); } finally { setBusyId(null); } }
 
-  return <main className="space-y-6">
-    <div className="flex flex-wrap items-center justify-between gap-4"><div><h1 className="text-4xl font-bold">Contas WhatsApp</h1><p className="mt-2 text-slate-400">Gerenciamento da API Oficial do WhatsApp Business Platform.</p></div><button ref={addButtonRef} onClick={() => openForm()} className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-3 font-semibold hover:bg-blue-700"><Plus size={18}/>Conectar WhatsApp Oficial</button></div>
-    {message && <div className="rounded-lg border border-green-800 bg-green-950/50 p-3 text-green-200">{message}</div>}{error && <div className="rounded-lg border border-red-800 bg-red-950/50 p-3 text-red-200">{error}</div>}
-    <section className="rounded-xl border border-slate-800 bg-slate-900/60 p-4"><div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-lg bg-slate-950 p-3 text-sm"><span>Webhook: <code>/webhooks/meta/whatsapp</code></span><button type="button" onClick={()=>void navigator.clipboard.writeText(`${window.location.origin}/webhooks/meta/whatsapp`)} className="rounded border border-slate-700 px-3 py-1">Copiar URL</button></div><div className="grid gap-3 md:grid-cols-4"><label className="md:col-span-2"><span className="mb-1 block text-sm text-slate-300">Busca</span><div className="flex items-center gap-2 rounded-lg border border-slate-700 px-3"><Search size={16}/><input value={search} onChange={(e)=>{setSearch(e.target.value);setPage(1);}} className="w-full bg-transparent py-2 outline-none" placeholder="Nome, número, WABA ID ou Phone ID"/></div></label><label><span className="mb-1 block text-sm text-slate-300">Status</span><select value={status} onChange={(e)=>{setStatus(e.target.value);setPage(1);}} className="w-full rounded-lg border border-slate-700 bg-slate-950 p-2"><option value="">Todos</option>{Object.keys(statusLabels).map((s)=><option key={s} value={s}>{statusLabels[s as WhatsappAccountStatus]}</option>)}</select></label><label><span className="mb-1 block text-sm text-slate-300">Visão</span><select value={state} onChange={(e)=>{setState(e.target.value as typeof state);setPage(1);}} className="w-full rounded-lg border border-slate-700 bg-slate-950 p-2"><option value="">Não arquivadas</option><option value="active">Ativas</option><option value="inactive">Inativas</option><option value="archived">Arquivadas</option><option value="all">Todas</option></select></label></div></section>
-    <section className="overflow-hidden rounded-xl border border-slate-800 bg-slate-900/60"><div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="text-slate-400"><tr className="border-b border-slate-800"><th className="p-4">Conta</th><th className="p-4">IDs</th><th className="p-4">Status</th><th className="p-4">Testes e sync</th><th className="p-4">Ações</th></tr></thead><tbody>{loading ? <tr><td className="p-4 text-slate-400" colSpan={5}>Carregando...</td></tr> : accounts.length === 0 ? <tr><td className="p-4 text-slate-400" colSpan={5}>Nenhuma conta WhatsApp encontrada.</td></tr> : accounts.map((account)=><tr key={account.id} className="border-b border-slate-800 last:border-0"><td className="p-4"><div className="font-semibold">{account.name} {account.isDefault && <span className="ml-2 rounded-full bg-yellow-900 px-2 py-1 text-xs text-yellow-200">Padrão</span>}</div><div className="text-slate-400">{account.displayPhoneNumber || account.phoneNumber}</div><div className="text-slate-500">{account.verifiedName || "Nome verificado pendente"}</div></td><td className="p-4"><div>WABA: {mask(account.wabaId)}</div><div>Phone: {mask(account.phoneNumberId)}</div><div className="text-slate-500">Token: {account.tokenConfigured ? `••••${account.tokenLast4 || ""}` : "Não configurado"}</div></td><td className="p-4"><span className={`rounded-full px-3 py-1 text-xs font-semibold ${account.status === "ACTIVE" ? "bg-green-900 text-green-200" : account.status === "ERROR" ? "bg-red-900 text-red-200" : "bg-slate-800 text-slate-300"}`}>{statusLabels[account.status]}</span>{account.lastConnectionError && <p className="mt-2 max-w-xs text-xs text-red-200">{account.lastConnectionError}</p>}</td><td className="p-4"><div>Último teste: {formatDate(account.lastConnectionTestAt)}</div><div>Última sincronização: {formatDate(account.lastSyncAt)}</div></td><td className="p-4"><div className="flex flex-wrap gap-2"><button aria-label="Editar" onClick={()=>openForm(account)} className="rounded border border-slate-700 p-2"><Edit size={16}/></button><button aria-label="Testar conexão" disabled={busyId===account.id || !!account.deletedAt} onClick={()=>runAction(account.id,()=>whatsappService.testAccount(account.id),"Conexão testada.")} className="rounded border border-slate-700 p-2"><CheckCircle2 size={16}/></button><button aria-label="Sincronizar" disabled={busyId===account.id || !!account.deletedAt} onClick={()=>runAction(account.id,()=>whatsappService.syncAccount(account.id),"Conta sincronizada.")} className="rounded border border-slate-700 p-2"><RefreshCw size={16}/></button><button aria-label="Definir padrão" disabled={busyId===account.id || account.isDefault || !!account.deletedAt} onClick={()=>runAction(account.id,()=>whatsappService.setDefault(account.id),"Conta definida como padrão.")} className="rounded border border-slate-700 p-2"><Star size={16}/></button><button disabled={busyId===account.id || !!account.deletedAt} onClick={()=>runAction(account.id,()=>whatsappService.updateStatus(account.id,account.status === "ACTIVE" ? "INACTIVE" : "ACTIVE"),"Status atualizado.")} className="rounded border border-slate-700 px-2">{account.status === "ACTIVE" ? "Desativar" : "Ativar"}</button>{account.deletedAt ? <button onClick={()=>runAction(account.id,()=>whatsappService.restoreAccount(account.id),"Conta restaurada.")} className="rounded border border-slate-700 p-2"><RotateCcw size={16}/></button> : <button aria-label="Arquivar" onClick={()=>setConfirmArchive(account)} className="rounded border border-red-900 p-2 text-red-200"><Archive size={16}/></button>}</div></td></tr>)}</tbody></table></div><div className="flex items-center justify-between p-4"><button disabled={page<=1} onClick={()=>setPage(page-1)} className="rounded border border-slate-700 px-3 py-2 disabled:opacity-50">Anterior</button><span>Página {page} de {totalPages}</span><button disabled={page>=totalPages} onClick={()=>setPage(page+1)} className="rounded border border-slate-700 px-3 py-2 disabled:opacity-50">Próxima</button></div></section>
-    {editing && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" role="dialog" aria-modal="true" onKeyDown={(e)=>{if(e.key==='Escape') closeForm();}} onMouseDown={(e)=>{if(e.target===e.currentTarget) closeForm();}}><form onSubmit={submit} className="w-full max-w-xl rounded-xl bg-slate-900 p-6 shadow-xl"><div className="mb-4 flex items-center justify-between"><h2 className="text-2xl font-semibold">{editing.id ? "Editar conta" : "Adicionar conta"}</h2><button type="button" aria-label="Fechar" onClick={closeForm}><X/></button></div><div className="grid gap-3"><label>Nome interno<input ref={firstInputRef} value={form.name} onChange={(e)=>setForm({...form,name:e.target.value})} className="mt-1 w-full rounded border border-slate-700 bg-slate-950 p-2" required/></label><label>Número exibido<input value={form.phoneNumber} onChange={(e)=>setForm({...form,phoneNumber:e.target.value})} className="mt-1 w-full rounded border border-slate-700 bg-slate-950 p-2"/></label><label>WABA ID<input value={form.wabaId} onChange={(e)=>setForm({...form,wabaId:e.target.value})} className="mt-1 w-full rounded border border-slate-700 bg-slate-950 p-2" required/></label><label>Business Account ID (opcional)<input value={form.businessAccountId} onChange={(e)=>setForm({...form,businessAccountId:e.target.value})} className="mt-1 w-full rounded border border-slate-700 bg-slate-950 p-2"/></label><label>Phone Number ID<input value={form.phoneNumberId} onChange={(e)=>setForm({...form,phoneNumberId:e.target.value})} className="mt-1 w-full rounded border border-slate-700 bg-slate-950 p-2" required/></label><label>Access token<input type="password" value={form.credential} onChange={(e)=>setForm({...form,credential:e.target.value})} placeholder={editing.id ? "Token já configurado — informe novo token para substituir" : "Token obrigatório"} className="mt-1 w-full rounded border border-slate-700 bg-slate-950 p-2" required={!editing.id}/></label><label>Verify Token<input value={form.verifyToken} onChange={(e)=>setForm({...form,verifyToken:e.target.value})} placeholder={editing.id ? "Preencha apenas para substituir" : "Gerado automaticamente"} className="mt-1 w-full rounded border border-slate-700 bg-slate-950 p-2"/></label><label>Versão da API<input value={form.apiVersion} onChange={(e)=>setForm({...form,apiVersion:e.target.value})} className="mt-1 w-full rounded border border-slate-700 bg-slate-950 p-2"/></label><label className="flex items-center gap-2"><input type="checkbox" checked={form.active} onChange={(e)=>setForm({...form,active:e.target.checked})}/> Ativa</label></div><div className="mt-5 flex justify-end gap-3"><button type="button" onClick={closeForm} className="rounded border border-slate-700 px-4 py-2">Cancelar</button><button disabled={saving} className="rounded bg-blue-600 px-4 py-2 font-semibold disabled:opacity-50">{saving ? "Salvando..." : "Salvar"}</button></div></form></div>}
-    {confirmArchive && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" role="alertdialog" aria-modal="true" onMouseDown={(e)=>{if(e.target===e.currentTarget)setConfirmArchive(null);}} onKeyDown={(e)=>{if(e.key==='Escape')setConfirmArchive(null);}}><div className="max-w-md rounded-xl bg-slate-900 p-6"><h2 className="text-xl font-semibold">Arquivar conta?</h2><p className="mt-2 text-slate-300">A conta {confirmArchive.name} será removida por soft delete e poderá ser restaurada.</p><div className="mt-5 flex justify-end gap-3"><button onClick={()=>setConfirmArchive(null)} className="rounded border border-slate-700 px-4 py-2">Cancelar</button><button onClick={()=>{const id=confirmArchive.id; setConfirmArchive(null); void runAction(id,()=>whatsappService.deleteAccount(id),"Conta arquivada.");}} className="rounded bg-red-700 px-4 py-2 font-semibold">Arquivar</button></div></div></div>}
-  </main>;
+  function closeForm() {
+    setEditing(null);
+    setForm(emptyForm);
+    setError("");
+    addButtonRef.current?.focus();
+  }
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    if (saving) return;
+    setSaving(true);
+    setError("");
+    const payload = {
+      ...form,
+      name: form.name.trim(),
+      phoneNumber: form.phoneNumber?.trim(),
+      wabaId: form.wabaId.trim(),
+      businessAccountId: form.businessAccountId?.trim(),
+      phoneNumberId: form.phoneNumberId.trim(),
+      credential: form.credential?.trim(),
+      apiVersion: form.apiVersion?.trim(),
+    };
+    if (
+      !payload.name ||
+      !payload.wabaId ||
+      !payload.phoneNumberId ||
+      (!editing?.id && !payload.credential)
+    ) {
+      setError(
+        "Preencha nome interno, WABA ID, Phone Number ID e Access Token.",
+      );
+      setSaving(false);
+      return;
+    }
+    try {
+      if (editing?.id)
+        await whatsappService.updateAccount(
+          editing.id,
+          payload.credential ? payload : { ...payload, credential: undefined },
+        );
+      else await whatsappService.createAccount(payload);
+      setMessage("Conta WhatsApp salva com sucesso.");
+      closeForm();
+      await load();
+    } catch (reason) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : "Não foi possível salvar a conta WhatsApp.",
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function runAction(
+    id: string,
+    action: () => Promise<unknown>,
+    successMessage: string,
+  ) {
+    if (busyId) return;
+    setBusyId(id);
+    setError("");
+    try {
+      await action();
+      setMessage(successMessage);
+      await load();
+    } catch (reason) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : "Não foi possível concluir a ação.",
+      );
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  const activeOnPage = accounts.filter(
+    (account) => account.status === "ACTIVE" && !account.deletedAt,
+  ).length;
+  const hasFilters = Boolean(search || status || state);
+  const clearFilters = () => {
+    setSearch("");
+    setStatus("");
+    setState("");
+    setPage(1);
+  };
+
+  return (
+    <main className="space-y-6 text-slate-900">
+      <header className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <div className="mb-3 flex items-center gap-3">
+            <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+              <MessageCircleMore size={23} />
+            </span>
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight text-slate-900">
+                Contas WhatsApp
+              </h1>
+              <p className="mt-1 text-sm text-slate-500">
+                Gerencie números conectados à API Oficial do WhatsApp Business
+                Platform.
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-4 text-xs text-slate-500">
+            <span>
+              <strong className="text-slate-900">{total}</strong>{" "}
+              {total === 1 ? "conta" : "contas"}
+            </span>
+            <span>
+              <strong className="text-emerald-700">{activeOnPage}</strong>{" "}
+              ativas nesta página
+            </span>
+          </div>
+        </div>
+        <button
+          ref={addButtonRef}
+          type="button"
+          onClick={() => openForm()}
+          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-100 sm:w-auto"
+        >
+          <Plus size={18} />
+          Conectar WhatsApp Oficial
+        </button>
+      </header>
+
+      <div aria-live="polite" className="space-y-3">
+        {message && (
+          <div
+            role="status"
+            className="flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800"
+          >
+            <CheckCircle2 size={18} />
+            <span className="flex-1">{message}</span>
+            <button
+              type="button"
+              onClick={() => setMessage("")}
+              aria-label="Fechar mensagem de sucesso"
+              className="rounded-lg p-1 hover:bg-emerald-100"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        )}
+        {error && !editing && (
+          <div
+            role="alert"
+            className="flex flex-col gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 sm:flex-row sm:items-center"
+          >
+            <AlertCircle size={18} className="shrink-0" />
+            <span className="flex-1">{error}</span>
+            <button
+              type="button"
+              onClick={() => void load()}
+              className="rounded-lg border border-red-200 bg-white px-3 py-2 font-semibold hover:bg-red-100"
+            >
+              Tentar novamente
+            </button>
+            <button
+              type="button"
+              onClick={() => setError("")}
+              aria-label="Fechar alerta"
+              className="self-end rounded-lg p-1 hover:bg-red-100 sm:self-auto"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        )}
+      </div>
+
+      <AccountFilters
+        search={search}
+        status={status}
+        state={state}
+        statusLabels={statusLabels}
+        onSearchChange={(value) => {
+          setSearch(value);
+          setPage(1);
+        }}
+        onStatusChange={(value) => {
+          setStatus(value);
+          setPage(1);
+        }}
+        onStateChange={(value) => {
+          setState(value);
+          setPage(1);
+        }}
+      />
+      <AccountTable
+        accounts={accounts}
+        loading={loading}
+        busyId={busyId}
+        page={page}
+        totalPages={totalPages}
+        hasFilters={hasFilters}
+        onPageChange={setPage}
+        onConnect={() => openForm()}
+        onClearFilters={clearFilters}
+        onEdit={openForm}
+        onTest={(account) =>
+          void runAction(
+            account.id,
+            () => whatsappService.testAccount(account.id),
+            "Conexão testada com sucesso.",
+          )
+        }
+        onSync={(account) =>
+          void runAction(
+            account.id,
+            () => whatsappService.syncAccount(account.id),
+            "Conta sincronizada com sucesso.",
+          )
+        }
+        onDefault={(account) =>
+          void runAction(
+            account.id,
+            () => whatsappService.setDefault(account.id),
+            "Conta definida como padrão.",
+          )
+        }
+        onToggle={(account) =>
+          void runAction(
+            account.id,
+            () =>
+              whatsappService.updateStatus(
+                account.id,
+                account.status === "ACTIVE" ? "INACTIVE" : "ACTIVE",
+              ),
+            `Conta ${account.status === "ACTIVE" ? "desativada" : "ativada"} com sucesso.`,
+          )
+        }
+        onArchive={setConfirmArchive}
+        onRestore={(account) =>
+          void runAction(
+            account.id,
+            () => whatsappService.restoreAccount(account.id),
+            "Conta restaurada com sucesso.",
+          )
+        }
+        formatDate={formatDate}
+        mask={mask}
+      />
+      <AccountModal
+        key={editing ? editing.id || "new" : "closed"}
+        account={editing}
+        form={form}
+        saving={saving}
+        error={editing ? error : ""}
+        firstInputRef={firstInputRef}
+        onChange={setForm}
+        onGenerateVerifyToken={() =>
+          setForm((current) => ({
+            ...current,
+            verifyToken: generateVerifyToken(),
+          }))
+        }
+        onClose={closeForm}
+        onSubmit={submit}
+      />
+      <ArchiveModal
+        account={confirmArchive}
+        saving={Boolean(confirmArchive && busyId === confirmArchive.id)}
+        onCancel={() => setConfirmArchive(null)}
+        onConfirm={() => {
+          if (!confirmArchive) return;
+          void runAction(
+            confirmArchive.id,
+            () => whatsappService.deleteAccount(confirmArchive.id),
+            "Conta arquivada com sucesso.",
+          ).then(() => setConfirmArchive(null));
+        }}
+      />
+    </main>
+  );
 }
