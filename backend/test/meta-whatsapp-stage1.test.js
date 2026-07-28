@@ -8,6 +8,7 @@ const schema = readFileSync('prisma/schema.prisma', 'utf8');
 const service = readFileSync('src/whatsapp/whatsapp.service.ts', 'utf8');
 const controller = readFileSync('src/whatsapp/whatsapp.controller.ts', 'utf8');
 const dto = readFileSync('src/whatsapp/dto/create-whatsapp-account.dto.ts', 'utf8');
+const metaClient = readFileSync('src/whatsapp/meta/meta-whatsapp-http.client.ts', 'utf8');
 
 test('cadastro Meta Cloud persiste os identificadores necessários', () => {
   for (const value of ['provider', 'wabaId', 'phoneNumberId', 'businessAccountId']) assert.match(schema, new RegExp(`\\b${value}\\b`));
@@ -31,14 +32,15 @@ test('credenciais usam AES-GCM e não ficam em texto puro', () => {
   assert.equal(crypto.decrypt(encrypted), 'EAAB-example-secret-token');
   assert.throws(() => crypto.decrypt('plaintext-secret'), /Credencial criptografada inválida/);
 });
-test('teste de conexão valida Phone Number ID e WABA ID retornados pela Meta', () => {
+test('teste de conexão usa a WABA e procura o Phone Number ID retornado pela Meta', () => {
   assert.match(controller, /accounts\/:id\/test-connection/);
-  assert.match(service, /r\.phoneNumberId !== a\.phoneNumberId/);
-  assert.match(service, /r\.wabaId !== a\.wabaId/);
+  assert.match(metaClient, /wabaId\)\}\/phone_numbers\?fields=id,verified_name,display_phone_number,quality_rating/);
+  assert.match(metaClient, /find\(item => item\.id === input\.phoneNumberId\)/);
+  assert.doesNotMatch(metaClient, /fields=[^`\n]*whatsapp_business_account/);
 });
 test('falha da Meta grava status e erro seguro', () => {
   assert.match(service, /WHATSAPP_META_CONNECTION_FAILED/);
-  assert.match(service, /status: 'ERROR'/);
+  assert.match(service, /status:\s*'ERROR'/);
   assert.match(service, /sanitizeError\(e\)/);
 });
 test('validação do webhook compara token protegido', () => {

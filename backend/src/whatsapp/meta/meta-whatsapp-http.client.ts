@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { MetaContact, MetaMediaUpload, MetaSendResult, MetaTemplate, MetaWhatsappClient } from './meta-whatsapp.client';
+import { MetaAccountConnection, MetaAccountConnectionInput, MetaContact, MetaMediaUpload, MetaSendResult, MetaTemplate, MetaWhatsappClient } from './meta-whatsapp.client';
 import { WhatsappCredentialCryptoService } from '../security/credential-crypto.service';
 
 @Injectable()
@@ -9,18 +9,27 @@ export class MetaWhatsappHttpClient extends MetaWhatsappClient {
   private readonly timeoutMs = Number(process.env.META_WHATSAPP_TIMEOUT_MS || 8000);
   private readonly maxTemplatePages = Number(process.env.META_TEMPLATE_MAX_PAGES || 100);
   private base(apiVersion?: string | null) { return `https://graph.facebook.com/${apiVersion || this.graphVersion}`; }
-  private sanitizeMetaError(body: unknown, status: number) { const error = body && typeof body === 'object' && 'error' in body && body.error && typeof body.error === 'object' ? body.error as Record<string, unknown> : {}; const code = error.code ? ` (${String(error.code).slice(0, 20)})` : ''; return `${String(error.type || 'Meta API error').slice(0, 80)}${code}: ${String(error.message || status).replace(/(access_token=|Bearer\s+)[^&\s]+/gi, '$1[REDACTED]').slice(0, 400)}`; }
+  private metaError(body: unknown, status: number) { const error = body && typeof body === 'object' && 'error' in body && body.error && typeof body.error === 'object' ? body.error as Record<string, unknown> : {}; const metaCode=Number(error.code); const message=String(error.message || status).replace(/(access_token=|Bearer\s+)[^&\s]+/gi, '$1[REDACTED]').slice(0,400); const code=metaCode===190||status===401?'WHATSAPP_INVALID_ACCESS_TOKEN':metaCode===10||metaCode===200||status===403||/permission|authorized|access denied/i.test(message)?'WHATSAPP_INSUFFICIENT_PERMISSION':'WHATSAPP_META_API_ERROR'; return Object.assign(new Error(`${String(error.type || 'Meta API error').slice(0,80)}${error.code?` (${String(error.code).slice(0,20)})`:''}: ${message}`),{code}); }
   private async request<T>(urlOrPath: string, token: string, init: RequestInit = {}, apiVersion?: string | null): Promise<T> {
     const url = new URL(urlOrPath.startsWith('http') ? urlOrPath : `${this.base(apiVersion)}${urlOrPath}`);
     if (url.protocol !== 'https:' || url.hostname !== 'graph.facebook.com') throw new Error('WHATSAPP_META_PAGING_URL_INVALID');
     url.searchParams.delete('access_token');
     const controller = new AbortController(); const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
-    try { const res = await fetch(url, { ...init, signal: controller.signal, headers: { ...(init.body instanceof FormData?{}:{'content-type':'application/json'}), authorization: `Bearer ${token}`, ...(init.headers || {}) } }); const body: unknown = await res.json().catch(() => ({})); if (!res.ok) throw new Error(this.sanitizeMetaError(body, res.status)); return body as T; }
+    try { const res = await fetch(url, { ...init, signal: controller.signal, headers: { ...(init.body instanceof FormData?{}:{'content-type':'application/json'}), authorization: `Bearer ${token}`, ...(init.headers || {}) } }); const body: unknown = await res.json().catch(() => ({})); if (!res.ok) throw this.metaError(body, res.status); return body as T; }
     catch (error) { if ((error as Error).name === 'AbortError') throw new Error('WHATSAPP_META_REQUEST_TIMEOUT'); throw error; }
     finally { clearTimeout(timeout); }
   }
-  async testConnection(input: { accessToken: string; phoneNumberId: string; apiVersion?: string | null }) { const r = await this.request<{id:string;whatsapp_business_account?:{id:string};display_phone_number?:string;verified_name?:string;quality_rating?:string;messaging_limit_tier?:string}>(`/${encodeURIComponent(input.phoneNumberId)}?fields=id,whatsapp_business_account,display_phone_number,verified_name,quality_rating,messaging_limit_tier`, input.accessToken, {}, input.apiVersion); return { ok: true, phoneNumberId: r.id, wabaId: r.whatsapp_business_account?.id, displayPhoneNumber: r.display_phone_number, verifiedName: r.verified_name, qualityRating: r.quality_rating, messagingLimitTier: r.messaging_limit_tier }; }
-  async syncAccount(input: { accessToken: string; phoneNumberId: string; apiVersion?: string | null }) { const r = await this.testConnection(input); return { displayPhoneNumber: r.displayPhoneNumber, verifiedName: r.verifiedName, qualityRating: r.qualityRating, messagingLimitTier: r.messagingLimitTier }; }
+  async testConnection(input: MetaAccountConnectionInput): Promise<MetaAccountConnection> {
+    if (input.businessAccountId && input.businessAccountId !== input.wabaId) {
+      const owned = await this.request<{data?:{id:string}[]}>(`/${encodeURIComponent(input.businessAccountId)}/owned_whatsapp_business_accounts?fields=id&limit=100`, input.accessToken, {}, input.apiVersion);
+      if (!(owned.data || []).some(account => account.id === input.wabaId)) throw Object.assign(new Error('A WABA configurada não pertence ao Business Account informado'), {code:'WHATSAPP_WABA_NOT_OWNED_BY_BUSINESS'});
+    }
+    const response = await this.request<{data?:{id:string;verified_name?:string;display_phone_number?:string;quality_rating?:string}[]}>(`/${encodeURIComponent(input.wabaId)}/phone_numbers?fields=id,verified_name,display_phone_number,quality_rating&limit=100`, input.accessToken, {}, input.apiVersion);
+    const phone = (response.data || []).find(item => item.id === input.phoneNumberId);
+    if (!phone) throw Object.assign(new Error('O Phone Number ID configurado não foi encontrado na WABA'), {code:'WHATSAPP_PHONE_NOT_FOUND_IN_WABA'});
+    return {ok:true,phoneNumberId:phone.id,wabaId:input.wabaId,displayPhoneNumber:phone.display_phone_number,verifiedName:phone.verified_name,qualityRating:phone.quality_rating};
+  }
+  syncAccount(input: MetaAccountConnectionInput): Promise<MetaAccountConnection> { return this.testConnection(input); }
   private async message(path:string, token:string, body:unknown){ const r=await this.request<{messages?:{id:string}[]}>(path,token,{method:'POST',body:JSON.stringify(body)}); return {externalMessageId:r.messages?.[0]?.id||''}; }
   sendText(i:{accessToken:string;phoneNumberId:string;to:string;text:string;replyToExternalMessageId?:string}):Promise<MetaSendResult>{ return this.message(`/${i.phoneNumberId}/messages`,i.accessToken,{messaging_product:'whatsapp',to:i.to,type:'text',text:{body:i.text},...(i.replyToExternalMessageId?{context:{message_id:i.replyToExternalMessageId}}:{})}); }
   sendTemplate(i:{accessToken:string;phoneNumberId:string;to:string;name:string;language:string;components?:unknown[]}):Promise<MetaSendResult>{ return this.message(`/${i.phoneNumberId}/messages`,i.accessToken,{messaging_product:'whatsapp',to:i.to,type:'template',template:{name:i.name,language:{code:i.language},components:i.components||[]}}); }
