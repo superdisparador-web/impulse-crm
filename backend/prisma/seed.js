@@ -106,13 +106,28 @@ async function main() {
 
   if (email || password) {
     if (process.env.NODE_ENV === 'production') throw new Error('O seed de administrador local não pode rodar em produção.');
-    if (!email || !password || password.length < 8) throw new Error('Defina DEV_ADMIN_EMAIL e DEV_ADMIN_PASSWORD (mínimo de 8 caracteres).');
+    if (!email || !password || password.length < 6) throw new Error('Defina DEV_ADMIN_EMAIL e DEV_ADMIN_PASSWORD (mínimo de 6 caracteres).');
     const passwordHash = await bcrypt.hash(password, 12);
     user = await prisma.user.upsert({
       where: { email },
-      update: { active: true, deletedAt: null },
-      create: { name: process.env.DEV_ADMIN_NAME?.trim() || 'Administrador local', email, password: passwordHash, role: 'ADMIN' },
+      update: {
+        name: process.env.DEV_ADMIN_NAME?.trim() || 'Administrador local',
+        password: passwordHash,
+        role: 'GLOBAL_ADMIN',
+        active: true,
+        status: 'ACTIVE',
+        deletedAt: null,
+      },
+      create: {
+        name: process.env.DEV_ADMIN_NAME?.trim() || 'Administrador local',
+        email,
+        password: passwordHash,
+        role: 'GLOBAL_ADMIN',
+        active: true,
+        status: 'ACTIVE',
+      },
     });
+    if (!(await bcrypt.compare(password, user.password))) throw new Error('Falha ao validar o hash bcrypt do administrador local.');
     console.log(`Administrador local disponível para ${email}.`);
   }
 

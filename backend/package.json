@@ -12,7 +12,7 @@
     "test": "npm run build && node --test test/*.test.js",
     "lint": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
-    "seed:dev-admin": "node -r dotenv/config prisma/seed.js"
+    "seed:dev-admin": "node -r dotenv/config prisma/seed.js dotenv_config_path=.env"
   },
   "keywords": [],
   "author": "",
