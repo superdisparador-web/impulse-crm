@@ -193,13 +193,26 @@ async function main() {
   const permissionsByCode = new Map(allPermissions.map((permission) => [permission.code, permission]));
 
   for (const role of roles) {
-    const rolePermissionList = role.code === 'GLOBAL_ADMIN'
+    const desiredPermissions = role.code === 'GLOBAL_ADMIN'
       ? allPermissions
       : [...authPermissions, ...rolePermissionCodes[role.code]].map((code) => permissionsByCode.get(code));
+    const persistedRole = rolesByCode.get(role.code);
 
-    for (const permission of rolePermissionList) {
-      if (!permission) throw new Error(`Permissão do papel ${role.code} não encontrada.`);
-      const persistedRole = rolesByCode.get(role.code);
+    if (!persistedRole) throw new Error(`Papel ${role.code} não encontrado após a sincronização.`);
+    if (desiredPermissions.some((permission) => !permission)) {
+      throw new Error(`Permissão do papel ${role.code} não encontrada.`);
+    }
+
+    const desiredPermissionIds = desiredPermissions.map((permission) => permission.id);
+
+    await prisma.rolePermission.deleteMany({
+      where: {
+        roleId: persistedRole.id,
+        permissionId: { notIn: desiredPermissionIds },
+      },
+    });
+
+    for (const permission of desiredPermissions) {
       await prisma.rolePermission.upsert({
         where: {
           roleId_permissionId: {
