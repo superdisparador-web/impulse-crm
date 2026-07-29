@@ -4,6 +4,7 @@ import { ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
+import AuthBoundary from "@/components/auth/AuthBoundary";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -15,10 +16,10 @@ export default function DashboardLayout({
   const pathname = usePathname();
 
   if (pathname === "/login") {
-    return children;
+    return <AuthBoundary>{children}</AuthBoundary>;
   }
 
-  return (
+  return <AuthBoundary>
     <div className="flex h-dvh bg-[radial-gradient(circle_at_top_right,_#eff6ff_0,_#f8fafc_32%,_#f1f5f9_100%)]">
       <Sidebar />
 
@@ -30,5 +31,5 @@ export default function DashboardLayout({
         </main>
       </div>
     </div>
-  );
+  </AuthBoundary>;
 }

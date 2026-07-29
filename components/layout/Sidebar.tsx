@@ -17,6 +17,7 @@ import {
   UserRoundCog,
   Users,
 } from "lucide-react";
+import { getCurrentUser } from "@/services/auth";
 
 const Image = dynamic(() => import("next/image"));
 
@@ -103,6 +104,7 @@ function isRouteActive(pathname: string, href: string) {
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const user = getCurrentUser();
 
   return (
     <aside className="relative flex h-dvh w-20 shrink-0 flex-col overflow-hidden border-r border-white/10 bg-[linear-gradient(180deg,#071225_0%,#0a1730_52%,#07111f_100%)] shadow-[8px_0_32px_-20px_rgba(2,6,23,0.55)] transition-[width] duration-300 lg:w-64">
@@ -155,11 +157,11 @@ export default function Sidebar() {
       <div className="relative hidden border-t border-white/8 p-3 lg:block">
         <div className="rounded-xl border border-white/10 bg-white/[0.055] px-4 py-3 shadow-inner backdrop-blur-sm">
           <p className="text-sm font-semibold text-white">
-            Rodrigo Lopes
+            {user?.name ?? "Usuário"}
           </p>
 
           <p className="mt-0.5 text-xs text-slate-400">
-            Superintendência
+            {user?.email ?? ""}
           </p>
         </div>
       </div>

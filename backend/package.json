@@ -4,13 +4,15 @@
   "description": "",
   "main": "dist/src/main",
   "scripts": {
+    "prebuild": "prisma generate",
     "build": "nest build",
     "start": "nest start",
     "start:dev": "nest start --watch",
     "start:prod": "node .",
     "test": "npm run build && node --test test/*.test.js",
     "lint": "tsc --noEmit",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "seed:dev-admin": "node -r dotenv/config prisma/seed.js"
   },
   "keywords": [],
   "author": "",

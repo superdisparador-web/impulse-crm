@@ -1,6 +1,6 @@
 import { clearSession, getAccessToken, getRefreshToken, updateTokens } from "./session";
 
-const API_URL = "http://localhost:3000";
+export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 const SESSION_EXPIRED_MESSAGE = "Sua sessão expirou. Faça login novamente.";
 
 interface RefreshResponse {
@@ -10,10 +10,10 @@ interface RefreshResponse {
 
 let refreshPromise: Promise<string> | null = null;
 
-function redirectToLogin() {
+function redirectToLogin(sessionExpired: boolean) {
   clearSession();
   if (typeof window !== "undefined" && window.location.pathname !== "/login") {
-    window.location.assign("/login?session=expired");
+    window.location.assign(sessionExpired ? "/login?session=expired" : "/login");
   }
 }
 
@@ -37,7 +37,7 @@ async function refreshAccessToken(): Promise<string> {
     updateTokens(tokens.accessToken, tokens.refreshToken);
     return tokens.accessToken;
   })().catch((error: unknown) => {
-    redirectToLogin();
+    redirectToLogin(true);
     throw error instanceof Error ? error : new Error(SESSION_EXPIRED_MESSAGE);
   }).finally(() => {
     refreshPromise = null;
@@ -69,16 +69,22 @@ export async function api<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
-  let response = await request(endpoint, options, getAccessToken());
+  const accessToken = getAccessToken();
+  const hadAuthenticatedSession = Boolean(accessToken && getRefreshToken());
+  let response = await request(endpoint, options, accessToken);
   const path = endpoint.split("?", 1)[0];
   const skipsRefresh = path === "/auth/login" || path === "/auth/register" || path === "/auth/refresh";
 
   if (isAuthenticationError(response) && !skipsRefresh) {
-    const accessToken = await refreshAccessToken();
-    response = await request(endpoint, options, accessToken);
+    if (!hadAuthenticatedSession) {
+      redirectToLogin(false);
+      throw new Error("Autenticação necessária.");
+    }
+    const renewedAccessToken = await refreshAccessToken();
+    response = await request(endpoint, options, renewedAccessToken);
 
     if (isAuthenticationError(response)) {
-      redirectToLogin();
+      redirectToLogin(true);
       throw new Error(SESSION_EXPIRED_MESSAGE);
     }
   }
@@ -98,7 +104,24 @@ export async function api<T>(
   return response.json();
 }
 
-api.blob = async function blob(endpoint:string):Promise<Blob>{let response=await request(endpoint,{},getAccessToken());if(isAuthenticationError(response)){response=await request(endpoint,{},await refreshAccessToken());}if(!response.ok)throw new Error('Não foi possível baixar o arquivo.');return response.blob();};
+api.blob = async function blob(endpoint: string): Promise<Blob> {
+  const accessToken = getAccessToken();
+  const hadAuthenticatedSession = Boolean(accessToken && getRefreshToken());
+  let response = await request(endpoint, {}, accessToken);
+  if (isAuthenticationError(response)) {
+    if (!hadAuthenticatedSession) {
+      redirectToLogin(false);
+      throw new Error("Autenticação necessária.");
+    }
+    response = await request(endpoint, {}, await refreshAccessToken());
+    if (isAuthenticationError(response)) {
+      redirectToLogin(true);
+      throw new Error(SESSION_EXPIRED_MESSAGE);
+    }
+  }
+  if (!response.ok) throw new Error("Não foi possível baixar o arquivo.");
+  return response.blob();
+};
 
 api.get = function get<T>(endpoint: string): Promise<T> {
   return api<T>(endpoint);

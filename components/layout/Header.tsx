@@ -3,11 +3,25 @@
 import {
   Bell,
   ChevronDown,
+  LogOut,
   Search,
   UserCircle2,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { getCurrentUser, logout } from "@/services/auth";
 
 export default function Header() {
+  const router = useRouter();
+  const user = getCurrentUser();
+
+  async function handleLogout() {
+    try {
+      await logout();
+    } finally {
+      router.replace("/login");
+    }
+  }
+
   return (
     <header className="z-20 flex min-h-[68px] shrink-0 items-center justify-between gap-4 border-b border-slate-200/80 bg-white/90 px-4 shadow-[0_1px_12px_rgba(15,23,42,0.035)] backdrop-blur-xl sm:px-6 xl:px-8">
       <div className="relative hidden w-full max-w-md md:block">
@@ -47,11 +61,11 @@ export default function Header() {
 
           <div className="hidden min-w-0 sm:block">
             <p className="truncate text-sm font-semibold text-slate-900">
-              Rodrigo Lopes
+              {user?.name ?? "Usuário"}
             </p>
 
             <p className="truncate text-xs text-slate-500">
-              Superintendência
+              {user?.email ?? ""}
             </p>
           </div>
 
@@ -59,6 +73,15 @@ export default function Header() {
             className="hidden shrink-0 text-slate-400 sm:block"
             size={16}
           />
+        </button>
+        <button
+          type="button"
+          onClick={handleLogout}
+          aria-label="Sair"
+          title="Sair"
+          className="flex h-10 w-10 items-center justify-center rounded-xl text-slate-500 transition hover:bg-red-50 hover:text-red-600 focus:outline-none focus:ring-4 focus:ring-red-100"
+        >
+          <LogOut size={19} />
         </button>
       </div>
     </header>
