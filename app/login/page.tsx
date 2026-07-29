@@ -78,7 +78,7 @@ export default function LoginPage() {
           placeholder="seuemail@empresa.com"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="relative h-14 w-full rounded-2xl border border-white/15 bg-slate-950/55 px-4 text-[15px] text-white shadow-[inset_0_1px_3px_rgba(0,0,0,0.24)] outline-none transition-all duration-200 placeholder:text-slate-500 hover:border-white/25 hover:bg-slate-950/65 focus:border-blue-400/80 focus:bg-slate-950/75 focus:ring-4 focus:ring-blue-500/15"
+          className="login-input relative h-14 w-full rounded-2xl border border-white/15 bg-slate-950/55 px-4 text-[15px] text-white shadow-[inset_0_1px_3px_rgba(0,0,0,0.24)] outline-none transition-all duration-200 placeholder:text-slate-500 hover:border-white/25 hover:bg-slate-950/65 focus:border-blue-400/80 focus:bg-slate-950/75 focus:ring-4 focus:ring-blue-500/15"
         />
 
         <label htmlFor="password" className="relative mb-2.5 mt-5 text-sm font-semibold text-slate-100">
@@ -93,7 +93,7 @@ export default function LoginPage() {
           placeholder="Digite sua senha"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="relative h-14 w-full rounded-2xl border border-white/15 bg-slate-950/55 px-4 text-[15px] text-white shadow-[inset_0_1px_3px_rgba(0,0,0,0.24)] outline-none transition-all duration-200 placeholder:text-slate-500 hover:border-white/25 hover:bg-slate-950/65 focus:border-blue-400/80 focus:bg-slate-950/75 focus:ring-4 focus:ring-blue-500/15"
+          className="login-input relative h-14 w-full rounded-2xl border border-white/15 bg-slate-950/55 px-4 text-[15px] text-white shadow-[inset_0_1px_3px_rgba(0,0,0,0.24)] outline-none transition-all duration-200 placeholder:text-slate-500 hover:border-white/25 hover:bg-slate-950/65 focus:border-blue-400/80 focus:bg-slate-950/75 focus:ring-4 focus:ring-blue-500/15"
         />
 
         {error && (
