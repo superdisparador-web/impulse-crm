@@ -2,6 +2,7 @@ import { api } from "./api";
 import {
   getAccessToken,
   getSession,
+  getRefreshToken,
   login as startSession,
   logout as endSession,
   SessionUser,
@@ -31,8 +32,13 @@ export async function login(email: string, password: string) {
   return response;
 }
 
-export function logout() {
-  endSession();
+export async function logout() {
+  const refreshToken = getRefreshToken();
+  try {
+    if (getAccessToken()) await api.post<{ success: boolean }>("/auth/logout", { refreshToken });
+  } finally {
+    endSession();
+  }
 }
 
 export function getToken() {

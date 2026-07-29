@@ -111,7 +111,7 @@ function mockFetch(handler) {
 test('1. listPipelines chama GET /pipeline', async () => {
   const calls = mockFetch(() => []);
   await service.listPipelines();
-  assert.equal(calls[0].url, 'http://localhost:3000/pipeline');
+  assert.equal(calls[0].url, 'http://localhost:3001/pipeline');
   assert.equal(calls[0].options.method, undefined);
 });
 
@@ -126,7 +126,7 @@ test('3. primeiro pipeline é selecionado quando não há padrão', () => {
 test('4. getPipelineBoard chama o endpoint correto', async () => {
   const calls = mockFetch(() => boardFixture());
   await service.getPipelineBoard('pipe-1');
-  assert.equal(calls[0].url, 'http://localhost:3000/pipeline/pipe-1/board');
+  assert.equal(calls[0].url, 'http://localhost:3001/pipeline/pipe-1/board');
 });
 
 test('5 e 6. etapas e cards são exibidos ordenados', () => {
@@ -167,7 +167,7 @@ test('13. movimentação entre etapas', () => {
 test('14 e 15. PATCH correto é chamado com stageId e position', async () => {
   const calls = mockFetch(() => ({ ok: true }));
   await service.movePipelineCard('card-1', 'stage-2', 3);
-  assert.equal(calls[0].url, 'http://localhost:3000/pipeline/cards/card-1/move');
+  assert.equal(calls[0].url, 'http://localhost:3001/pipeline/cards/card-1/move');
   assert.equal(calls[0].options.method, 'PATCH');
   assert.deepEqual(JSON.parse(calls[0].options.body), { stageId: 'stage-2', position: 3 });
 });
@@ -480,7 +480,7 @@ test('46. card imobiliário apresenta empreendimento, região, bairro, gerente e
 test('47. filtros vazios são omitidos da URL', async () => {
   const calls = mockFetch(() => boardFixture());
   await service.getPipelineBoard('pipe-1', { search: '', region: undefined, sla: undefined });
-  assert.equal(calls[0].url, 'http://localhost:3000/pipeline/pipe-1/board');
+  assert.equal(calls[0].url, 'http://localhost:3001/pipeline/pipe-1/board');
 });
 
 test('48. movimento otimista persiste e faz rollback comportamental quando a API falha', async () => {

@@ -12,7 +12,7 @@ require.extensions['.ts'] = (module, filename) => {
 };
 
 function browserSession() {
-  const values = new Map([['token', 'expired-access'], ['refreshToken', 'valid-refresh'], ['user', '{}']]);
+  const values = new Map([['impulse.auth.accessToken', 'expired-access'], ['impulse.auth.refreshToken', 'valid-refresh'], ['impulse.auth.user', JSON.stringify({ id: 'u1', name: 'Admin', email: 'admin@example.test', role: 'ADMIN' })]]);
   global.localStorage = {
     getItem: (key) => values.get(key) ?? null,
     setItem: (key, value) => values.set(key, value),
@@ -50,8 +50,8 @@ test('a single refresh renews tokens and retries every concurrent 401 request', 
   await Promise.all([api('/dashboard'), api('/users')]);
 
   assert.equal(refreshCalls, 1);
-  assert.equal(values.get('token'), 'new-access');
-  assert.equal(values.get('refreshToken'), 'new-refresh');
+  assert.equal(values.get('impulse.auth.accessToken'), 'new-access');
+  assert.equal(values.get('impulse.auth.refreshToken'), 'new-refresh');
 });
 
 test('failed refresh clears the session and redirects without retrying refresh', async () => {
@@ -69,7 +69,7 @@ test('failed refresh clears the session and redirects without retrying refresh',
   await assert.rejects(api('/dashboard'), { message: 'Sua sessão expirou. Faça login novamente.' });
 
   assert.equal(refreshCalls, 1);
-  assert.equal(values.has('token'), false);
-  assert.equal(values.has('refreshToken'), false);
+  assert.equal(values.has('impulse.auth.accessToken'), false);
+  assert.equal(values.has('impulse.auth.refreshToken'), false);
   assert.deepEqual(redirects, ['/login?session=expired']);
 });

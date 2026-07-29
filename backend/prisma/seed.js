@@ -1,4 +1,5 @@
 const { PrismaClient } = require('@prisma/client');
+const bcrypt = require('bcrypt');
 
 const prisma = new PrismaClient();
 
@@ -78,15 +79,18 @@ async function main() {
   }
 
   for (const role of roles) {
-    await prisma.rbacRole.create({
-      data: {
+    const existingRole = await prisma.rbacRole.findFirst({ where: { organizationId: null, code: role.code } });
+    if (existingRole) {
+      await prisma.rbacRole.update({ where: { id: existingRole.id }, data: { name: role.name, description: role.description, system: true } });
+    } else {
+      await prisma.rbacRole.create({ data: {
         organizationId: null,
         code: role.code,
         name: role.name,
         description: role.description,
         system: true,
-      },
-    });
+      } });
+    }
   }
 
   const globalAdminRole = await prisma.rbacRole.findFirst({
@@ -96,11 +100,21 @@ async function main() {
     },
   });
 
-  const user = await prisma.user.findUnique({
-    where: {
-      email: 'admin@impulsecrm.com',
-    },
-  });
+  const email = process.env.DEV_ADMIN_EMAIL?.trim().toLowerCase();
+  const password = process.env.DEV_ADMIN_PASSWORD;
+  let user = email ? await prisma.user.findUnique({ where: { email } }) : null;
+
+  if (email || password) {
+    if (process.env.NODE_ENV === 'production') throw new Error('O seed de administrador local não pode rodar em produção.');
+    if (!email || !password || password.length < 8) throw new Error('Defina DEV_ADMIN_EMAIL e DEV_ADMIN_PASSWORD (mínimo de 8 caracteres).');
+    const passwordHash = await bcrypt.hash(password, 12);
+    user = await prisma.user.upsert({
+      where: { email },
+      update: { active: true, deletedAt: null },
+      create: { name: process.env.DEV_ADMIN_NAME?.trim() || 'Administrador local', email, password: passwordHash, role: 'ADMIN' },
+    });
+    console.log(`Administrador local disponível para ${email}.`);
+  }
 
   if (globalAdminRole && user) {
     await prisma.userRole.upsert({
@@ -118,7 +132,7 @@ async function main() {
     });
   }
 
-  console.log('Papéis e permissões criados com sucesso.');
+  console.log('Papéis e permissões sincronizados com sucesso.');
 }
 
 main()

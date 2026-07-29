@@ -52,9 +52,14 @@ export class AuthService {
       await this.audit(AuthAuditEventType.REFRESH_FAILURE, stored?.userId, stored?.user.organizationId, false, meta, 'invalid_refresh_token');
       throw new UnauthorizedException('Refresh token inválido');
     }
+    const claimed = await this.prisma.refreshToken.updateMany({ where: { id: stored.id, status: RefreshTokenStatus.ACTIVE }, data: { status: RefreshTokenStatus.ROTATED, lastUsedAt: new Date() } });
+    if (claimed.count !== 1) {
+      await this.audit(AuthAuditEventType.REFRESH_FAILURE, stored.userId, stored.user.organizationId, false, meta, 'refresh_token_reuse');
+      throw new UnauthorizedException('Refresh token inválido');
+    }
     const tokens = await this.issueTokens(stored.user, stored.sessionId);
     await this.prisma.$transaction([
-      this.prisma.refreshToken.update({ where: { id: stored.id }, data: { status: RefreshTokenStatus.ROTATED, lastUsedAt: new Date(), replacedByTokenId: tokens.refreshTokenId } }),
+      this.prisma.refreshToken.update({ where: { id: stored.id }, data: { replacedByTokenId: tokens.refreshTokenId } }),
       this.prisma.authSession.update({ where: { id: stored.sessionId }, data: { lastAccessedAt: new Date(), ipAddress: meta.ip, userAgent: meta.userAgent } }),
     ]);
     await this.audit(AuthAuditEventType.REFRESH_SUCCESS, stored.userId, stored.user.organizationId, true, meta);
