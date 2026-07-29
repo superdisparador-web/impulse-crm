@@ -143,6 +143,24 @@ textarea::placeholder {
   color: var(--impulse-text-muted);
 }
 
+.login-input {
+  color: #ffffff;
+  caret-color: #ffffff;
+}
+
+.login-input::placeholder {
+  color: #64748b;
+}
+
+.login-input:-webkit-autofill,
+.login-input:-webkit-autofill:hover,
+.login-input:-webkit-autofill:focus,
+.login-input:-webkit-autofill:active {
+  -webkit-text-fill-color: #ffffff;
+  caret-color: #ffffff;
+  box-shadow: inset 0 0 0 1000px #020617;
+}
+
 :focus-visible {
   outline: 3px solid rgb(37 99 235 / 0.18);
   outline-offset: 2px;
