@@ -1,5 +1,6 @@
-import { Body, Controller, Delete, Get, Headers, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Headers, Param, Patch, Post, Query, Req, Res, UseGuards } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+import type { Response } from 'express';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Permissions } from '../auth/decorators/permissions.decorator';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
@@ -15,13 +16,15 @@ import { SyncWhatsappTemplatesDto } from './dto/sync-whatsapp-templates.dto';
 import { UpdateWhatsappAccountDto, UpdateWhatsappAccountStatusDto } from './dto/update-whatsapp-account.dto';
 import { UpdateWhatsappTemplateDto } from './dto/update-whatsapp-template.dto';
 import { WhatsappService } from './whatsapp.service';
+import { EmbeddedSignupService } from './embedded-signup/embedded-signup.service';
 
 type RawReq = Request & { rawBody?: Buffer };
 @ApiTags('WhatsApp Oficial Meta')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('whatsapp')
 export class WhatsappController {
-  constructor(private readonly service: WhatsappService) {}
+  constructor(private readonly service: WhatsappService, private readonly embeddedSignup: EmbeddedSignupService) {}
+  @Post('embedded-signup/session') @Permissions('whatsapp:accounts:create') embeddedSignupSession(@CurrentUser() u: AuthenticatedUserRef) { return this.embeddedSignup.createSession(u); }
   @Post('accounts') @Permissions('whatsapp:accounts:create') createAccount(@Body() d: CreateWhatsappAccountDto, @CurrentUser() u: AuthenticatedUserRef) { return this.service.createAccount(d, u); }
   @Get('accounts') @Permissions('whatsapp:accounts:read') findAccounts(@Query() q: ListWhatsappDto, @CurrentUser() u: AuthenticatedUserRef) { return this.service.findAccounts(q, u); }
   @Get('accounts/:id') @Permissions('whatsapp:accounts:read') getAccount(@Param('id') id: string, @CurrentUser() u: AuthenticatedUserRef) { return this.service.getAccount(id, u); }
@@ -53,6 +56,12 @@ export class WhatsappController {
   @Patch('templates/:id/restore') @Permissions('whatsapp:templates:update') restoreTemplate(@Param('id') id: string, @CurrentUser() u: AuthenticatedUserRef) { return this.service.restoreTemplate(id, u); }
   @Delete('templates/:id') @Permissions('whatsapp:templates:update') deleteTemplate(@Param('id') id: string, @CurrentUser() u: AuthenticatedUserRef) { return this.service.deleteTemplate(id, u); }
   @Post('templates/sync') @Permissions('whatsapp:templates:sync') sync(@Body() d: SyncWhatsappTemplatesDto, @CurrentUser() u: AuthenticatedUserRef) { return this.service.syncTemplates(d, u); }
+}
+@ApiTags('WhatsApp Oficial Meta')
+@Controller('whatsapp/embedded-signup')
+export class WhatsappEmbeddedSignupCallbackController {
+  constructor(private readonly embeddedSignup: EmbeddedSignupService) {}
+  @Get('callback') async callback(@Query() query: { code?: string; state?: string; error?: string; error_reason?: string }, @Res() response: Response) { response.redirect(303, await this.embeddedSignup.complete(query)); }
 }
 @ApiTags('Webhooks WhatsApp Meta')
 @Controller(['webhooks/meta/whatsapp', 'webhooks/whatsapp'])

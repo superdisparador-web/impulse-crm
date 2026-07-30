@@ -773,6 +773,7 @@ model Organization {
   users                 User[]
   leads                 Lead[]
   whatsappAccounts      WhatsappAccount[]
+  whatsappEmbeddedSignupStates WhatsappEmbeddedSignupState[]
   whatsappTemplates     WhatsappTemplate[]
   whatsappConversations WhatsappConversation[]
   whatsappMessages      WhatsappMessage[]
@@ -853,6 +854,7 @@ model User {
   authAuditLogs                 AuthAuditLog[]
   userRoles                     UserRole[]
   createdWhatsappAccounts       WhatsappAccount[]      @relation("WhatsappAccountCreatedBy")
+  whatsappEmbeddedSignupStates  WhatsappEmbeddedSignupState[]
   assignedWhatsappConversations WhatsappConversation[] @relation("WhatsappConversationAssignedUser")
   managedWhatsappConversations  WhatsappConversation[] @relation("WhatsappConversationManagerUser")
   createdWhatsappMessages       WhatsappMessage[]      @relation("WhatsappMessageCreatedBy")
@@ -1148,6 +1150,22 @@ model WhatsappAccount {
   @@index([businessAccountId])
   @@index([wabaId])
   @@index([deletedAt])
+}
+
+model WhatsappEmbeddedSignupState {
+  id                    String       @id @default(cuid())
+  stateHash             String       @unique @db.Char(64)
+  authorizationCodeHash String?      @unique @db.Char(64)
+  organizationId        String
+  userId                String
+  expiresAt             DateTime
+  usedAt                 DateTime?
+  createdAt              DateTime     @default(now())
+  organization          Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user                  User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, expiresAt])
+  @@index([userId, expiresAt])
 }
 
 model WhatsappTemplate {
