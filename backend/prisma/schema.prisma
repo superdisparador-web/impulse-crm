@@ -807,6 +807,7 @@ model Organization {
   whatsappMetrics       WhatsappMetric[]
   campaignSecureLinks   CampaignSecureLink[]
   campaignClickEvents   CampaignClickEvent[]
+  settings              OrganizationSetting?
 
   @@index([name])
   @@index([document])
@@ -862,6 +863,7 @@ model User {
   agentAvailability             AgentAvailability?     @relation("AgentAvailabilityUser")
   assignedLeadDistributions     LeadDistribution[]     @relation("LeadDistributionAssignedUser")
   managedLeadDistributions      LeadDistribution[]     @relation("LeadDistributionManagerUser")
+  settings                      UserPreference?
 
   @@index([organizationId])
   @@index([organizationId, status])
@@ -943,6 +945,64 @@ model UserRole {
 
   @@unique([userId, roleId])
   @@index([roleId])
+}
+
+/// Personal settings are intentionally typed instead of accepting arbitrary keys.
+model UserPreference {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  avatarUrl       String?  @db.VarChar(500)
+  language        String   @default("pt-BR") @db.VarChar(16)
+  timezone        String   @default("America/Sao_Paulo") @db.VarChar(80)
+  dateFormat      String   @default("DD/MM/YYYY") @db.VarChar(20)
+  notifyInApp     Boolean  @default(true)
+  notifyEmail     Boolean  @default(true)
+  notifyWhatsapp  Boolean  @default(false)
+  notifyNewLeads  Boolean  @default(true)
+  notifySla       Boolean  @default(true)
+  notifyCampaigns Boolean  @default(true)
+  notifySecurity  Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+/// Organization-scoped, validated operational and branding settings.
+model OrganizationSetting {
+  id                    String       @id @default(cuid())
+  organizationId        String       @unique
+  organization          Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  displayName           String?      @db.VarChar(255)
+  logoUrl               String?      @db.VarChar(500)
+  faviconUrl            String?      @db.VarChar(500)
+  primaryColor          String       @default("#2563eb") @db.VarChar(7)
+  secondaryColor        String       @default("#0f172a") @db.VarChar(7)
+  signature             String?      @db.VarChar(500)
+  footer                String?      @db.VarChar(500)
+  businessStartsAt      String       @default("08:00") @db.VarChar(5)
+  businessEndsAt        String       @default("18:00") @db.VarChar(5)
+  dailyLeadLimit        Int?
+  slaMinutes            Int          @default(15)
+  contactAttempts       Int          @default(3)
+  redistributionMinutes Int          @default(30)
+  roundRobin            Boolean      @default(true)
+  notifyLeadFailures    Boolean      @default(true)
+  notifyWhatsappHealth  Boolean      @default(true)
+  sessionTtlMinutes     Int          @default(480)
+  maxLoginAttempts      Int          @default(5)
+  createdAt             DateTime     @default(now())
+  updatedAt             DateTime     @updatedAt
+}
+
+/// Global policy is a singleton addressed by a stable key and contains no credentials.
+model SystemSetting {
+  key                       String   @id @default("global") @db.VarChar(40)
+  defaultSessionMinutes     Int      @default(480)
+  defaultLeadLimit          Int?
+  maintenanceMode           Boolean  @default(false)
+  allowOrganizationBranding Boolean  @default(true)
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
 }
 
 enum LeadSource {

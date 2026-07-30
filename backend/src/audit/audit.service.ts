@@ -14,7 +14,7 @@ type AuditPayload = {
   metadata?: Prisma.InputJsonValue | Prisma.NullableJsonNullValueInput;
 };
 
-const REDACTED_KEYS = new Set(['password', 'passwordHash', 'token', 'refreshToken', 'accessToken', 'cookie', 'cookies', 'authorization']);
+const REDACTED_KEYS = new Set(['password', 'passwordhash', 'token', 'refreshtoken', 'accesstoken', 'appsecret', 'secret', 'privatekey', 'verificationtoken', 'cookie', 'cookies', 'authorization']);
 
 @Injectable()
 export class AuditService {
@@ -29,7 +29,7 @@ export class AuditService {
     if (Array.isArray(value)) return value.map((item) => this.sanitize(item as Prisma.InputJsonValue) ?? null) as Prisma.InputJsonArray;
     const output: Record<string, Prisma.InputJsonValue> = {};
     for (const [key, entry] of Object.entries(value)) {
-      output[key] = REDACTED_KEYS.has(key) ? '[REDACTED]' : (this.sanitize(entry as Prisma.InputJsonValue) ?? null) as Prisma.InputJsonValue;
+      output[key] = REDACTED_KEYS.has(key.toLowerCase().replace(/[_-]/g, '')) ? '[REDACTED]' : (this.sanitize(entry as Prisma.InputJsonValue) ?? null) as Prisma.InputJsonValue;
     }
     return output;
   }
