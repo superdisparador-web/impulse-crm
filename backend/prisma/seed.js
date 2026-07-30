@@ -277,56 +277,52 @@ async function main() {
     }
   }
 
-  const globalAdminRole = rolesByCode.get('GLOBAL_ADMIN');
+  const globalAdminRole = await prisma.rbacRole.findFirst({
+    where: {
+      organizationId: null,
+      code: 'GLOBAL_ADMIN',
+      deletedAt: null,
+    },
+  });
 
-  const email = process.env.DEV_ADMIN_EMAIL?.trim().toLowerCase();
-  const password = process.env.DEV_ADMIN_PASSWORD;
-  let user = email ? await prisma.user.findUnique({ where: { email } }) : null;
+  if (!globalAdminRole) throw new Error('Papel GLOBAL_ADMIN não encontrado.');
 
-  if (email || password) {
-    if (process.env.NODE_ENV === 'production') throw new Error('O seed de administrador local não pode rodar em produção.');
-    if (!email || !password || password.length < 6) throw new Error('Defina DEV_ADMIN_EMAIL e DEV_ADMIN_PASSWORD (mínimo de 6 caracteres).');
-    const passwordHash = await bcrypt.hash(password, 12);
-    user = await prisma.user.upsert({
-      where: { email },
-      update: {
-        name: process.env.DEV_ADMIN_NAME?.trim() || 'Administrador local',
-        password: passwordHash,
-        role: 'GLOBAL_ADMIN',
-        active: true,
-        status: 'ACTIVE',
-        deletedAt: null,
-      },
-      create: {
-        name: process.env.DEV_ADMIN_NAME?.trim() || 'Administrador local',
-        email,
-        password: passwordHash,
-        role: 'GLOBAL_ADMIN',
-        active: true,
-        status: 'ACTIVE',
-      },
-    });
-    if (!(await bcrypt.compare(password, user.password))) throw new Error('Falha ao validar o hash bcrypt do administrador local.');
-    console.log(`Administrador local disponível para ${email}.`);
-  }
+  const passwordHash = await bcrypt.hash('Admin@123', 12);
+  const user = await prisma.user.upsert({
+    where: { email: 'admin@impulsecrm.com' },
+    update: {
+      name: 'Administrador',
+      password: passwordHash,
+      role: 'GLOBAL_ADMIN',
+      active: true,
+      status: 'ACTIVE',
+    },
+    create: {
+      name: 'Administrador',
+      email: 'admin@impulsecrm.com',
+      password: passwordHash,
+      role: 'GLOBAL_ADMIN',
+      active: true,
+      status: 'ACTIVE',
+    },
+  });
 
-  if (globalAdminRole && user) {
-    await prisma.userRole.upsert({
-      where: {
-        userId_roleId: {
-          userId: user.id,
-          roleId: globalAdminRole.id,
-        },
-      },
-      update: {},
-      create: {
+  await prisma.userRole.upsert({
+    where: {
+      userId_roleId: {
         userId: user.id,
         roleId: globalAdminRole.id,
       },
-    });
-  }
+    },
+    update: {},
+    create: {
+      userId: user.id,
+      roleId: globalAdminRole.id,
+    },
+  });
 
   console.log('Papéis e permissões sincronizados com sucesso.');
+  console.log('Administrador de desenvolvimento criado ou atualizado com sucesso.');
 }
 
 main()
