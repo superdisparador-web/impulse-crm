@@ -13,6 +13,11 @@ export interface PipelineLeadSummary {
   assignedUser?: AssignedUserSummary | null;
   managerUser?: AssignedUserSummary | null;
   source?: string | null;
+  campaign?: string | null;
+  product?: string | null;
+  tags?: string[];
+  propertyValue?: number | null;
+  lastInteractionAt?: string | null;
   development?: string | null;
   region?: string | null;
   neighborhood?: string | null;
@@ -37,7 +42,8 @@ export interface PipelineStage {
   total?: number;
 }
 
-export interface PipelineMetrics { total: number; byStage: Record<string, number>; conversionRate: number; averageStageHours: number; overdueSla: number; }
+export interface PipelineStageMetric { total: number; conversionRate: number; averageHours: number }
+export interface PipelineMetrics { total: number; byStage: Record<string, number>; stageMetrics?: Record<string, PipelineStageMetric>; conversionRate: number; averageStageHours: number; overdueSla: number; stalledLeads?: number; bottleneckStageId?: string | null; }
 
 export interface PipelineBoard {
   id: string;
@@ -47,7 +53,7 @@ export interface PipelineBoard {
   pagination?: { limit: number; returned: number; total: number };
 }
 
-export interface PipelineFilters { search?: string; brokerId?: string; managerId?: string; development?: string; region?: string; neighborhood?: string; status?: string; temperature?: string; source?: string; from?: string; to?: string; sla?: "ALL" | "OVERDUE" | "ON_TIME"; limit?: number; }
+export interface PipelineFilters { search?: string; brokerId?: string; managerId?: string; broker?: string; manager?: string; campaign?: string; product?: string; development?: string; region?: string; neighborhood?: string; status?: string; temperature?: string; source?: string; from?: string; to?: string; sla?: "ALL" | "OVERDUE" | "ON_TIME"; limit?: number; }
 
 export interface PipelineSummary {
   id: string;

@@ -197,3 +197,56 @@ textarea::placeholder {
   background: #94a3b8;
   background-clip: padding-box;
 }
+
+/* Pipeline: microinterações e virtualização nativa de renderização. */
+.pipeline-board-scroll {
+  scroll-behavior: smooth;
+  scroll-padding-inline: 1rem;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x pan-y;
+}
+
+.pipeline-column {
+  contain: layout paint style;
+  scroll-behavior: smooth;
+  scroll-snap-align: start;
+  overscroll-behavior: contain;
+}
+
+.pipeline-virtual-card {
+  content-visibility: auto;
+  contain-intrinsic-block-size: 360px;
+  contain: layout paint style;
+}
+
+.pipeline-drop-zone::after {
+  content: "Soltar card aqui";
+  display: block;
+  opacity: 0;
+  padding: 0.35rem 0.75rem;
+  text-align: center;
+  color: #93c5fd;
+  font-size: 0.6875rem;
+  transform: translateY(-4px);
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+
+.pipeline-drop-zone:hover::after,
+.pipeline-drop-zone:focus-within::after {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pipeline-board-scroll,
+  .pipeline-column {
+    scroll-behavior: auto;
+  }
+
+  .pipeline-virtual-card,
+  .pipeline-drop-zone,
+  .pipeline-drop-zone::after {
+    transition: none !important;
+    animation: none !important;
+  }
+}

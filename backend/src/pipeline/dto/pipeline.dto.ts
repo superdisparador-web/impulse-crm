@@ -59,9 +59,13 @@ export class PipelineBoardQueryDto {
   @IsOptional() @IsString() search?: string;
   @IsOptional() @IsString() brokerId?: string;
   @IsOptional() @IsString() managerId?: string;
+  @IsOptional() @IsString() broker?: string;
+  @IsOptional() @IsString() manager?: string;
   @IsOptional() @IsString() development?: string;
   @IsOptional() @IsString() region?: string;
   @IsOptional() @IsString() neighborhood?: string;
+  @IsOptional() @IsString() campaign?: string;
+  @IsOptional() @IsString() product?: string;
   @IsOptional() @IsEnum(LeadStatus) status?: LeadStatus;
   @IsOptional() @IsEnum(LeadTemperature) temperature?: LeadTemperature;
   @IsOptional() @IsEnum(LeadSource) source?: LeadSource;

@@ -17,7 +17,7 @@ const LEGACY_STAGE_ALIASES: Record<string, string[]> = {
   'agendamento': ['visita agendada'],
   'analise bancaria': ['analise de credito'],
 };
-const leadSelect = { id: true, name: true, phone: true, email: true, source: true, status: true, temperature: true, metadata: true, createdAt: true, updatedAt: true, assignedUserId: true, managerUserId: true, assignedUser: { select: { id: true, name: true } }, managerUser: { select: { id: true, name: true } }, leadDistributions: { where: { slaDueAt: { not: null } }, orderBy: { createdAt: 'desc' as const }, take: 1, select: { slaDueAt: true, firstUpdatedAt: true } } } satisfies Prisma.LeadSelect;
+const leadSelect = { id: true, name: true, phone: true, email: true, source: true, status: true, temperature: true, metadata: true, lastInteractionAt: true, createdAt: true, updatedAt: true, assignedUserId: true, managerUserId: true, assignedUser: { select: { id: true, name: true } }, managerUser: { select: { id: true, name: true } }, leadDistributions: { orderBy: { createdAt: 'desc' as const }, take: 1, select: { slaDueAt: true, firstUpdatedAt: true, campaign: { select: { name: true } } } } } satisfies Prisma.LeadSelect;
 
 @Injectable()
 export class PipelineService {
@@ -108,6 +108,8 @@ export class PipelineService {
     else if (role === 'MANAGER') leadWhere.managerUserId = ctx.id ?? user.id;
     if (query.brokerId) leadWhere.assignedUserId = query.brokerId;
     if (query.managerId) leadWhere.managerUserId = query.managerId;
+    if (query.broker) leadWhere.assignedUser = { name: { contains: query.broker, mode: 'insensitive' } };
+    if (query.manager) leadWhere.managerUser = { name: { contains: query.manager, mode: 'insensitive' } };
     if (query.status) leadWhere.status = query.status;
     if (query.temperature) leadWhere.temperature = query.temperature;
     if (query.source) leadWhere.source = query.source;
@@ -129,7 +131,10 @@ export class PipelineService {
     const sold = mapped.find(stage => this.normalize(stage.name) === 'venda')?.total ?? 0;
     const overdueSla = mapped.reduce((sum, stage) => sum + stage.overdueSla, 0);
     const averageStageHours = total ? Math.round(mapped.reduce((sum, stage) => sum + stage.totalStageMs, 0) / total / 3600000) : 0;
-    return { id: pipeline.id, name: pipeline.name, stages: mapped, metrics: { total, byStage: Object.fromEntries(mapped.map(stage => [stage.name, stage.total])), conversionRate: total ? Number(((sold / total) * 100).toFixed(1)) : 0, averageStageHours, overdueSla }, pagination: { limit, returned: allCards.length, total } };
+    const stalledLeads = mapped.reduce((sum, stage) => sum + stage.cards.filter(card => now - new Date(card.lead.lastInteractionAt ?? card.lead.updatedAt ?? card.enteredStageAt).getTime() > 48 * 3600000).length, 0);
+    const bottleneckStageId = [...mapped].sort((a, b) => (b.total ? b.totalStageMs / b.total : 0) - (a.total ? a.totalStageMs / a.total : 0))[0]?.id ?? null;
+    const stageMetrics = Object.fromEntries(mapped.map((stage, index) => [stage.id, { total: stage.total, conversionRate: total ? Number(((mapped.slice(index).reduce((sum, item) => sum + item.total, 0) / total) * 100).toFixed(1)) : 0, averageHours: stage.total ? Math.round(stage.totalStageMs / stage.total / 3600000) : 0 }]));
+    return { id: pipeline.id, name: pipeline.name, stages: mapped, metrics: { total, byStage: Object.fromEntries(mapped.map(stage => [stage.name, stage.total])), stageMetrics, conversionRate: total ? Number(((sold / total) * 100).toFixed(1)) : 0, averageStageHours, overdueSla, stalledLeads, bottleneckStageId }, pagination: { limit, returned: allCards.length, total } };
   }
 
   async moveCard(cardId: string, data: MoveCardDto, user: UserRef) {
@@ -164,6 +169,6 @@ export class PipelineService {
   private async normalizeCardPositions(tx: Tx, organizationId: string, pipelineId: string, stageId: string) { const cards = await tx.pipelineLead.findMany({ where: { organizationId, pipelineId, stageId, deletedAt: null }, orderBy: [{ position: 'asc' }, { updatedAt: 'asc' }] }); for (let index = 0; index < cards.length; index++) if (cards[index].position !== index + 1) await tx.pipelineLead.update({ where: { id: cards[index].id }, data: { position: index + 1 } }); }
   private normalize(value: unknown) { return String(value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim(); }
   private metadata(lead: Prisma.LeadGetPayload<{ select: typeof leadSelect }>) { return lead.metadata && typeof lead.metadata === 'object' && !Array.isArray(lead.metadata) ? lead.metadata as Record<string, unknown> : {}; }
-  private matchesPropertyFilters(lead: Prisma.LeadGetPayload<{ select: typeof leadSelect }>, query: PipelineBoardQueryDto) { const data = this.metadata(lead); const includes = (filter: string | undefined, ...values: unknown[]) => !filter || values.some(value => this.normalize(value).includes(this.normalize(filter))); return includes(query.development, data.development, data.empreendimento) && includes(query.region, data.region, data.regiao) && includes(query.neighborhood, data.neighborhood, data.bairro); }
-  private publicLead(lead: Prisma.LeadGetPayload<{ select: typeof leadSelect }>) { const { assignedUserId, managerUserId, leadDistributions, metadata, ...safeLead } = lead; const data = this.metadata(lead); const distribution = leadDistributions?.[0]; const overdue = Boolean(distribution?.slaDueAt && !distribution.firstUpdatedAt && distribution.slaDueAt.getTime() < Date.now()); return { ...safeLead, development: data.development ?? data.empreendimento ?? null, region: data.region ?? data.regiao ?? null, neighborhood: data.neighborhood ?? data.bairro ?? null, sla: distribution?.slaDueAt ? { dueAt: distribution.slaDueAt, status: distribution.firstUpdatedAt ? 'ATTENDED' : overdue ? 'OVERDUE' : 'ON_TIME' } : null }; }
+  private matchesPropertyFilters(lead: Prisma.LeadGetPayload<{ select: typeof leadSelect }>, query: PipelineBoardQueryDto) { const data = this.metadata(lead); const includes = (filter: string | undefined, ...values: unknown[]) => !filter || values.some(value => this.normalize(value).includes(this.normalize(filter))); return includes(query.product ?? query.development, data.product, data.produto, data.development, data.empreendimento) && includes(query.campaign, lead.leadDistributions?.[0]?.campaign?.name) && includes(query.region, data.region, data.regiao) && includes(query.neighborhood, data.neighborhood, data.bairro); }
+  private publicLead(lead: Prisma.LeadGetPayload<{ select: typeof leadSelect }>) { const { assignedUserId, managerUserId, leadDistributions, metadata, ...safeLead } = lead; const data = this.metadata(lead); const distribution = leadDistributions?.[0]; const overdue = Boolean(distribution?.slaDueAt && !distribution.firstUpdatedAt && distribution.slaDueAt.getTime() < Date.now()); const tags = Array.isArray(data.tags) ? data.tags.filter((tag): tag is string => typeof tag === 'string').slice(0, 10) : []; return { ...safeLead, product: data.product ?? data.produto ?? data.development ?? data.empreendimento ?? null, development: data.development ?? data.empreendimento ?? null, campaign: distribution?.campaign?.name ?? null, tags, propertyValue: Number(data.propertyValue ?? data.valorImovel ?? data.value) || null, lastInteractionAt: lead.lastInteractionAt ?? lead.updatedAt, region: data.region ?? data.regiao ?? null, neighborhood: data.neighborhood ?? data.bairro ?? null, sla: distribution?.slaDueAt ? { dueAt: distribution.slaDueAt, status: distribution.firstUpdatedAt ? 'ATTENDED' : overdue ? 'OVERDUE' : 'ON_TIME' } : null }; }
 }
