@@ -7,6 +7,7 @@ import Modal from "@/components/ui/Modal";
 import Select from "@/components/ui/Select";
 import UserForm from "@/components/users/UserForm";
 import UserTable from "@/components/users/UserTable";
+import BrokersEnterprise from "@/components/users/BrokersEnterprise";
 import { getCurrentUser, isGlobalAdmin } from "@/services/auth";
 import { organizationService } from "@/services/organization.service";
 import { userService } from "@/services/user.service";
@@ -81,21 +82,8 @@ export default function UsersPage({ mode }: UsersPageProps) {
           (user) => user.role === "CORRETOR",
         );
 
-        const calculatedTotalPages = Math.max(
-          1,
-          Math.ceil(corretores.length / PAGE_SIZE),
-        );
-
-        const safePage = Math.min(page, calculatedTotalPages);
-        const start = (safePage - 1) * PAGE_SIZE;
-        const end = start + PAGE_SIZE;
-
-        setUsers(corretores.slice(start, end));
-        setTotalPages(calculatedTotalPages);
-
-        if (safePage !== page) {
-          setPage(safePage);
-        }
+        setUsers(corretores);
+        setTotalPages(1);
 
         return;
       }
@@ -158,6 +146,12 @@ export default function UsersPage({ mode }: UsersPageProps) {
 
     return () => window.clearTimeout(timeoutId);
   }, [loadOrganizations]);
+
+  useEffect(() => {
+    if (!isCorretoresPage) return;
+    const intervalId = window.setInterval(() => void loadUsers(), 60_000);
+    return () => window.clearInterval(intervalId);
+  }, [isCorretoresPage, loadUsers]);
 
   function openCreateForm() {
     setSelectedUser(null);
@@ -323,6 +317,15 @@ export default function UsersPage({ mode }: UsersPageProps) {
   const createButtonText = isCorretoresPage
     ? "+ Novo corretor"
     : "+ Novo usuário";
+
+  if (isCorretoresPage) {
+    return <>
+      {success && <p role="status" className="mb-4 rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-700">{success}</p>}
+      <BrokersEnterprise users={users} loading={loading} error={error} canManage={!!canManage} onRetry={loadUsers} onCreate={openCreateForm} onEdit={openEditForm} onStatus={handleStatus} onResetPassword={(user) => { setResetUser(user); setNewPassword(""); setError(""); setSuccess(""); }}/>
+      <Modal isOpen={isFormOpen} title={selectedUser ? "Editar corretor" : "Novo corretor"} onClose={() => setIsFormOpen(false)} width="lg"><UserForm key={selectedUser?.id ?? "new-user"} user={selectedUser} organizations={organizations} saving={saving} canAssignOrganizations={globalAdmin} canAssignRoles={false} onCancel={() => setIsFormOpen(false)} onSubmit={handleSubmit}/></Modal>
+      <Modal isOpen={!!resetUser} title="Resetar senha" onClose={() => setResetUser(null)} width="md"><div className="space-y-4"><p className="text-sm text-slate-600">Defina uma nova senha para {resetUser?.name}.</p><Input label="Nova senha" type="password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} minLength={6}/><div className="flex justify-end gap-3 border-t border-slate-200 pt-4"><Button variant="secondary" onClick={() => setResetUser(null)}>Cancelar</Button><Button onClick={handleResetPassword} disabled={saving}>{saving ? "Salvando..." : "Resetar senha"}</Button></div></div></Modal>
+    </>;
+  }
 
   return (
     <main className="space-y-6">
