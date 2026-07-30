@@ -1,12 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import Button from "@/components/ui/Button";
-import Input from "@/components/ui/Input";
-import Select from "@/components/ui/Select";
-import Modal from "@/components/ui/Modal";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Building2, BuildingIcon, Plus, Search, UsersRound } from "lucide-react";
 import OrganizationForm from "@/components/organizations/OrganizationForm";
 import OrganizationTable from "@/components/organizations/OrganizationTable";
+import Button from "@/components/ui/Button";
+import Card from "@/components/ui/Card";
+import Input from "@/components/ui/Input";
+import Modal from "@/components/ui/Modal";
+import PageHeader from "@/components/ui/PageHeader";
+import Select from "@/components/ui/Select";
+import StatCard from "@/components/ui/StatCard";
 import { isGlobalAdmin } from "@/services/auth";
 import { organizationService } from "@/services/organization.service";
 import { Organization, OrganizationFormData } from "@/types/organization";
@@ -19,6 +23,7 @@ export default function OrganizationsPage() {
   const [search, setSearch] = useState("");
   const [active, setActive] = useState("");
   const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -33,6 +38,7 @@ export default function OrganizationsPage() {
       setError("");
       const response = await organizationService.getAll({ page, limit: PAGE_SIZE, search, active: active === "" ? "" : active === "true" });
       setOrganizations(response.items);
+      setTotal(response.meta.total);
       setTotalPages(response.meta.totalPages || 1);
     } catch (err) {
       console.error(err);
@@ -42,10 +48,13 @@ export default function OrganizationsPage() {
     }
   }, [active, page, search]);
 
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    loadOrganizations();
-  }, [loadOrganizations]);
+  useEffect(() => { void loadOrganizations(); }, [loadOrganizations]);
+
+  const pageMetrics = useMemo(() => ({
+    active: organizations.filter((organization) => organization.active).length,
+    inactive: organizations.filter((organization) => !organization.active).length,
+    users: organizations.reduce((sum, organization) => sum + (organization._count?.users ?? 0), 0),
+  }), [organizations]);
 
   function openCreateForm() {
     if (!canManageOrganizations) return;
@@ -62,11 +71,8 @@ export default function OrganizationsPage() {
   async function handleSubmit(data: OrganizationFormData) {
     try {
       setSaving(true);
-      if (selectedOrganization) {
-        await organizationService.update(selectedOrganization.id, data);
-      } else {
-        await organizationService.create(data);
-      }
+      if (selectedOrganization) await organizationService.update(selectedOrganization.id, data);
+      else await organizationService.create(data);
       setIsFormOpen(false);
       setSuccess(selectedOrganization ? "Empresa atualizada com sucesso." : "Empresa criada com sucesso.");
       setError("");
@@ -74,9 +80,7 @@ export default function OrganizationsPage() {
     } catch (err) {
       console.error(err);
       setError(getErrorMessage(err, "Não foi possível salvar a empresa."));
-    } finally {
-      setSaving(false);
-    }
+    } finally { setSaving(false); }
   }
 
   async function handleToggleStatus(organization: Organization) {
@@ -90,16 +94,11 @@ export default function OrganizationsPage() {
     } catch (err) {
       console.error(err);
       setError(getErrorMessage(err, "Não foi possível alterar o status da empresa."));
-    } finally {
-      setSaving(false);
-    }
+    } finally { setSaving(false); }
   }
 
   async function handleDelete(organization: Organization) {
-    if (!canManageOrganizations || saving || !confirm(`Deseja excluir a empresa ${organization.name}?`)) {
-      return;
-    }
-
+    if (!canManageOrganizations || saving || !confirm(`Deseja excluir a empresa ${organization.name}?`)) return;
     try {
       await organizationService.delete(organization.id);
       setSuccess("Empresa excluída com sucesso.");
@@ -112,33 +111,47 @@ export default function OrganizationsPage() {
   }
 
   return (
-    <main className="space-y-6">
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-4xl font-bold">Empresas</h1>
-          <p className="mt-2 text-slate-400">Gerencie a base de organizações do Impulse CRM.</p>
+    <main className="space-y-6 text-slate-900">
+      <PageHeader
+        title="Empresas"
+        description="Gerencie as organizações, seus acessos e a operação no Impulse CRM."
+        action={canManageOrganizations ? <Button size="lg" onClick={openCreateForm}><Plus size={18} />Nova Empresa</Button> : undefined}
+      />
+
+      {success && <div role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700">{success}</div>}
+
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="Indicadores de empresas">
+        <StatCard title="Total de empresas" value={total} icon={<Building2 size={22} />} />
+        <StatCard title="Ativas nesta página" value={pageMetrics.active} icon={<BuildingIcon size={22} />} />
+        <StatCard title="Inativas nesta página" value={pageMetrics.inactive} icon={<BuildingIcon size={22} />} />
+        <StatCard title="Usuários nesta página" value={pageMetrics.users} icon={<UsersRound size={22} />} />
+      </section>
+
+      <Card padding="md">
+        <div className="grid items-end gap-4 md:grid-cols-[minmax(280px,1fr)_220px]">
+          <div className="relative">
+            <Search className="pointer-events-none absolute bottom-3.5 left-4 z-10 text-slate-400" size={18} />
+            <Input label="Buscar empresa" className="bg-white pl-11" value={search} onChange={(event) => { setPage(1); setSearch(event.target.value); }} placeholder="Nome, documento, e-mail ou telefone" />
+          </div>
+          <Select label="Status" className="bg-white" value={active} onChange={(event) => { setPage(1); setActive(event.target.value); }} options={[{ label: "Todas as empresas", value: "" }, { label: "Ativas", value: "true" }, { label: "Inativas", value: "false" }]} />
         </div>
-        {canManageOrganizations && <Button onClick={openCreateForm}>+ Nova Empresa</Button>}
+      </Card>
+
+      <OrganizationTable organizations={organizations} loading={loading} error={error} canManage={canManageOrganizations} onCreate={openCreateForm} onEdit={openEditForm} onToggleStatus={handleToggleStatus} onDelete={handleDelete} />
+
+      <div className="flex flex-col items-center justify-between gap-3 text-sm text-slate-500 sm:flex-row">
+        <span>{total} empresa(s) • página {page} de {totalPages}</span>
+        <div className="flex gap-2">
+          <Button variant="secondary" disabled={page <= 1} onClick={() => setPage((currentPage) => currentPage - 1)}>Anterior</Button>
+          <Button variant="secondary" disabled={page >= totalPages} onClick={() => setPage((currentPage) => currentPage + 1)}>Próxima</Button>
+        </div>
       </div>
 
-      {success && <p className="rounded-lg border border-green-500/30 bg-green-500/10 p-3 text-sm text-green-300">{success}</p>}
-
-      <div className="grid gap-3 rounded-xl border border-slate-800 bg-slate-900 p-4 md:grid-cols-[1fr_220px]">
-        <Input label="Buscar" value={search} onChange={(event) => { setPage(1); setSearch(event.target.value); }} placeholder="Nome, documento, e-mail ou telefone" />
-        <Select label="Status" value={active} onChange={(event) => { setPage(1); setActive(event.target.value); }} options={[{ label: "Todas", value: "" }, { label: "Ativas", value: "true" }, { label: "Inativas", value: "false" }]} />
-      </div>
-
-      <OrganizationTable organizations={organizations} loading={loading} error={error} canManage={canManageOrganizations} onEdit={openEditForm} onToggleStatus={handleToggleStatus} onDelete={handleDelete} />
-
-      <div className="flex items-center justify-end gap-3">
-        <Button variant="secondary" disabled={page <= 1} onClick={() => setPage((currentPage) => currentPage - 1)}>Anterior</Button>
-        <span className="text-sm text-slate-400">Página {page} de {totalPages}</span>
-        <Button variant="secondary" disabled={page >= totalPages} onClick={() => setPage((currentPage) => currentPage + 1)}>Próxima</Button>
-      </div>
-
-      {canManageOrganizations && <Modal isOpen={isFormOpen} title={selectedOrganization ? "Editar empresa" : "Nova empresa"} onClose={() => setIsFormOpen(false)} width="lg">
-        <OrganizationForm organization={selectedOrganization} saving={saving} onCancel={() => setIsFormOpen(false)} onSubmit={handleSubmit} />
-      </Modal>}
+      {canManageOrganizations && (
+        <Modal isOpen={isFormOpen} title={selectedOrganization ? "Editar empresa" : "Nova empresa"} onClose={() => setIsFormOpen(false)} width="lg">
+          <OrganizationForm organization={selectedOrganization} saving={saving} onCancel={() => setIsFormOpen(false)} onSubmit={handleSubmit} />
+        </Modal>
+      )}
     </main>
   );
 }
