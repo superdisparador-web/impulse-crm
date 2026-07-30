@@ -26,10 +26,10 @@ test('visual timeline consumes the existing lead timeline with filters and progr
   ['Pesquisar timeline', 'Filtrar origem', 'Carregar mais eventos', 'Mensagem enviada', 'Mensagem entregue', 'Mensagem lida', 'Link acessado'].forEach((label) => assert.ok(timeline.includes(label)));
 });
 
-test('reports expose visual commercial filters and safe CSV while leaving XLSX disabled', () => {
+test('reports expose visual commercial filters with customer-friendly export', () => {
   const reports = read('app/reports/page.tsx');
-  ['Campanha', 'Template', 'Corretor', 'Gerente', 'Origem', 'Status', 'Produto', 'Empreendimento', 'Exportar CSV', 'Exportar XLSX'].forEach((label) => assert.ok(reports.includes(label)));
-  assert.match(reports, /disabled title="XLSX/);
+  ['Campanha', 'Modelo de mensagem', 'Corretor', 'Gerente', 'Origem', 'Situação', 'Produto', 'Empreendimento', 'Baixar relatório'].forEach((label) => assert.ok(reports.includes(label)));
+  assert.doesNotMatch(reports, /XLSX|infraestrutura|workaround/);
   assert.match(read('services/reports.service.ts'), /reports\/export\.csv/);
 });
 

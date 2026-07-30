@@ -17,6 +17,9 @@ import { UpdateWhatsappAccountDto, UpdateWhatsappAccountStatusDto } from './dto/
 import { UpdateWhatsappTemplateDto } from './dto/update-whatsapp-template.dto';
 import { WhatsappService } from './whatsapp.service';
 import { EmbeddedSignupService } from './embedded-signup/embedded-signup.service';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { RolesGuard } from '../auth/roles/roles.guard';
+import { Role } from '@prisma/client';
 
 type RawReq = Request & { rawBody?: Buffer };
 @ApiTags('WhatsApp Oficial Meta')
@@ -25,6 +28,7 @@ type RawReq = Request & { rawBody?: Buffer };
 export class WhatsappController {
   constructor(private readonly service: WhatsappService, private readonly embeddedSignup: EmbeddedSignupService) {}
   @Post('embedded-signup/session') @Permissions('whatsapp:accounts:create') embeddedSignupSession(@CurrentUser() u: AuthenticatedUserRef) { return this.embeddedSignup.createSession(u); }
+  @Get('embedded-signup/diagnostics') @UseGuards(JwtAuthGuard, RolesGuard) @Roles(Role.GLOBAL_ADMIN) embeddedSignupDiagnostics() { return this.embeddedSignup.diagnostics(); }
   @Post('accounts') @Permissions('whatsapp:accounts:create') createAccount(@Body() d: CreateWhatsappAccountDto, @CurrentUser() u: AuthenticatedUserRef) { return this.service.createAccount(d, u); }
   @Get('accounts') @Permissions('whatsapp:accounts:read') findAccounts(@Query() q: ListWhatsappDto, @CurrentUser() u: AuthenticatedUserRef) { return this.service.findAccounts(q, u); }
   @Get('accounts/:id') @Permissions('whatsapp:accounts:read') getAccount(@Param('id') id: string, @CurrentUser() u: AuthenticatedUserRef) { return this.service.getAccount(id, u); }

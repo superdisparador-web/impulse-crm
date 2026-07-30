@@ -37,7 +37,7 @@ export const sidebarMenu = [
     icon: Send,
   },
   {
-    title: "Analytics",
+    title: "Desempenho",
     href: "/analytics",
     icon: ChartNoAxesCombined,
   },
@@ -47,7 +47,7 @@ export const sidebarMenu = [
     icon: FileText,
   },
   {
-    title: "Pipeline",
+    title: "Funil de vendas",
     href: "/pipeline",
     icon: KanbanSquare,
   },
@@ -62,7 +62,7 @@ export const sidebarMenu = [
     icon: MessageCircle,
   },
   {
-    title: "Templates",
+    title: "Modelos de mensagem",
     href: "/templates",
     icon: FileText,
   },
@@ -72,7 +72,7 @@ export const sidebarMenu = [
     icon: Megaphone,
   },
   {
-    title: "Disparos",
+    title: "Envios",
     href: "/messaging",
     icon: Send,
   },

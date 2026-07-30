@@ -14,29 +14,27 @@ test("legacy route redirects and sidebar exposes one WhatsApp entry", () => {
   assert.doesNotMatch(sidebar, /title: "Conexões"/);
 });
 
-test("Embedded Signup is the only account creation path", () => {
+test("official connection is the only account creation path", () => {
   assert.match(page, /startEmbeddedSignup/);
   assert.match(service, /\/whatsapp\/embedded-signup\/session/);
   assert.doesNotMatch(page, /createAccount/);
-  for (const text of ["Conectar WhatsApp Oficial", "Adicionar outra conta", "Conectando com a Meta", "Autorização concluída", "Sincronizando número e templates", "Conta conectada com sucesso"])
+  for (const text of ["Conectar WhatsApp Oficial", "Conectar outro número", "Abrindo autorização", "Autorização concluída", "Sincronizando número e templates", "Conta conectada com sucesso"])
     assert.ok(`${page}${ui}`.includes(text), `missing ${text}`);
 });
 
 test("unified screen retains real operations, metrics and filters", () => {
-  for (const operation of ["testAccount", "syncAccount", "updateStatus", "setDefault", "restoreAccount", "deleteAccount", "updateAccount"])
+  for (const operation of ["testAccount", "syncAccount", "updateStatus", "setDefault", "restoreAccount", "deleteAccount"])
     assert.ok(page.includes(operation), `missing ${operation}`);
-  for (const text of ["Total de contas", "Conectadas", "Desconectadas", "Com erro", "Em configuração", "Qualidade baixa", "WABA ID ou Phone Number ID", "Arquivadas"])
+  for (const text of ["Total de contas", "Conectadas", "Desconectadas", "Com erro", "Em configuração", "Qualidade baixa", "Pesquise pelo nome ou telefone", "Arquivadas"])
     assert.ok(ui.includes(text), `missing ${text}`);
 });
 
-test("technical settings are global-admin only and do not render secrets", () => {
-  assert.match(page, /isGlobalAdmin={globalAdmin}/);
-  assert.match(ui, /p\.isGlobalAdmin/);
-  assert.match(ui, /App Secret, access token e token de verificação nunca são exibidos/);
-  assert.doesNotMatch(ui, /form\.credential|form\.verifyToken/);
+test("technical settings and identifiers are not rendered", () => {
+  assert.doesNotMatch(ui, /WABA|Phone Number ID|App Secret|access token|webhook|Credencial/);
+  assert.doesNotMatch(page, /Versão da API|form\.credential|form\.verifyToken/);
 });
 
 test("OAuth errors are mapped to safe user messages", () => {
-  for (const text of ["Login cancelado", "Permissão não concedida", "Nenhuma empresa selecionada", "Nenhuma conta WhatsApp selecionada", "Número já vinculado", "Não foi possível concluir a conexão"])
+  for (const text of ["Você cancelou a autorização", "Sua conta não possui permissão para conectar este número", "Este número já está conectado", "Sua autorização expirou", "Não foi possível concluir a conexão"])
     assert.ok(page.includes(text), `missing ${text}`);
 });

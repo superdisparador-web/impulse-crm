@@ -10,6 +10,7 @@ import { WhatsappCredentialCryptoService } from './security/credential-crypto.se
 import { WhatsappController, WhatsappEmbeddedSignupCallbackController, WhatsappWebhookController } from './whatsapp.controller';
 import { WhatsappService } from './whatsapp.service';
 import { EmbeddedSignupService } from './embedded-signup/embedded-signup.service';
+import { RolesGuard } from '../auth/roles/roles.guard';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { EmbeddedSignupService } from './embedded-signup/embedded-signup.service
   providers: [
     WhatsappService,
     EmbeddedSignupService,
+    RolesGuard,
     WhatsappCredentialCryptoService,
     WhatsappWindowPolicy,
     { provide: MetaWhatsappClient, useClass: MetaWhatsappHttpClient },

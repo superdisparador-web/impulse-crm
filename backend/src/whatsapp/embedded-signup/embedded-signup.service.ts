@@ -53,12 +53,12 @@ export class EmbeddedSignupService implements OnModuleInit {
   }
 
   async complete(query: { code?: string; state?: string; error?: string; error_reason?: string }) {
+    if (!query.state) return this.redirect('error', 'invalid_state');
+    const stateHash = this.hash(query.state);
+    const consumed = await this.prisma.whatsappEmbeddedSignupState.updateMany({ where: { stateHash, usedAt: null, expiresAt: { gt: new Date() }, authorizationCodeHash: null, user: { active: true, deletedAt: null }, organization: { active: true, deletedAt: null } }, data: { usedAt: new Date(), ...(query.code ? { authorizationCodeHash: this.hash(query.code) } : {}) } }).catch(() => ({ count: 0 }));
+    if (consumed.count !== 1) return this.redirect('error', 'invalid_state');
     if (query.error) return this.redirect('error', query.error === 'access_denied' || query.error_reason === 'user_denied' ? 'cancelled' : 'failed');
     if (!query.code) return this.redirect('error', 'missing_code');
-    if (!query.state) return this.redirect('error', 'invalid_state');
-    const now = new Date(), stateHash = this.hash(query.state), codeHash = this.hash(query.code);
-    const consumed = await this.prisma.whatsappEmbeddedSignupState.updateMany({ where: { stateHash, usedAt: null, expiresAt: { gt: now }, authorizationCodeHash: null, user: { active: true, deletedAt: null }, organization: { active: true, deletedAt: null } }, data: { usedAt: now, authorizationCodeHash: codeHash } }).catch(() => ({ count: 0 }));
-    if (consumed.count !== 1) return this.redirect('error', 'invalid_state');
     const state = await this.prisma.whatsappEmbeddedSignupState.findUnique({ where: { stateHash } });
     if (!state) return this.redirect('error', 'invalid_state');
     try {
@@ -72,6 +72,18 @@ export class EmbeddedSignupService implements OnModuleInit {
       this.logger.error(`Embedded Signup falhou (${this.safeCode(error)})`);
       return this.redirect('error', this.reason(error));
     }
+  }
+
+  async diagnostics() {
+    const present = (key: string) => Boolean(process.env[key]?.trim());
+    let databaseTableAccessible = false;
+    try { await this.prisma.whatsappEmbeddedSignupState.count({ take: 1 }); databaseTableAccessible = true; } catch { /* expose only a safe boolean */ }
+    const flags = { appIdConfigured: present('META_APP_ID'), appSecretConfigured: present('META_APP_SECRET'), configIdConfigured: present('META_CONFIG_ID'), redirectUriConfigured: present('META_REDIRECT_URI'), encryptionKeyConfigured: present('META_TOKEN_ENCRYPTION_KEY'), frontendUrlConfigured: present('FRONTEND_URL') };
+    const warnings: string[] = [];
+    for (const [name, configured] of Object.entries(flags)) if (!configured) warnings.push(`${name} is not configured`);
+    if (!databaseTableAccessible) warnings.push('Embedded Signup state table is not accessible');
+    try { this.config(); } catch { warnings.push('Embedded Signup configuration is invalid'); }
+    return { configured: Object.values(flags).every(Boolean) && databaseTableAccessible && warnings.length === 0, ...flags, graphApiVersion: process.env.META_GRAPH_API_VERSION || null, callbackRouteRegistered: true, databaseTableAccessible, environment: process.env.NODE_ENV || 'development', warnings };
   }
 
   private async exchangeCode(code: string) {
@@ -98,7 +110,7 @@ export class EmbeddedSignupService implements OnModuleInit {
   private async persist(org: string, userId: string, token: string, d: { business: MetaBusiness; waba: MetaWaba; phone: MetaPhone; version: string }) {
     const digits = (d.phone.display_phone_number || '').replace(/\D/g, '');
     const verifyToken = randomBytes(24).toString('hex');
-    const data = { organizationId: org, name: d.waba.name || d.phone.verified_name || 'WhatsApp Oficial', provider: 'META_CLOUD' as never, wabaId: d.waba.id, businessAccountId: d.business.id, phoneNumberId: d.phone.id, phoneNumber: d.phone.display_phone_number || digits, normalizedPhone: digits ? `+${digits}` : '', displayPhoneNumber: d.phone.display_phone_number, verifiedName: d.phone.verified_name, qualityRating: d.phone.quality_rating, messagingLimitTier: d.phone.messaging_limit_tier, appId: process.env.META_APP_ID, apiVersion: d.version, accessToken: this.crypto.encrypt(token), tokenLast4: token.slice(-4), verifyToken: this.crypto.encrypt(verifyToken), verifyTokenHash: this.hash(verifyToken), status: 'ACTIVE' as never, tokenConfigured: true, connectedAt: new Date(), lastSyncAt: new Date(), lastConnectionTestAt: new Date(), lastConnectionError: null, webhookSubscribedAt: new Date(), deletedAt: null, createdByUserId: userId };
+    const data = { organizationId: org, name: d.waba.name || d.phone.verified_name || 'WhatsApp Oficial', provider: 'META_CLOUD' as never, wabaId: d.waba.id, businessAccountId: d.business.id, phoneNumberId: d.phone.id, phoneNumber: d.phone.display_phone_number || digits, normalizedPhone: digits ? `+${digits}` : '', displayPhoneNumber: d.phone.display_phone_number, verifiedName: d.phone.verified_name, qualityRating: d.phone.quality_rating, messagingLimitTier: d.phone.messaging_limit_tier, appId: process.env.META_APP_ID, appSecret: this.crypto.encrypt(process.env.META_APP_SECRET!), apiVersion: d.version, accessToken: this.crypto.encrypt(token), tokenLast4: token.slice(-4), verifyToken: this.crypto.encrypt(verifyToken), verifyTokenHash: this.hash(verifyToken), status: 'ACTIVE' as never, tokenConfigured: true, connectedAt: new Date(), lastSyncAt: new Date(), lastConnectionTestAt: new Date(), lastConnectionError: null, webhookSubscribedAt: new Date(), deletedAt: null, createdByUserId: userId };
     const { organizationId: _organizationId, createdByUserId: _createdByUserId, ...safeUpdate } = data;
     return this.prisma.$transaction(async tx => {
       const existing = await tx.whatsappAccount.findUnique({ where: { phoneNumberId: d.phone.id }, select: { organizationId: true } });

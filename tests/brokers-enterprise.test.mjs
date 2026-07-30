@@ -37,7 +37,7 @@ test('drawer supports opening, overlay close, Escape and focus restoration', () 
 
 test('management actions remain conditional while unsupported actions stay disabled', () => {
   assert.match(workspace, /\{canManage &&/);
-  has(workspace, ['Integrações futuras', 'disabled title={`${label}: requer integração específica no backend`']);
+  has(workspace, ['Novidades planejadas', 'disabled title={`${label}: ainda não disponível`']);
 });
 
 test('screen states cover loading, errors, empty results and automatic refresh', () => {

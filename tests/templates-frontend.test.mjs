@@ -6,7 +6,7 @@ test('templates menu, list page and service are wired', () => {
   const sidebar = readFileSync('components/layout/Sidebar.tsx', 'utf8');
   const page = readFileSync('app/templates/page.tsx', 'utf8');
   const service = readFileSync('services/templates.service.ts', 'utf8');
-  assert.match(sidebar, /title: "Templates"/);
+  assert.match(sidebar, /title: "Modelos de mensagem"/);
   assert.match(page, /Criar rascunho/);
   assert.doesNotMatch(page, /items\[0\]\?\.lastSyncedAt/);
   assert.match(page, /meta\.lastSyncedAt/);

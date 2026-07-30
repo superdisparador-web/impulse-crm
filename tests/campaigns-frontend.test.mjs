@@ -23,7 +23,7 @@ test('campaign wizard has four accessible preparation steps', () => {
   assert.match(wizardPage, /Utilidade/);
   assert.match(wizardPage, /Autenticação/);
   assert.match(wizardPage, /Lista de contatos/);
-  assert.match(wizardPage, /Template e configurações/);
+  assert.match(wizardPage, /Mensagem e envio/);
   assert.match(wizardPage, /Pré-visualização completa do WhatsApp/);
   assert.match(wizardPage, /aria-current/);
   assert.match(wizardPage, /SALVAR CAMPANHA COMO RASCUNHO/);

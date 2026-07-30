@@ -11,6 +11,7 @@ function fixture(overrides={}) {
   const prisma = {
     whatsappEmbeddedSignupState: {
       create: async ({data}) => { saved=data; return data; },
+      count: async () => 0,
       updateMany: async () => ({count:1}),
       findUnique: async () => ({organizationId:'org-1',userId:'user-1'}),
     },
@@ -29,7 +30,12 @@ test('state inválido, expirado ou reutilizado é rejeitado antes da Meta', asyn
   for (const count of [0]) { const f=fixture({whatsappEmbeddedSignupState:{updateMany:async()=>({count}),findUnique:async()=>null}}); assert.match(await f.service.complete({code:'code',state:'state'}),/reason=invalid_state/); }
 });
 test('callback sem code e cancelado retornam erros amigáveis', async () => {
-  const f=fixture(); assert.match(await f.service.complete({state:'x'}),/reason=missing_code/); assert.match(await f.service.complete({error:'access_denied'}),/reason=cancelled/);
+  const f=fixture(); assert.match(await f.service.complete({state:'x'}),/reason=missing_code/); assert.match(await f.service.complete({state:'x',error:'access_denied'}),/reason=cancelled/);
+});
+test('callback cancelado consome o state e replay é recusado', async () => {
+  let calls=0; const f=fixture({whatsappEmbeddedSignupState:{updateMany:async()=>({count:++calls===1?1:0}),findUnique:async()=>null}});
+  assert.match(await f.service.complete({state:'x',error:'access_denied'}),/reason=cancelled/);
+  assert.match(await f.service.complete({state:'x',code:'later'}),/reason=invalid_state/);
 });
 test('troca simulada cria conta criptografada, assina WABA e sincroniza templates', async () => {
   const f=fixture(); const calls=[];
@@ -53,4 +59,10 @@ test('configuração ausente retorna código seguro e mensagem amigável', async
     const f=fixture();
     await assert.rejects(f.service.createSession({id:'user-1'}), error => error.status === 503 && error.response.code === 'META_EMBEDDED_SIGNUP_NOT_CONFIGURED' && !JSON.stringify(error.response).includes('META_APP_SECRET'));
   } finally { Object.assign(process.env, saved); }
+});
+test('diagnóstico informa somente presença e nunca revela segredos', async () => {
+  const out=await fixture().service.diagnostics();
+  assert.equal(out.configured,true); assert.equal(out.databaseTableAccessible,true);
+  const values=Object.values(out).flatMap(value=>Array.isArray(value)?value:[value]);
+  for (const secret of [env.META_APP_ID,env.META_APP_SECRET,env.META_CONFIG_ID,env.META_TOKEN_ENCRYPTION_KEY]) assert.equal(values.includes(secret),false);
 });

@@ -137,12 +137,12 @@ test('5 e 6. etapas e cards são exibidos ordenados', () => {
 
 test('7. etapa vazia apresenta estado correto', () => {
   const element = KanbanBoard({ board: utils.sortBoard(boardFixture()), activeCardId: '', moving: false, onDragStart: () => {}, onDropCard: () => {} });
-  assert.ok(findByText(element, 'Etapa sem cards'));
+  assert.ok(findByText(element, 'Esta etapa ainda não possui oportunidades'));
 });
 
 test('8. lista vazia de pipelines apresenta estado correto', () => {
   const element = PipelineBody({ error: '', moveError: '', isLoading: false, pipelineCount: 0, board: null, activeCardId: '', moving: false, onDragStart: () => {}, onDropCard: () => {} });
-  assert.ok(findByText(element, 'Nenhuma pipeline encontrada'));
+  assert.ok(findByText(element, 'Nenhum funil encontrado'));
 });
 
 test('9. erro de carregamento apresenta mensagem em português', () => {
@@ -192,8 +192,8 @@ test('19. o mesmo card não aparece duas vezes', () => {
   assert.equal(moved.stages.flatMap((stage) => stage.cards).filter((card) => card.id === 'card-1').length, 1);
 });
 
-test('20. menu contém Pipeline somente uma vez', () => {
-  assert.equal(sidebarMenu.filter((item) => item.href === '/pipeline' && item.title === 'Pipeline').length, 1);
+test('20. menu contém Funil de vendas somente uma vez', () => {
+  assert.equal(sidebarMenu.filter((item) => item.href === '/pipeline' && item.title === 'Funil de vendas').length, 1);
 });
 
 test('21. nome do corretor aparece quando existir', () => {
@@ -469,7 +469,7 @@ test('45. pipeline imobiliário envia filtros reais e exibe métricas operaciona
   assert.equal(url.searchParams.get('sla'), 'OVERDUE');
   const element = PipelineMetrics({ metrics: { total: 12, byStage: {}, conversionRate: 25, averageStageHours: 8, overdueSla: 2 } });
   assert.ok(findByText(element, 'Total de leads'));
-  assert.ok(findByText(element, 'SLA vencido'));
+  assert.ok(findByText(element, 'Atendimentos atrasados'));
 });
 
 test('46. card imobiliário apresenta empreendimento, região, bairro, gerente e SLA', () => {
@@ -499,7 +499,7 @@ test('48. movimento otimista persiste e faz rollback comportamental quando a API
 test('49. skeleton, empty state e erro são estados renderizados de forma comportamental', () => {
   const loading = PipelineBody({ error: '', moveError: '', isLoading: true, pipelineCount: 0, board: null, activeCardId: '', moving: false, onDragStart: () => {}, onDropCard: () => {}, onOpenCard: () => {} });
   assert.equal(flatten(loading).filter((item) => String(item.props?.className ?? '').includes('animate-pulse')).length, 3);
-  assert.ok(findByText(PipelineBody({ error: '', moveError: '', isLoading: false, pipelineCount: 0, board: null, activeCardId: '', moving: false, onDragStart: () => {}, onDropCard: () => {}, onOpenCard: () => {} }), 'Nenhuma pipeline encontrada'));
+  assert.ok(findByText(PipelineBody({ error: '', moveError: '', isLoading: false, pipelineCount: 0, board: null, activeCardId: '', moving: false, onDragStart: () => {}, onDropCard: () => {}, onOpenCard: () => {} }), 'Nenhum funil encontrado'));
   assert.ok(findByText(PipelineBody({ error: 'Falha controlada', moveError: '', isLoading: false, pipelineCount: 1, board: null, activeCardId: '', moving: false, onDragStart: () => {}, onDropCard: () => {}, onOpenCard: () => {} }), 'Falha controlada'));
 });
 
