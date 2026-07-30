@@ -5,6 +5,8 @@ interface StatCardProps {
   value: number | string;
   icon: ReactNode;
   subtitle?: string;
+  subtitleClassName?: string;
+  className?: string;
 }
 
 export default function StatCard({
@@ -12,9 +14,11 @@ export default function StatCard({
   value,
   icon,
   subtitle,
+  subtitleClassName = "text-emerald-600",
+  className = "",
 }: StatCardProps) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-lg">
+    <div className={`rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-lg ${className}`}>
       <div className="flex items-center justify-between">
         <div className="rounded-xl bg-blue-50 p-3 text-blue-600">
           {icon}
@@ -31,7 +35,7 @@ export default function StatCard({
         </h2>
 
         {subtitle && (
-          <p className="mt-2 text-sm text-emerald-600 font-medium">
+          <p className={`mt-2 text-sm font-medium ${subtitleClassName}`}>
             {subtitle}
           </p>
         )}
