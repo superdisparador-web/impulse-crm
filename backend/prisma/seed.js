@@ -287,6 +287,22 @@ async function main() {
 
   if (!globalAdminRole) throw new Error('Papel GLOBAL_ADMIN não encontrado.');
 
+  const defaultOrganization = await prisma.organization.upsert({
+    where: { id: 'organization_default_impulse_crm' },
+    update: {
+      name: 'Impulse CRM',
+      status: 'ACTIVE',
+      active: true,
+      deletedAt: null,
+    },
+    create: {
+      id: 'organization_default_impulse_crm',
+      name: 'Impulse CRM',
+      slug: 'impulse-crm',
+      status: 'ACTIVE',
+    },
+  });
+
   const passwordHash = await bcrypt.hash('Admin@123', 12);
   const user = await prisma.user.upsert({
     where: { email: 'admin@impulsecrm.com' },
@@ -296,6 +312,7 @@ async function main() {
       role: 'GLOBAL_ADMIN',
       active: true,
       status: 'ACTIVE',
+      organizationId: defaultOrganization.id,
     },
     create: {
       name: 'Administrador',
@@ -304,6 +321,7 @@ async function main() {
       role: 'GLOBAL_ADMIN',
       active: true,
       status: 'ACTIVE',
+      organizationId: defaultOrganization.id,
     },
   });
 
@@ -322,6 +340,7 @@ async function main() {
   });
 
   console.log('Papéis e permissões sincronizados com sucesso.');
+  console.log('Organização padrão criada ou atualizada com sucesso.');
   console.log('Administrador de desenvolvimento criado ou atualizado com sucesso.');
 }
 
