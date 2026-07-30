@@ -10,7 +10,7 @@
     "start": "nest start",
     "prestart:dev": "prisma generate",
     "start:dev": "nest start --watch",
-    "start:prod": "node .",
+    "start:prod": "node dist/src/main.js",
     "test": "npm run build && node --test test/*.test.js",
     "prelint": "prisma generate",
     "lint": "tsc --noEmit",
