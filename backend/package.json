@@ -6,11 +6,15 @@
   "scripts": {
     "prebuild": "prisma generate",
     "build": "nest build",
+    "prestart": "prisma generate",
     "start": "nest start",
+    "prestart:dev": "prisma generate",
     "start:dev": "nest start --watch",
     "start:prod": "node .",
     "test": "npm run build && node --test test/*.test.js",
+    "prelint": "prisma generate",
     "lint": "tsc --noEmit",
+    "pretypecheck": "prisma generate",
     "typecheck": "tsc --noEmit",
     "seed:dev-admin": "node -r dotenv/config prisma/seed.js dotenv_config_path=.env"
   },
