@@ -9,6 +9,8 @@ function toQueryString(params: WhatsappListParams = {}) {
 }
 
 class WhatsappService {
+  /** Backend creates and stores OAuth state; only the one-time Meta URL reaches the browser. */
+  startEmbeddedSignup() { return api.post<{ authorizationUrl: string; expiresAt: string }>('/whatsapp/embedded-signup/session', { returnUrl: `${window.location.origin}/whatsapp` }); }
   getAccounts(params: WhatsappListParams = {}) { return api.get<PaginatedWhatsappAccounts>(`/whatsapp/accounts${toQueryString(params)}`); }
   createAccount(data: WhatsappAccountFormData) { const { credential, ...rest } = data; return api.post<WhatsappAccount>('/whatsapp/accounts', { ...rest, accessToken: credential }); }
   updateAccount(id: string, data: Partial<WhatsappAccountFormData>) { const { credential, ...rest } = data; return api<WhatsappAccount>(`/whatsapp/accounts/${id}`, { method: 'PATCH', body: JSON.stringify({ ...rest, ...(credential ? { accessToken: credential } : {}) }) }); }

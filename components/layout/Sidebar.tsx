@@ -5,7 +5,6 @@ import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
 import {
   Building2,
-  Cable,
   FileText,
   KanbanSquare,
   LayoutDashboard,
@@ -61,11 +60,6 @@ export const sidebarMenu = [
     title: "WhatsApp",
     href: "/whatsapp",
     icon: MessageCircle,
-  },
-  {
-    title: "Conexões",
-    href: "/connections",
-    icon: Cable,
   },
   {
     title: "Templates",
