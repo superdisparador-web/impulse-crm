@@ -48,7 +48,10 @@ export default function OrganizationsPage() {
     }
   }, [active, page, search]);
 
-  useEffect(() => { void loadOrganizations(); }, [loadOrganizations]);
+  useEffect(() => {
+    const request = window.setTimeout(() => { void loadOrganizations(); }, 0);
+    return () => window.clearTimeout(request);
+  }, [loadOrganizations]);
 
   const pageMetrics = useMemo(() => ({
     active: organizations.filter((organization) => organization.active).length,
