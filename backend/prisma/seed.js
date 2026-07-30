@@ -60,6 +60,13 @@ const permissions = [
   'distribution.member.manage',
   'distribution.assignment.read',
   'distribution.assignment.retry',
+  'settings:self:read', 'settings:self:update', 'settings:organization:read', 'settings:organization:update',
+  'settings:users:manage', 'settings:teams:manage', 'settings:roles:read', 'settings:roles:manage',
+  'settings:security:self', 'settings:security:organization', 'settings:security:global',
+  'settings:notifications:self', 'settings:notifications:organization', 'settings:branding:read', 'settings:branding:update',
+  'settings:operations:read', 'settings:operations:update', 'settings:integrations:read', 'settings:integrations:manage',
+  'settings:audit:self', 'settings:audit:team', 'settings:audit:organization', 'settings:audit:global',
+  'settings:system:read', 'settings:system:update',
 ];
 
 const roles = [
@@ -72,8 +79,8 @@ const roles = [
   {
     id: 'role_org_admin',
     code: 'ORG_ADMIN',
-    name: 'Administrador da Organização',
-    description: 'Administra uma organização',
+    name: 'Superintendente',
+    description: 'Superintendente da organização (código interno ORG_ADMIN mantido por compatibilidade)',
   },
   {
     id: 'role_manager',
@@ -143,6 +150,7 @@ const rolePermissionCodes = {
     'distribution.member.manage',
     'distribution.assignment.read',
     'distribution.assignment.retry',
+    'settings:self:read', 'settings:self:update', 'settings:organization:read', 'settings:organization:update', 'settings:users:manage', 'settings:teams:manage', 'settings:roles:read', 'settings:security:self', 'settings:security:organization', 'settings:notifications:self', 'settings:notifications:organization', 'settings:branding:read', 'settings:branding:update', 'settings:operations:read', 'settings:operations:update', 'settings:integrations:read', 'settings:integrations:manage', 'settings:audit:organization',
   ],
   MANAGER: [
     'organizations:read',
@@ -180,6 +188,7 @@ const rolePermissionCodes = {
     'distribution.member.manage',
     'distribution.assignment.read',
     'distribution.assignment.retry',
+    'settings:self:read', 'settings:self:update', 'settings:roles:read', 'settings:security:self', 'settings:notifications:self', 'settings:operations:read', 'settings:integrations:read', 'settings:audit:team',
   ],
   BROKER: [
     'organizations:read',
@@ -196,6 +205,7 @@ const rolePermissionCodes = {
     'analytics.broker.read',
     'distribution.list.read',
     'distribution.assignment.read',
+    'settings:self:read', 'settings:self:update', 'settings:roles:read', 'settings:security:self', 'settings:notifications:self', 'settings:audit:self',
   ],
 };
 

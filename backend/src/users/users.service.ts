@@ -156,8 +156,14 @@ export class UsersService {
 
     const requestedRole = 'role' in data && data.role ? data.role as Role : undefined;
     if (actor.global) payload.role = requestedRole ?? (partial ? undefined : Role.CORRETOR);
-    else if (!partial) payload.role = Role.CORRETOR;
-    else if (requestedRole && requestedRole !== target?.role) throw new ForbiddenException('Não é permitido alterar papel de usuário');
+    else if (!partial) {
+      const desired = requestedRole ?? Role.CORRETOR;
+      if (this.roleLevel(desired, false) >= this.actorLevel(actor)) throw new ForbiddenException('Não é permitido criar função de nível igual ou superior');
+      payload.role = desired;
+    } else if (requestedRole && requestedRole !== target?.role) {
+      if (target?.id === actor.id || this.roleLevel(requestedRole, false) >= this.actorLevel(actor)) throw new ForbiddenException('Elevação de privilégio não permitida');
+      payload.role = requestedRole;
+    }
 
     if (actor.global) {
       if ('organizationId' in data && data.organizationId !== undefined) payload.organizationId = data.organizationId || null;
@@ -180,8 +186,22 @@ export class UsersService {
 
   private ensureCanManageTarget(actor: AccessContext, target: Prisma.UserGetPayload<{ select: typeof userSelect }>) {
     if (actor.global) return;
-    if (target.organizationId === actor.organizationId) return;
-    throw new NotFoundException('Usuário não encontrado');
+    if (target.organizationId !== actor.organizationId) throw new ForbiddenException('Operação entre organizações não permitida');
+    if (target.id === actor.id || this.roleLevel(target.role, false) >= this.actorLevel(actor)) throw new ForbiddenException('Não é permitido administrar usuário de nível igual ou superior');
+  }
+
+  private actorLevel(actor: AccessContext) {
+    if (actor.global) return 4;
+    if (actor.roles.includes('ORG_ADMIN') || actor.role === Role.ADMIN || actor.role === Role.ORG_ADMIN) return 3;
+    if (actor.roles.includes('MANAGER') || actor.role === Role.MANAGER) return 2;
+    return 1;
+  }
+
+  private roleLevel(role: Role, global: boolean) {
+    if (global || role === Role.GLOBAL_ADMIN) return 4;
+    if (role === Role.ADMIN || role === Role.ORG_ADMIN) return 3;
+    if (role === Role.MANAGER) return 2;
+    return 1;
   }
 
   private async ensureEmailAvailable(email: string, ignoreId?: string) {
