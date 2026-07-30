@@ -171,6 +171,18 @@ textarea::placeholder {
   color: #172554;
 }
 
+.brokers-scroll {
+  content-visibility: auto;
+  contain: layout paint style;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.broker-row {
+  content-visibility: auto;
+  contain-intrinsic-block-size: 72px;
+}
+
 /* Barra de rolagem padronizada */
 * {
   scrollbar-width: thin;
@@ -249,4 +261,39 @@ textarea::placeholder {
     transition: none !important;
     animation: none !important;
   }
+}
+
+/* Corretores Enterprise: acabamento visual incremental e movimento acessível. */
+.broker-metric-card {
+  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+}
+
+.broker-metric-card::after {
+  position: absolute;
+  inset: auto 0 0;
+  height: 2px;
+  content: "";
+  background: linear-gradient(90deg, transparent, rgb(37 99 235 / 0.55), transparent);
+  opacity: 0;
+  transition: opacity 180ms ease;
+}
+
+.broker-metric-card:hover {
+  transform: translateY(-2px);
+  border-color: #bfdbfe;
+  box-shadow: 0 12px 28px -18px rgb(15 23 42 / 0.35);
+}
+
+.broker-metric-card:hover::after { opacity: 1; }
+.broker-drawer { animation: broker-drawer-enter 220ms ease-out both; }
+
+@keyframes broker-drawer-enter {
+  from { opacity: 0; transform: translateX(24px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .broker-metric-card,
+  .broker-metric-card::after,
+  .broker-drawer { animation: none; transition: none; }
 }
