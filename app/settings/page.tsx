@@ -1,2 +1,5 @@
-import SettingsCenter from '@/components/settings/SettingsCenter';
-export default function SettingsPage(){return <SettingsCenter/>}
+import SettingsView from '@/components/settings/SettingsView';
+
+export default function SettingsPage() {
+  return <SettingsView />;
+}

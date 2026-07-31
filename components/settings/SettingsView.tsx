@@ -87,7 +87,7 @@ const NOTIFICATIONS = [
   ] },
 ];
 
-export default function SettingsCenter() {
+export default function SettingsView() {
   const [me, setMe] = useState<SettingsMe | null>(null);
   const [active, setActive] = useState<SettingsSection>('account');
   const [data, setData] = useState<unknown>(null);

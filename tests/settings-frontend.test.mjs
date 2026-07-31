@@ -1,8 +1,16 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 
-const source = readFileSync(new URL('../components/settings/SettingsCenter.tsx', import.meta.url), 'utf8');
+const source = readFileSync(new URL('../components/settings/SettingsView.tsx', import.meta.url), 'utf8');
+const route = readFileSync(new URL('../app/settings/page.tsx', import.meta.url), 'utf8');
+
+test('the settings route has one explicit view and no legacy component', () => {
+  assert.match(route, /import SettingsView from '@\/components\/settings\/SettingsView'/);
+  assert.match(route, /return <SettingsView \/>/);
+  assert.equal(existsSync(new URL('../components/settings/SettingsCenter.tsx', import.meta.url)), false);
+  assert.equal(existsSync(new URL('../frontend/app/settings/page.tsx', import.meta.url)), false);
+});
 
 test('settings navigation keeps business names and restores Atendimento', () => {
   assert.match(source, /ORG_ADMIN: 'Superintendente'/);
@@ -16,6 +24,7 @@ test('settings navigation keeps business names and restores Atendimento', () => 
 test('technical permission and notification names are translated before rendering', () => {
   assert.doesNotMatch(source, />\s*\{code\}\s*</);
   assert.doesNotMatch(source, />\s*\{item\.key\}\s*</);
+  assert.doesNotMatch(source, /className="[^"]*font-mono[^"]*"[^>]*>\s*\{code\}/);
   for (const label of ['Ver informações da própria conta', 'Receber notificações pelo aplicativo', 'Receber notificações por e-mail']) {
     assert.match(source, new RegExp(label));
   }
