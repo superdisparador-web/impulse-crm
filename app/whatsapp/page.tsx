@@ -16,6 +16,17 @@ const friendlySignupErrors: Record<string, string> = {
   no_waba: "Nenhuma conta WhatsApp selecionada.", phone_in_use: "Número já vinculado.", failed: "Não foi possível concluir a conexão.",
 };
 
+const META_NOT_CONFIGURED = "A integração com a Meta ainda não foi configurada pelo administrador.";
+const BACKEND_UNAVAILABLE = "Não foi possível acessar o servidor. Verifique se o backend está iniciado.";
+const META_REJECTED = "A Meta não autorizou o início da conexão. Verifique as configurações do aplicativo.";
+
+export function embeddedSignupErrorMessage(error: unknown) {
+  if (error instanceof TypeError) return BACKEND_UNAVAILABLE;
+  const cause = error instanceof Error ? error.message : String(error);
+  if (/META_EMBEDDED_SIGNUP_NOT_CONFIGURED|não foi configurada|configuração de conexão com a Meta é inválida/i.test(cause)) return META_NOT_CONFIGURED;
+  return META_REJECTED;
+}
+
 export default function WhatsappPage() {
   const [accounts, setAccounts] = useState<WhatsappAccount[]>([]), [total, setTotal] = useState(0), [loading, setLoading] = useState(true);
   const [error, setError] = useState(""), [notice, setNotice] = useState(""), [busyId, setBusyId] = useState<string | null>(null), [connecting, setConnecting] = useState(false);
@@ -29,7 +40,7 @@ export default function WhatsappPage() {
   useEffect(() => { const initial = window.setTimeout(() => void load(), 0); const poll = window.setInterval(() => { if (document.visibilityState === "visible" && !busyId) void load(true); }, 60_000); return () => { window.clearTimeout(initial); window.clearInterval(poll); }; }, [busyId, load]);
   useEffect(() => { const timer = window.setTimeout(() => { const params = new URLSearchParams(window.location.search); const result = params.get("connection") ?? params.get("signup"); if (!result) return; if (result === "success") { setNotice("Conta conectada com sucesso. Números e templates foram sincronizados."); void load(true); } else setError(friendlySignupErrors[params.get("reason") ?? result] ?? friendlySignupErrors.failed); window.history.replaceState({}, "", "/whatsapp"); }, 0); return () => window.clearTimeout(timer); }, [load]);
 
-  async function connect() { if (!canManage || connecting) return; setConnecting(true); setError(""); try { const session = await whatsappService.startEmbeddedSignup(); window.location.assign(session.authorizationUrl); } catch { setError("Não foi possível iniciar a conexão com a Meta. Tente novamente."); setConnecting(false); } }
+  async function connect() { if (!canManage || connecting) return; setConnecting(true); setError(""); try { const session = await whatsappService.startEmbeddedSignup(); window.location.assign(session.authorizationUrl); } catch (cause) { if (process.env.NODE_ENV !== "production") console.error("[WhatsApp Embedded Signup] Não foi possível criar a sessão:", cause); setError(embeddedSignupErrorMessage(cause)); setConnecting(false); } }
   function openEdit(account: WhatsappAccount) { if (!globalAdmin) return; setEditing(account); setForm({ name: account.name, phoneNumber: account.phoneNumber, wabaId: account.wabaId, businessAccountId: account.businessAccountId ?? "", phoneNumberId: account.phoneNumberId, credential: "", verifyToken: "", apiVersion: account.apiVersion ?? "v20.0", active: account.status === "ACTIVE" }); }
   function closeEdit() { setEditing(null); setForm({ ...EMPTY }); setFormError(""); }
   async function submit(event: FormEvent) { event.preventDefault(); if (!editing?.id || !globalAdmin || saving) return; setSaving(true); setFormError(""); try { await whatsappService.updateAccount(editing.id, { name: form.name.trim(), phoneNumber: form.phoneNumber?.trim(), apiVersion: form.apiVersion?.trim() }); closeEdit(); setNotice("Configuração avançada atualizada."); await load(true); } catch { setFormError("Não foi possível atualizar a configuração."); } finally { setSaving(false); } }
