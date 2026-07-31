@@ -3,6 +3,16 @@ import test from 'node:test';
 import { readFileSync } from 'node:fs';
 
 const source = readFileSync(new URL('../components/settings/SettingsCenter.tsx', import.meta.url), 'utf8');
+const seed = readFileSync(new URL('../backend/prisma/seed.js', import.meta.url), 'utf8');
+
+const permissionMapCodes = [...source
+  .slice(source.indexOf('const PERMISSIONS'), source.indexOf('\n};', source.indexOf('const PERMISSIONS')))
+  .matchAll(/^  '([^']+)':/gm)]
+  .map((match) => match[1]);
+const apiPermissionCodes = [...seed
+  .slice(seed.indexOf('const permissions = ['), seed.indexOf('\n];', seed.indexOf('const permissions = [')))
+  .matchAll(/'([^']+)'/g)]
+  .map((match) => match[1]);
 
 test('settings navigation keeps business names and restores Atendimento', () => {
   assert.match(source, /ORG_ADMIN: 'Superintendente'/);
@@ -24,6 +34,12 @@ test('technical permission and notification names are translated before renderin
   assert.match(source, /title: 'Notificação personalizada'/);
   assert.match(source, /ROLE_LABEL\[role\.code\] \?\? CUSTOM_ROLE_LABEL/);
   assert.doesNotMatch(source, /data\.businessLabels\[role\.code\]/);
+});
+
+test('permission map translates every unique code returned by the permission matrix', () => {
+  assert.equal(new Set(apiPermissionCodes).size, 81);
+  assert.equal(new Set(permissionMapCodes).size, permissionMapCodes.length);
+  assert.deepEqual([...permissionMapCodes].sort(), [...new Set(apiPermissionCodes)].sort());
 });
 
 test('Empresa and Aparência have independent form identities and fields', () => {
