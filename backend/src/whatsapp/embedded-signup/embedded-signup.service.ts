@@ -41,12 +41,13 @@ export class EmbeddedSignupService implements OnModuleInit {
   private hash(value: string) { return createHash('sha256').update(value).digest('hex'); }
 
   async createSession(user: AuthenticatedUserRef) {
+    // Validate before persisting state so a configuration error cannot leave an orphan session.
+    const config = this.config();
     const ctx = await this.access.resolve(user);
     if (!ctx.organizationId || ctx.global) throw new BadRequestException('WHATSAPP_ORGANIZATION_CONTEXT_REQUIRED');
     const state = randomBytes(32).toString('base64url');
     const expiresAt = new Date(Date.now() + 10 * 60_000);
     await this.prisma.whatsappEmbeddedSignupState.create({ data: { stateHash: this.hash(state), organizationId: ctx.organizationId, userId: ctx.id, expiresAt } });
-    const config = this.config();
     const url = new URL(`https://www.facebook.com/${config.version}/dialog/oauth`);
     url.search = new URLSearchParams({ client_id: config.appId, redirect_uri: config.redirectUri, state, config_id: config.configId, response_type: 'code', scope: 'business_management,whatsapp_business_management,whatsapp_business_messaging' }).toString();
     return { authorizationUrl: url.toString(), expiresAt: expiresAt.toISOString() };
