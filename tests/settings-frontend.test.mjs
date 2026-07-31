@@ -19,6 +19,11 @@ test('technical permission and notification names are translated before renderin
   for (const label of ['Ver informações da própria conta', 'Receber notificações pelo aplicativo', 'Receber notificações por e-mail']) {
     assert.match(source, new RegExp(label));
   }
+  assert.match(source, /PERMISSIONS\[code\] \?\? CUSTOM_PERMISSION/);
+  assert.match(source, /title: 'Permissão personalizada'/);
+  assert.match(source, /title: 'Notificação personalizada'/);
+  assert.match(source, /ROLE_LABEL\[role\.code\] \?\? CUSTOM_ROLE_LABEL/);
+  assert.doesNotMatch(source, /data\.businessLabels\[role\.code\]/);
 });
 
 test('Empresa and Aparência have independent form identities and fields', () => {
