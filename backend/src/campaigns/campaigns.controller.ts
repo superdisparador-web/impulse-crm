@@ -11,6 +11,10 @@ import { CampaignsService } from './campaigns.service';
 import { DestinationDto, ListMappingDto, ReviewDto, StepDto, TemplateConfigurationDto } from './dto/prepare-campaign.dto';
 import { CampaignReasonDto, ScheduleCampaignDto } from './dto/operate-campaign.dto';
 import { CampaignAudienceEstimateDto, CampaignSegmentationDto } from './dto/campaign-segmentation.dto';
+import { ManualRecipientsDto } from './dto/manual-recipients.dto';
+import { SendCampaignTestDto } from './dto/send-campaign-test.dto';
+import { PermissionsGuard } from '../auth/guards/permissions.guard';
+import { Permissions } from '../auth/decorators/permissions.decorator';
 
 type AuthRequest = Request & { user?: { id?: string } };
 type UploadedCampaignFile = { buffer: Buffer; originalname: string; mimetype: string; size: number };
@@ -23,6 +27,9 @@ export class CampaignsController {
   @Post('estimate') estimate(@Req() req: AuthRequest, @Body() data: EstimateCampaignDto) { return this.campaignsService.estimate(this.userId(req), data.filters); }
   @Post(':id/audience/estimate') estimateAudience(@Req() req:AuthRequest,@Param('id') id:string,@Body() data:CampaignAudienceEstimateDto){return this.campaignsService.estimateAudience(this.userId(req),id,data);}
   @Post(':id/audience/materialize') materializeAudience(@Req() req:AuthRequest,@Param('id') id:string,@Body() data:CampaignSegmentationDto){return this.campaignsService.materializeAudience(this.userId(req),id,data);}
+  @Post(':id/audience/manual') manualAudience(@Req() req:AuthRequest,@Param('id') id:string,@Body() data:ManualRecipientsDto){return this.campaignsService.saveManualAudience(this.userId(req),id,data.recipients);}
+  @Get(':id/audience/manual') getManualAudience(@Req() req:AuthRequest,@Param('id') id:string){return this.campaignsService.getManualAudience(this.userId(req),id);}
+  @Post(':id/test-message') @UseGuards(PermissionsGuard) @Permissions('whatsapp:messages:send') testMessage(@Req() req:AuthRequest,@Param('id') id:string,@Body() data:SendCampaignTestDto){return this.campaignsService.sendTestMessage(this.userId(req),id,data);}
   @Get(':id/operation-estimate') operationEstimate(@Req() req:AuthRequest,@Param('id') id:string){return this.campaignsService.operationEstimate(this.userId(req),id);}
   @Get(':id') findOne(@Req() req: AuthRequest, @Param('id') id: string) { return this.campaignsService.findOne(this.userId(req), id); }
   @Post() create(@Req() req: AuthRequest, @Body() data: CreateCampaignDto) { return this.campaignsService.create(this.userId(req), data); }

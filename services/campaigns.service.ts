@@ -25,6 +25,9 @@ class CampaignsService {
   estimate(filters:CampaignFilter[]) { return api.post<CampaignEstimateResponse>('/campaigns/estimate', { filters }); }
   estimateAudience(id:string,filters:CampaignSegmentationFilters,configuration:{speed:number;concurrency:number;category:string}){return api.post<CampaignAudienceEstimate>(`/campaigns/${id}/audience/estimate`,{...filters,...configuration});}
   materializeAudience(id:string,filters:CampaignSegmentationFilters){return api.post<CampaignAudienceMaterializationResult>(`/campaigns/${id}/audience/materialize`,filters);}
+  getManualRecipients(id:string){return api.get<{items:{id:string;name?:string|null;phone:string;phoneOriginal?:string|null;e164:string}[]}>(`/campaigns/${id}/audience/manual`);}
+  saveManualRecipients(id:string,recipients:{name?:string;phone:string}[]){return api.post<{valid:number;invalid:number;duplicate:number;items:RecipientSample['items']}>(`/campaigns/${id}/audience/manual`,{recipients});}
+  sendTestMessage(id:string,data:{phone:string;idempotencyKey:string;values:{component:string;position:number;buttonIndex?:number;value:string}[]}){return api.post<{sent:boolean;duplicate:boolean}>(`/campaigns/${id}/test-message`,data);}
   operationEstimate(id:string){return api.get<CampaignCostEstimate>(`/campaigns/${id}/operation-estimate`);}
   saveStep(id:string,currentStep:number){return api<Campaign>(`/campaigns/${id}/step`,{method:'PATCH',body:JSON.stringify({currentStep})});}
   uploadList(id:string,file:File){const body=new FormData();body.append('file',file);return api<CampaignImport>(`/campaigns/${id}/list/upload`,{method:'POST',body});}

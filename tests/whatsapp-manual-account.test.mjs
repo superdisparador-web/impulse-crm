@@ -6,13 +6,13 @@ import ts from "typescript";
 async function loadTypescriptModule(path, dependencies = {}) {
   const source = await readFile(new URL(path, import.meta.url), "utf8");
   const code = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 } }).outputText;
-  const module = { exports: {} };
+  const moduleRecord = { exports: {} };
   const localRequire = request => {
     if (request in dependencies) return dependencies[request];
     throw new Error(`Dependência de teste não configurada: ${request}`);
   };
-  Function("require", "module", "exports", code)(localRequire, module, module.exports);
-  return module.exports;
+  Function("require", "module", "exports", code)(localRequire, moduleRecord, moduleRecord.exports);
+  return moduleRecord.exports;
 }
 
 async function serviceWithApi(api) {
