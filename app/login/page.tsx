@@ -123,7 +123,7 @@ export default function LoginPage() {
         </div>
       </div>
 
-      <div className="relative z-10 mx-auto grid min-h-dvh w-full max-w-[1500px] items-center gap-12 px-5 py-5 sm:px-8 lg:grid-cols-[minmax(0,1fr)_460px] lg:px-14 lg:py-8 xl:gap-24 xl:px-20">
+      <div className="relative z-10 mx-auto grid min-h-dvh w-full max-w-[1500px] items-center gap-12 px-5 py-5 sm:px-8 lg:grid-cols-[minmax(0,1fr)_460px] lg:px-14 lg:pb-8 lg:pt-32 xl:gap-24 xl:px-20 xl:pt-[172px]">
         <section
           className="login-narrative hidden max-w-[650px] self-end pb-14 lg:block xl:pb-20"
           aria-label="Impulse Command Center"
