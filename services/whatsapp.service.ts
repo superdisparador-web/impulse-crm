@@ -14,7 +14,8 @@ class WhatsappService {
   getAccounts(params: WhatsappListParams = {}) { return api.get<PaginatedWhatsappAccounts>(`/whatsapp/accounts${toQueryString(params)}`); }
   createAccount(data: WhatsappAccountFormData) { const { credential, ...rest } = data; return api.post<WhatsappAccount>('/whatsapp/accounts', { ...rest, accessToken: credential }); }
   createManualAccount(data: ManualWhatsappAccountFormData) { return api.post<WhatsappAccount>('/whatsapp/admin/accounts/manual', data); }
-  updateAccount(id: string, data: Partial<WhatsappAccountFormData>) { const { credential, ...rest } = data; return api<WhatsappAccount>(`/whatsapp/accounts/${id}`, { method: 'PATCH', body: JSON.stringify({ ...rest, ...(credential ? { accessToken: credential } : {}) }) }); }
+  updateAccount(id: string, data: Pick<WhatsappAccountFormData, 'name' | 'phoneNumber' | 'apiVersion'>) { return api<WhatsappAccount>(`/whatsapp/accounts/${id}`, { method: 'PATCH', body: JSON.stringify(data) }); }
+  updateAccessToken(id: string, accessToken: string) { return api<WhatsappAccount>(`/whatsapp/admin/accounts/${id}/access-token`, { method: 'PATCH', body: JSON.stringify({ accessToken }) }); }
   updateStatus(id: string, status: 'ACTIVE' | 'INACTIVE') { return api<WhatsappAccount>(`/whatsapp/accounts/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }); }
   setDefault(id: string) { return api<WhatsappAccount>(`/whatsapp/accounts/${id}/default`, { method: 'PATCH' }); }
   testAccount(id: string) { return api.post<WhatsappAccount>(`/whatsapp/accounts/${id}/test-connection`, {}); }

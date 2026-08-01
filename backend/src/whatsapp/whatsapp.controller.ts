@@ -15,6 +15,7 @@ import { ListWhatsappTemplatesDto } from './dto/list-whatsapp-templates.dto';
 import { SendMediaMessageDto, SendTemplateMessageDto, SendTextMessageDto } from './dto/messages.dto';
 import { SyncWhatsappTemplatesDto } from './dto/sync-whatsapp-templates.dto';
 import { UpdateWhatsappAccountDto, UpdateWhatsappAccountStatusDto } from './dto/update-whatsapp-account.dto';
+import { UpdateWhatsappAccessTokenDto } from './dto/update-whatsapp-access-token.dto';
 import { UpdateWhatsappTemplateDto } from './dto/update-whatsapp-template.dto';
 import { WhatsappService } from './whatsapp.service';
 import { EmbeddedSignupService } from './embedded-signup/embedded-signup.service';
@@ -31,6 +32,7 @@ export class WhatsappController {
   @Get('accounts') @Permissions('whatsapp:accounts:read') findAccounts(@Query() q: ListWhatsappDto, @CurrentUser() u: AuthenticatedUserRef) { return this.service.findAccounts(q, u); }
   @Get('accounts/:id') @Permissions('whatsapp:accounts:read') getAccount(@Param('id') id: string, @CurrentUser() u: AuthenticatedUserRef) { return this.service.getAccount(id, u); }
   @Patch('accounts/:id') @Permissions('whatsapp:accounts:update') updateAccount(@Param('id') id: string, @Body() d: UpdateWhatsappAccountDto, @CurrentUser() u: AuthenticatedUserRef) { return this.service.updateAccount(id, d, u); }
+  @Patch('admin/accounts/:id/access-token') @Permissions('whatsapp:accounts:update') updateAccessToken(@Param('id') id: string, @Body() d: UpdateWhatsappAccessTokenDto, @CurrentUser() u: AuthenticatedUserRef) { return this.service.updateAccessToken(id, d, u); }
   @Patch('accounts/:id/status') @Permissions('whatsapp:accounts:update') updateAccountStatus(@Param('id') id: string, @Body() d: UpdateWhatsappAccountStatusDto, @CurrentUser() u: AuthenticatedUserRef) { return this.service.updateAccountStatus(id, d, u); }
   @Patch('accounts/:id/default') @Permissions('whatsapp:accounts:update') setDefaultAccount(@Param('id') id: string, @CurrentUser() u: AuthenticatedUserRef) { return this.service.setDefaultAccount(id, u); }
   @Post('accounts/:id/test') @Permissions('whatsapp:accounts:test') testAccountPost(@Param('id') id: string, @CurrentUser() u: AuthenticatedUserRef) { return this.service.testAccount(id, u); }
