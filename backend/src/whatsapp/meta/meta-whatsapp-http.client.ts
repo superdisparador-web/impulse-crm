@@ -20,10 +20,6 @@ export class MetaWhatsappHttpClient extends MetaWhatsappClient {
     finally { clearTimeout(timeout); }
   }
   async testConnection(input: MetaAccountConnectionInput): Promise<MetaAccountConnection> {
-    if (input.businessAccountId && input.businessAccountId !== input.wabaId) {
-      const owned = await this.request<{data?:{id:string}[]}>(`/${encodeURIComponent(input.businessAccountId)}/owned_whatsapp_business_accounts?fields=id&limit=100`, input.accessToken, {}, input.apiVersion);
-      if (!(owned.data || []).some(account => account.id === input.wabaId)) throw Object.assign(new Error('A WABA configurada não pertence ao Business Account informado'), {code:'WHATSAPP_WABA_NOT_OWNED_BY_BUSINESS'});
-    }
     const response = await this.request<{data?:{id:string;verified_name?:string;display_phone_number?:string;quality_rating?:string}[]}>(`/${encodeURIComponent(input.wabaId)}/phone_numbers?fields=id,verified_name,display_phone_number,quality_rating&limit=100`, input.accessToken, {}, input.apiVersion);
     const phone = (response.data || []).find(item => item.id === input.phoneNumberId);
     if (!phone) throw Object.assign(new Error('O Phone Number ID configurado não foi encontrado na WABA'), {code:'WHATSAPP_PHONE_NOT_FOUND_IN_WABA'});
