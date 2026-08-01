@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useEffect } from "react";
+import { ReactNode, useEffect, useRef } from "react";
 
 interface ModalProps {
   isOpen: boolean;
@@ -24,16 +24,18 @@ export default function Modal({
   onClose,
   width = "md",
 }: ModalProps) {
+  const panelRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
         onClose();
-      }
+      } else if (event.key === "Tab") { const focusable=panelRef.current?.querySelectorAll<HTMLElement>('button,[href],input,select,textarea,[tabindex]:not([tabindex="-1"])');if(!focusable?.length)return;const first=focusable[0],last=focusable[focusable.length-1];if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus()}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus()} }
     }
 
     if (isOpen) {
       document.addEventListener("keydown", handleKeyDown);
       document.body.style.overflow = "hidden";
+      window.setTimeout(()=>panelRef.current?.querySelector<HTMLElement>("button")?.focus(),0);
     }
 
     return () => {
@@ -53,6 +55,7 @@ export default function Modal({
       aria-labelledby="modal-title"
     >
       <div
+        ref={panelRef}
         className={`w-full ${widthClasses[width]} max-h-[calc(100dvh-2rem)] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl`}
         onClick={(e) => e.stopPropagation()}
       >

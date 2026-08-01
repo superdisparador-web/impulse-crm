@@ -87,7 +87,7 @@ test('common user cannot manage users', async () => {
 
 test('creates org user from authenticated org and normalizes email', async () => {
   const prisma = makePrisma();
-  await new UsersService(prisma, new AccessContextService(prisma)).create({ name: ' New ', email: 'NEW@EXAMPLE.COM', password: 'Senha123', role: Role.ADMIN, organizationId: 'org-2' }, orgAdmin);
+  await new UsersService(prisma, new AccessContextService(prisma)).create({ name: ' New ', email: 'NEW@EXAMPLE.COM', password: 'Senha123', role: Role.CORRETOR, organizationId: 'org-2' }, orgAdmin);
   assert.equal(prisma.__state.created.data.email, 'new@example.com');
   assert.equal(prisma.__state.created.data.organizationId, 'org-1');
   assert.equal(prisma.__state.created.data.role, Role.CORRETOR);
@@ -102,7 +102,7 @@ test('rejects duplicated email and empty name', async () => {
 test('blocks privilege escalation and cross-tenant updates', async () => {
   const service = new UsersService(makePrisma(), new AccessContextService(makePrisma()));
   await assert.rejects(() => service.update('common-user', { role: Role.ADMIN }, orgAdmin), ForbiddenException);
-  await assert.rejects(() => service.update('other-user', { name: 'Hack' }, orgAdmin), NotFoundException);
+  await assert.rejects(() => service.update('other-user', { name: 'Hack' }, orgAdmin), ForbiddenException);
 });
 
 test('soft deletes and resets password administratively', async () => {

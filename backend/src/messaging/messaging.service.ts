@@ -10,7 +10,7 @@ import { classifyMetaError } from './meta-error-classifier';
 import { createHash, createHmac } from 'crypto';
 import { readFile } from 'fs/promises';
 import { basename, resolve, sep } from 'path';
-import { detectMediaMime } from '../campaigns/campaign-preparation';
+import { detectMediaMime, normalizeBrazilianPhone } from '../campaigns/campaign-preparation';
 import { parseMetaTemplateComponents } from '../whatsapp/templates/template-components';
 import { dynamicUrlSuffix, mediaHeader, weightedAgentAt } from './campaign-runtime';
 
@@ -44,6 +44,18 @@ export class MessagingService {
     private readonly meta: MetaWhatsappClient,
     private readonly crypto: WhatsappCredentialCryptoService,
   ) {}
+
+  async sendCampaignTest(userId:string,organizationId:string,campaignId:string,data:{phone:string;idempotencyKey:string;values?:Array<{component:string;position:number;buttonIndex?:number;value:string}>}){
+    const normalized=normalizeBrazilianPhone(data.phone);if(!normalized.phone)throw new BadRequestException('TEST_RECIPIENT_INVALID');
+    const campaign=await this.prisma.campaign.findFirst({where:{id:campaignId,organizationId,deletedAt:null},include:{whatsappTemplate:true}});if(!campaign)throw new NotFoundException('Campanha não encontrada');if(campaign.status!=='DRAFT')throw new BadRequestException('TEST_CAMPAIGN_NOT_DRAFT');if(!campaign.whatsappAccountId||!campaign.whatsappTemplate)throw new BadRequestException('TEST_CAMPAIGN_INCOMPLETE');
+    const template=campaign.whatsappTemplate;if(template.status!=='APPROVED'||!template.isActive||template.deletedAt||template.archivedAt||!template.metaTemplateId)throw new BadRequestException('WHATSAPP_TEMPLATE_NOT_APPROVED');
+    const parsed=parseMetaTemplateComponents(template.components),provided=new Map((data.values||[]).map(v=>[`${v.component}:${v.position}:${v.buttonIndex??''}`,v.value.trim()]));if(parsed.variables.some(v=>!provided.get(`${v.component}:${v.position}:${v.buttonIndex??''}`)))throw new BadRequestException('TEST_VARIABLE_REQUIRED');
+    const key=createHash('sha256').update(`${organizationId}:${campaignId}:${userId}:${data.idempotencyKey}`).digest('hex');const duplicate=await this.prisma.auditLog.findFirst({where:{organizationId,entityId:campaignId,action:'campaign.test.sent',metadata:{path:['idempotencyKey'],equals:key}}});if(duplicate)return{sent:true,duplicate:true};
+    const recent=await this.prisma.auditLog.count({where:{organizationId,actorUserId:userId,action:'campaign.test.sent',occurredAt:{gte:new Date(Date.now()-60_000)}}});if(recent>=5)throw new BadRequestException('TEST_RATE_LIMITED');
+    const account=await this.prisma.whatsappAccount.findFirst({where:{id:campaign.whatsappAccountId,organizationId,provider:'META_CLOUD',status:'ACTIVE',tokenConfigured:true,deletedAt:null}}) as WhatsappAccountForQueue|null;if(!account)throw new BadRequestException('WHATSAPP_ACCOUNT_UNAVAILABLE');
+    const groups=new Map<string,{type:string;index?:string;parameters:Array<{type:string;text:string}>}>();for(const variable of parsed.variables){const mapKey=`${variable.component}:${variable.position}:${variable.buttonIndex??''}`,value=provided.get(mapKey)!;const groupKey=variable.component==='BUTTON'?`button:${variable.buttonIndex}`:variable.component.toLowerCase();if(!groups.has(groupKey))groups.set(groupKey,{type:variable.component.toLowerCase(),...(variable.component==='BUTTON'?{index:String(variable.buttonIndex)}:{}),parameters:[]});groups.get(groupKey)!.parameters.push({type:'text',text:value})}
+    try{const result=await this.meta.sendTemplate({accessToken:this.crypto.decrypt(account.accessToken),phoneNumberId:account.phoneNumberId,to:normalized.phone,name:template.metaName,language:template.language,components:[...groups.values()]});await this.prisma.auditLog.create({data:{organizationId,actorUserId:userId,module:'campaigns',entityType:'Campaign',entityId:campaignId,action:'campaign.test.sent',after:{status:'SENT'},metadata:{idempotencyKey:key,providerMessageIdHash:createHash('sha256').update(result.externalMessageId).digest('hex')}}});return{sent:true,duplicate:false}}catch(error){const classified=classifyMetaError(error);await this.prisma.auditLog.create({data:{organizationId,actorUserId:userId,module:'campaigns',entityType:'Campaign',entityId:campaignId,action:'campaign.test.failed',after:{category:classified.category},metadata:{idempotencyKey:key}}});throw new BadRequestException({code:classified.category,message:classified.message})}
+  }
 
   async enqueueCampaign(userId: string, data: CreateMessageQueueDto) {
     const organizationId = await this.getOrganizationId(userId);
