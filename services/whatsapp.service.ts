@@ -1,5 +1,5 @@
 import { api } from './api';
-import { PaginatedWhatsappAccounts, SyncWhatsappTemplatesData, WhatsappAccount, WhatsappAccountFormData, WhatsappListParams, WhatsappTemplate } from '@/types/whatsapp';
+import { ManualWhatsappAccountFormData, PaginatedWhatsappAccounts, SyncWhatsappTemplatesData, WhatsappAccount, WhatsappAccountFormData, WhatsappListParams, WhatsappTemplate } from '@/types/whatsapp';
 
 function toQueryString(params: WhatsappListParams = {}) {
   const searchParams = new URLSearchParams();
@@ -13,6 +13,7 @@ class WhatsappService {
   startEmbeddedSignup() { return api.post<{ authorizationUrl: string; expiresAt: string }>('/whatsapp/embedded-signup/session', { returnUrl: `${window.location.origin}/whatsapp` }); }
   getAccounts(params: WhatsappListParams = {}) { return api.get<PaginatedWhatsappAccounts>(`/whatsapp/accounts${toQueryString(params)}`); }
   createAccount(data: WhatsappAccountFormData) { const { credential, ...rest } = data; return api.post<WhatsappAccount>('/whatsapp/accounts', { ...rest, accessToken: credential }); }
+  createManualAccount(data: ManualWhatsappAccountFormData) { return api.post<WhatsappAccount>('/whatsapp/admin/accounts/manual', data); }
   updateAccount(id: string, data: Partial<WhatsappAccountFormData>) { const { credential, ...rest } = data; return api<WhatsappAccount>(`/whatsapp/accounts/${id}`, { method: 'PATCH', body: JSON.stringify({ ...rest, ...(credential ? { accessToken: credential } : {}) }) }); }
   updateStatus(id: string, status: 'ACTIVE' | 'INACTIVE') { return api<WhatsappAccount>(`/whatsapp/accounts/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }); }
   setDefault(id: string) { return api<WhatsappAccount>(`/whatsapp/accounts/${id}/default`, { method: 'PATCH' }); }

@@ -8,6 +8,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { AuthenticatedUserRef } from '../auth/access-context.service';
 import { AssignConversationDto, UpdateConversationDto } from './dto/conversations.dto';
 import { CreateWhatsappAccountDto } from './dto/create-whatsapp-account.dto';
+import { CreateManualWhatsappAccountDto } from './dto/create-manual-whatsapp-account.dto';
 import { CreateWhatsappTemplateDto } from './dto/create-whatsapp-template.dto';
 import { ListWhatsappDto } from './dto/list-whatsapp.dto';
 import { ListWhatsappTemplatesDto } from './dto/list-whatsapp-templates.dto';
@@ -26,6 +27,7 @@ export class WhatsappController {
   constructor(private readonly service: WhatsappService, private readonly embeddedSignup: EmbeddedSignupService) {}
   @Post('embedded-signup/session') @Permissions('whatsapp:accounts:create') embeddedSignupSession(@CurrentUser() u: AuthenticatedUserRef) { return this.embeddedSignup.createSession(u); }
   @Post('accounts') @Permissions('whatsapp:accounts:create') createAccount(@Body() d: CreateWhatsappAccountDto, @CurrentUser() u: AuthenticatedUserRef) { return this.service.createAccount(d, u); }
+  @Post('admin/accounts/manual') @Permissions('whatsapp:accounts:create') createManualAccount(@Body() d: CreateManualWhatsappAccountDto, @CurrentUser() u: AuthenticatedUserRef) { return this.service.createManualAccount(d, u); }
   @Get('accounts') @Permissions('whatsapp:accounts:read') findAccounts(@Query() q: ListWhatsappDto, @CurrentUser() u: AuthenticatedUserRef) { return this.service.findAccounts(q, u); }
   @Get('accounts/:id') @Permissions('whatsapp:accounts:read') getAccount(@Param('id') id: string, @CurrentUser() u: AuthenticatedUserRef) { return this.service.getAccount(id, u); }
   @Patch('accounts/:id') @Permissions('whatsapp:accounts:update') updateAccount(@Param('id') id: string, @Body() d: UpdateWhatsappAccountDto, @CurrentUser() u: AuthenticatedUserRef) { return this.service.updateAccount(id, d, u); }

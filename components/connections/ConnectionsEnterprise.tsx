@@ -22,7 +22,7 @@ const mask = (value?: string | null) => !value ? "—" : value.length < 7 ? "•
 type Props = {
   accounts: WhatsappAccount[]; total: number; loading: boolean; error: string; notice: string; busyId: string | null;
   canManage: boolean; isGlobalAdmin: boolean; connecting: boolean;
-  onDismissNotice: () => void; onRefresh: () => void; onConnect: () => void; onEdit: (a: WhatsappAccount) => void;
+  onDismissNotice: () => void; onRefresh: () => void; onConnect: () => void; onManualConnect: () => void; onEdit: (a: WhatsappAccount) => void;
   onArchive: (a: WhatsappAccount) => void; onRestore: (a: WhatsappAccount) => void; onTest: (a: WhatsappAccount) => void;
   onSync: (a: WhatsappAccount) => void; onToggle: (a: WhatsappAccount) => void; onDefault: (a: WhatsappAccount) => void;
 };
@@ -44,7 +44,7 @@ export function ConnectionsEnterprise(p: Props) {
   ] as const;
 
   return <main className="space-y-6" aria-labelledby="whatsapp-title">
-    <PageHeader title="WhatsApp" description="Gerencie contas oficiais, números, conexões e configurações da Meta." action={<div className="flex flex-wrap gap-2"><Button variant="secondary" onClick={p.onRefresh} disabled={p.loading}><RefreshCw size={16} className={p.loading ? "animate-spin" : ""}/>Atualizar</Button>{p.canManage && <Button onClick={p.onConnect} disabled={p.connecting}>{p.connecting ? "Conectando com a Meta…" : p.total ? "Adicionar outra conta" : "Conectar WhatsApp Oficial"}</Button>}</div>} />
+    <PageHeader title="WhatsApp" description="Gerencie contas oficiais, números, conexões e configurações da Meta." action={<div className="flex flex-wrap gap-2"><Button variant="secondary" onClick={p.onRefresh} disabled={p.loading}><RefreshCw size={16} className={p.loading ? "animate-spin" : ""}/>Atualizar</Button>{p.isGlobalAdmin && <Button variant="secondary" onClick={p.onManualConnect}>Cadastro manual</Button>}{p.canManage && <Button onClick={p.onConnect} disabled={p.connecting}>{p.connecting ? "Conectando com a Meta…" : p.total ? "Adicionar outra conta" : "Conectar WhatsApp Oficial"}</Button>}</div>} />
     {p.notice && <div role="status" className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800"><CheckCircle2 size={18}/><span className="flex-1">{p.notice}</span><button onClick={p.onDismissNotice} aria-label="Fechar"><X size={16}/></button></div>}
     {p.error && <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{p.error}</div>}
     <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6" aria-label="Indicadores reais">{metrics.map(([label, value]) => <StatCard key={label} title={label} value={p.loading ? "—" : value} icon={<MessageCircleMore size={18}/>}/>)}</section>
