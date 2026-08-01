@@ -2,7 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ConnectionsEnterprise } from "@/components/connections/ConnectionsEnterprise";
-import { ArchiveModal, ManualAccountModal } from "@/components/whatsapp";
+import { AccessTokenModal, ArchiveModal, ManualAccountModal } from "@/components/whatsapp";
 import Modal from "@/components/ui/Modal";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
@@ -42,11 +42,21 @@ export function manualAccountErrorMessage(error: unknown) {
   return "Não foi possível validar a conta na Meta. Revise os identificadores e a credencial.";
 }
 
+export function accessTokenErrorMessage(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  if (message.includes("WHATSAPP_INVALID_ACCESS_TOKEN")) return "O Access Token informado é inválido ou expirou.";
+  if (message.includes("WHATSAPP_INSUFFICIENT_PERMISSION")) return "O token não possui as permissões necessárias para essa conta.";
+  if (message.includes("WHATSAPP_PHONE_NOT_FOUND_IN_WABA")) return "O número configurado não foi encontrado na conta WhatsApp informada.";
+  if (message.includes("WHATSAPP_META_REQUEST_TIMEOUT")) return "A Meta demorou para responder. Tente novamente.";
+  return "A Meta não conseguiu validar a credencial.";
+}
+
 export default function WhatsappPage() {
   const [accounts, setAccounts] = useState<WhatsappAccount[]>([]), [total, setTotal] = useState(0), [loading, setLoading] = useState(true);
   const [error, setError] = useState(""), [notice, setNotice] = useState(""), [busyId, setBusyId] = useState<string | null>(null), [connecting, setConnecting] = useState(false);
   const [editing, setEditing] = useState<WhatsappAccount | null>(null), [archive, setArchive] = useState<WhatsappAccount | null>(null), [saving, setSaving] = useState(false), [formError, setFormError] = useState(""), [form, setForm] = useState<WhatsappAccountFormData>(EMPTY);
   const [manualOpen, setManualOpen] = useState(false), [manualSaving, setManualSaving] = useState(false), [manualError, setManualError] = useState(""), [manualForm, setManualForm] = useState<ManualWhatsappAccountFormData>(EMPTY_MANUAL), [organizations, setOrganizations] = useState<Organization[]>([]);
+  const [credentialAccount, setCredentialAccount] = useState<WhatsappAccount | null>(null), [credentialSaving, setCredentialSaving] = useState(false), [credentialError, setCredentialError] = useState("");
   const loadingRef = useRef(false);
   const role = getCurrentUser()?.role;
   const globalAdmin = useMemo(() => hasGlobalAdminRole() || role === "GLOBAL_ADMIN", [role]);
@@ -63,10 +73,14 @@ export default function WhatsappPage() {
   function openEdit(account: WhatsappAccount) { if (!globalAdmin) return; setEditing(account); setForm({ name: account.name, phoneNumber: account.phoneNumber, wabaId: account.wabaId, businessAccountId: account.businessAccountId ?? "", phoneNumberId: account.phoneNumberId, credential: "", verifyToken: "", apiVersion: account.apiVersion ?? "v20.0", active: account.status === "ACTIVE" }); }
   function closeEdit() { setEditing(null); setForm({ ...EMPTY }); setFormError(""); }
   async function submit(event: FormEvent) { event.preventDefault(); if (!editing?.id || !globalAdmin || saving) return; setSaving(true); setFormError(""); try { await whatsappService.updateAccount(editing.id, { name: form.name.trim(), phoneNumber: form.phoneNumber?.trim(), apiVersion: form.apiVersion?.trim() }); closeEdit(); setNotice("Configuração avançada atualizada."); await load(true); } catch { setFormError("Não foi possível atualizar a configuração."); } finally { setSaving(false); } }
+  function openCredential(account: WhatsappAccount) { if (!globalAdmin) return; setCredentialError(""); setCredentialAccount(account); }
+  function closeCredential() { if (credentialSaving) return; setCredentialAccount(null); setCredentialError(""); }
+  async function submitCredential(accessToken: string) { if (!credentialAccount || !globalAdmin || credentialSaving) return; setCredentialSaving(true); setCredentialError(""); try { await whatsappService.updateAccessToken(credentialAccount.id, accessToken); setCredentialAccount(null); setNotice("Credencial atualizada e conta validada com sucesso."); await load(true); } catch (cause) { setCredentialError(accessTokenErrorMessage(cause)); } finally { setCredentialSaving(false); } }
   async function action(account: WhatsappAccount, operation: () => Promise<unknown>, success: string) { if (!canManage || busyId) return; setBusyId(account.id); setError(""); try { await operation(); setNotice(success); await load(true); } catch { setError("Não foi possível concluir a ação. Tente novamente."); } finally { setBusyId(null); } }
 
   return <>
-    <ConnectionsEnterprise accounts={accounts} total={total} loading={loading} error={error} notice={notice} busyId={busyId} canManage={canManage} isGlobalAdmin={globalAdmin} connecting={connecting} onDismissNotice={() => setNotice("")} onRefresh={() => void load()} onConnect={() => void connect()} onManualConnect={() => void openManual()} onEdit={openEdit} onArchive={setArchive} onTest={a => void action(a, () => whatsappService.testAccount(a.id), "Teste de conexão concluído.")} onSync={a => void action(a, () => whatsappService.syncAccount(a.id), "Conta, número e templates sincronizados.")} onToggle={a => void action(a, () => whatsappService.updateStatus(a.id, a.status === "ACTIVE" ? "INACTIVE" : "ACTIVE"), "Status atualizado.")} onDefault={a => void action(a, () => whatsappService.setDefault(a.id), "Conta padrão atualizada.")} onRestore={a => void action(a, () => whatsappService.restoreAccount(a.id), "Conta restaurada.")}/>
+    <ConnectionsEnterprise accounts={accounts} total={total} loading={loading} error={error} notice={notice} busyId={busyId} canManage={canManage} isGlobalAdmin={globalAdmin} connecting={connecting} onDismissNotice={() => setNotice("")} onRefresh={() => void load()} onConnect={() => void connect()} onManualConnect={() => void openManual()} onEdit={openEdit} onUpdateCredential={openCredential} onArchive={setArchive} onTest={a => void action(a, () => whatsappService.testAccount(a.id), "Teste de conexão concluído.")} onSync={a => void action(a, () => whatsappService.syncAccount(a.id), "Conta, número e templates sincronizados.")} onToggle={a => void action(a, () => whatsappService.updateStatus(a.id, a.status === "ACTIVE" ? "INACTIVE" : "ACTIVE"), "Status atualizado.")} onDefault={a => void action(a, () => whatsappService.setDefault(a.id), "Conta padrão atualizada.")} onRestore={a => void action(a, () => whatsappService.restoreAccount(a.id), "Conta restaurada.")}/>
+    {credentialAccount && <AccessTokenModal account={credentialAccount} saving={credentialSaving} error={credentialError} onClose={closeCredential} onSubmit={submitCredential}/>}
     {manualOpen && <ManualAccountModal open form={manualForm} organizations={organizations} saving={manualSaving} error={manualError} onChange={setManualForm} onClose={closeManual} onSubmit={submitManual}/>}
     <Modal isOpen={Boolean(editing)} title="Editar conta" onClose={closeEdit}><form onSubmit={submit} className="space-y-4"><p className="text-sm text-slate-500">Edite somente informações operacionais. Identificadores e credenciais são administrados automaticamente pela integração.</p>{formError && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{formError}</p>}<label className="block text-sm font-semibold">Nome interno<Input autoFocus value={form.name} onChange={e => setForm(current => ({ ...current, name: e.target.value }))} required/></label><label className="block text-sm font-semibold">Número exibido<Input value={form.phoneNumber} onChange={e => setForm(current => ({ ...current, phoneNumber: e.target.value }))}/></label><label className="block text-sm font-semibold">Versão da API<Input value={form.apiVersion} onChange={e => setForm(current => ({ ...current, apiVersion: e.target.value }))}/></label><div className="flex justify-end gap-2"><Button variant="secondary" onClick={closeEdit}>Cancelar</Button><Button type="submit" loading={saving}>Salvar</Button></div></form></Modal>
     <ArchiveModal account={archive} saving={Boolean(archive && busyId === archive.id)} onCancel={() => setArchive(null)} onConfirm={() => { if (!archive) return; const target = archive; void action(target, () => whatsappService.deleteAccount(target.id), "Conta arquivada.").then(() => setArchive(null)); }}/>
