@@ -66,6 +66,17 @@ export interface WhatsappAccountFormData {
   active?: boolean;
 }
 
+export interface ManualWhatsappAccountFormData {
+  organizationId: string;
+  name: string;
+  wabaId: string;
+  phoneNumberId: string;
+  businessAccountId?: string;
+  accessToken: string;
+  apiVersion?: string;
+  isDefault?: boolean;
+}
+
 export interface WhatsappListParams {
   search?: string;
   status?: string;
