@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { createHash, createHmac, randomBytes, timingSafeEqual } from 'crypto';
 import { Prisma, Role } from '@prisma/client';
 import { AccessContextService, AuthenticatedUserRef } from '../auth/access-context.service';
@@ -27,6 +27,7 @@ const statusRank: Record<string, number> = { SENT: 1, DELIVERED: 2, READ: 3, FAI
 
 @Injectable()
 export class WhatsappService {
+  private readonly logger = new Logger(WhatsappService.name);
   constructor(private readonly prisma: PrismaService, private readonly access: AccessContextService, private readonly audit: AuditService, private readonly crypto: WhatsappCredentialCryptoService, private readonly meta: MetaWhatsappClient, private readonly windowPolicy: WhatsappWindowPolicy) {}
   normalizePhone(phone: string) { const digits = (phone || '').replace(/\D/g, ''); if (digits.length < 10 || digits.length > 15) throw new BadRequestException('WHATSAPP_INVALID_PHONE'); return digits.startsWith('55') || digits.length > 11 ? `+${digits}` : `+55${digits}`; }
   private scope(ctx: { global: boolean; organizationId: string | null }) { if (ctx.global) throw new BadRequestException('WHATSAPP_ORGANIZATION_CONTEXT_REQUIRED'); if (!ctx.organizationId) throw new ForbiddenException('Organização obrigatória'); return ctx.organizationId; }
@@ -109,11 +110,15 @@ export class WhatsappService {
     if(a.provider!=='META_CLOUD') throw new BadRequestException('WHATSAPP_TEMPLATE_SYNC_META_ONLY');
     const now=new Date(); const summary={totalFound:0,created:0,updated:0,unchanged:0,archived:0,errors:[] as string[]};
     try {
+      this.logger.log(JSON.stringify({event:'whatsapp.template_sync.meta_request',businessAccountId:a.businessAccountId,wabaId:a.wabaId,phoneNumberId:a.phoneNumberId}));
       const templates=await this.meta.syncTemplates({accessToken:this.crypto.decrypt(a.accessToken),businessAccountId:a.wabaId,apiVersion:a.apiVersion}); summary.totalFound=templates.length; const seen:string[]=[];
+      this.logger.log(JSON.stringify({event:'whatsapp.template_sync.meta_response',templateCount:templates.length,templates:templates.map(template=>({name:template.name,status:template.status,language:template.language}))}));
+      this.logger.log(JSON.stringify({event:'whatsapp.template_sync.filter_result',filtersApplied:[],discardedCount:0,reason:'Nenhum filtro de templates é aplicado após a resposta da Meta'}));
       for(const t of templates) { try { const metaId=t.id?.trim()||null; const existing:any=await this.prisma.whatsappTemplate.findFirst({where:{organizationId:org,whatsappAccountId:a.id,OR:[...(metaId?[{metaTemplateId:metaId}]:[]),{name:t.name,language:t.language}]}}); const status=this.mapTemplateStatus(t.status); const parsed=parseMetaTemplateComponents(t.components); const quality=typeof t.quality_score==='object'?JSON.stringify(t.quality_score):t.quality_score?String(t.quality_score):null; const values:any={externalTemplateId:metaId,metaTemplateId:metaId,displayName:t.name,metaName:t.name,name:t.name,language:t.language,category:t.category,status:status.internal,metaStatus:status.raw,qualityScore:quality,rejectionReason:t.rejected_reason?.slice(0,500)||null,parameterFormat:t.parameter_format||null,previousCategory:t.previous_category||null,createdAtMeta:t.created_time?new Date(t.created_time):null,components:parsed.components,headerType:parsed.headerType,headerText:parsed.headerText,body:parsed.body,footer:parsed.footer,buttons:parsed.buttons,archivedAt:null,deletedAt:null,isActive:status.internal==='APPROVED',lastSyncedAt:now};
         if(existing){ const keys=Object.keys(values).filter(k=>k!=='lastSyncedAt'); const comparable=(o:any)=>JSON.stringify(Object.fromEntries(keys.map(k=>[k,o[k] instanceof Date?o[k].toISOString():o[k]]))); if(comparable(existing)===comparable(values)){await this.prisma.whatsappTemplate.update({where:{id:existing.id},data:{lastSyncedAt:now}});summary.unchanged++;}else{await this.prisma.whatsappTemplate.update({where:{id:existing.id},data:values});summary.updated++;} seen.push(existing.id);
-        } else { const created=await this.prisma.whatsappTemplate.create({data:{organizationId:org,whatsappAccountId:a.id,...values}}); seen.push(created.id); summary.created++; }
-      } catch(error){summary.errors.push(sanitizeError(error));} }
+        } else { this.logger.log(JSON.stringify({event:'whatsapp.template_sync.before_insert',templatesToInsert:1,name:t.name,status:t.status,language:t.language})); const created=await this.prisma.whatsappTemplate.create({data:{organizationId:org,whatsappAccountId:a.id,...values}}); seen.push(created.id); summary.created++; }
+      } catch(error){const reason=sanitizeError(error); this.logger.error(JSON.stringify({event:'whatsapp.template_sync.template_discarded',filter:'template_processing_error',reason,name:t.name,status:t.status,language:t.language})); summary.errors.push(reason);} }
+      this.logger.log(JSON.stringify({event:'whatsapp.template_sync.after_insert',templatesInserted:summary.created}));
       const archived=await this.prisma.whatsappTemplate.updateMany({where:{organizationId:org,whatsappAccountId:a.id,deletedAt:null,archivedAt:null,...(seen.length?{id:{notIn:seen}}:{})},data:{archivedAt:now,isActive:false,lastSyncedAt:now}}); summary.archived=archived.count;
       await this.prisma.whatsappAccount.update({where:{id:a.id},data:{lastSyncAt:now}}); await this.auditSafe(org,'whatsapp.templates.synced','WhatsappAccount',a.id,ctx.id,null,summary); return summary;
     } catch(error) { throw new BadRequestException({code:'WHATSAPP_META_TEMPLATE_SYNC_FAILED',message:sanitizeError(error)}); }
