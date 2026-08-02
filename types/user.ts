@@ -10,6 +10,8 @@ export interface User {
   name: string;
   email: string;
   phone?: string | null;
+  title?: string | null;
+  avatarUrl?: string | null;
   role: UserRole;
   active: boolean;
   organizationId?: string | null;
@@ -17,6 +19,9 @@ export interface User {
   createdAt: string;
   updatedAt: string;
   deletedAt?: string | null;
+  lastLoginAt?: string | null;
+  lastLoginIp?: string | null;
+  permissions?: string[];
 }
 
 export interface UserFormData {
@@ -24,6 +29,7 @@ export interface UserFormData {
   email: string;
   password?: string;
   phone?: string;
+  title?: string;
   role: UserRole;
   organizationId: string;
   active?: boolean;
