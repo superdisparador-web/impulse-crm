@@ -1,4 +1,4 @@
-export type WhatsappAccountStatus = 'PENDING' | 'ACTIVE' | 'INACTIVE' | 'DISCONNECTED' | 'ERROR' | 'SUSPENDED';
+export type WhatsappAccountStatus = 'PENDING' | 'ACTIVE' | 'INACTIVE' | 'DISCONNECTED' | 'ERROR' | 'SUSPENDED' | 'TOKEN_EXPIRED';
 
 export interface PaginatedWhatsappAccounts {
   items: WhatsappAccount[];
@@ -18,6 +18,12 @@ export interface WhatsappAccount {
   verifiedName?: string | null;
   phoneNumberId: string;
   businessAccountId: string;
+  metaBusinessId?: string | null;
+  metaBusinessName?: string | null;
+  credentialType: 'OAUTH_USER' | 'SYSTEM_USER';
+  tokenExpiresAt?: string | null;
+  tokenLastRenewedAt?: string | null;
+  grantedScopes?: string[] | null;
   appId?: string | null;
   apiVersion?: string | null;
   status: WhatsappAccountStatus;
@@ -49,16 +55,6 @@ export interface WhatsappTemplate {
   updatedAt: string;
 }
 
-export interface WhatsappAccountFormData {
-  name: string;
-  phoneNumber?: string;
-  phoneNumberId: string;
-  businessAccountId: string;
-  credential?: string;
-  apiVersion?: string;
-  active?: boolean;
-}
-
 export interface WhatsappListParams {
   search?: string;
   status?: string;
@@ -67,3 +63,6 @@ export interface WhatsappListParams {
   pageSize?: number;
 }
 export interface SyncWhatsappTemplatesData { accountId: string; }
+
+export interface EmbeddedSignupConfig { appId:string; configId:string; apiVersion:string; state:string; }
+export interface EmbeddedSignupResult { accountsConnected:number; accounts:WhatsappAccount[]; }
