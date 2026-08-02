@@ -2,9 +2,15 @@ const assert = require('node:assert/strict');
 const test = require('node:test');
 const { MODULE_METADATA } = require('@nestjs/common/constants');
 const { CampaignsModule } = require('../dist/src/campaigns/campaigns.module');
+const { AnalyticsModule } = require('../dist/src/analytics/analytics.module');
+const { AuthModule } = require('../dist/src/auth/auth.module');
+const { DistributionModule } = require('../dist/src/distribution/distribution.module');
 const { IamModule } = require('../dist/src/iam/iam.module');
 const { IamService } = require('../dist/src/iam/iam.service');
+const { LeadsModule } = require('../dist/src/leads/leads.module');
+const { OrganizationsModule } = require('../dist/src/organizations/organizations.module');
 const { PermissionsGuard } = require('../dist/src/auth/guards/permissions.guard');
+const { UsersModule } = require('../dist/src/users/users.module');
 const { WhatsappModule } = require('../dist/src/whatsapp/whatsapp.module');
 
 function metadata(module, key) {
@@ -22,9 +28,22 @@ test('IamModule owns and exports the IAM singleton and permissions guard', () =>
 });
 
 test('feature modules using PermissionsGuard import IamModule without redeclaring IAM providers', () => {
-  for (const featureModule of [CampaignsModule, WhatsappModule]) {
+  const iamConsumers = [
+    AnalyticsModule,
+    CampaignsModule,
+    DistributionModule,
+    LeadsModule,
+    OrganizationsModule,
+    UsersModule,
+    WhatsappModule,
+  ];
+
+  for (const featureModule of iamConsumers) {
     assert.ok(metadata(featureModule, MODULE_METADATA.IMPORTS).includes(IamModule));
     assert.ok(!metadata(featureModule, MODULE_METADATA.PROVIDERS).includes(IamService));
     assert.ok(!metadata(featureModule, MODULE_METADATA.PROVIDERS).includes(PermissionsGuard));
   }
+
+  assert.ok(!metadata(AuthModule, MODULE_METADATA.PROVIDERS).includes(IamService));
+  assert.ok(!metadata(AuthModule, MODULE_METADATA.PROVIDERS).includes(PermissionsGuard));
 });
