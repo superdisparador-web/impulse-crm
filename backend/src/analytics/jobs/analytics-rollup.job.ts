@@ -8,6 +8,8 @@ type IncrementData = Record<string, { increment: number }>;
 export class AnalyticsRollupJob implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(AnalyticsRollupJob.name);
   private timer?: NodeJS.Timeout;
+  private activeExecutions = 0;
+  private executionSequence = 0;
 
   constructor(private readonly repository: AnalyticsRepository) {}
 
@@ -20,17 +22,60 @@ export class AnalyticsRollupJob implements OnModuleInit, OnModuleDestroy {
   }
 
   async runOnce(limit = 100) {
+    const executionId = `analytics-rollup-${++this.executionSequence}`;
+    const startedAt = new Date();
+    const startTime = Date.now();
     let processed = 0;
-    for (let index = 0; index < limit; index += 1) {
-      try {
-        const didProcess = await this.repository.processEvent((tx, event) => this.incrementMetrics(tx, event));
-        if (!didProcess) break;
-        processed += 1;
-      } catch (error) {
-        this.logger.error('Analytics rollup failed', { error });
-      }
+    let transactionsExecuted = 0;
+    let errors = 0;
+    this.activeExecutions += 1;
+
+    this.logTelemetry('ROLLUP_EXECUTION_STARTED', {
+      executionId,
+      timestamp: startedAt.toISOString(),
+      simultaneousExecutions: this.activeExecutions,
+      limit,
+    });
+    if (this.activeExecutions > 1) {
+      this.logTelemetry('ROLLUP_OVERLAP_DETECTED', {
+        executionId,
+        timestamp: startedAt.toISOString(),
+        simultaneousExecutions: this.activeExecutions,
+      });
     }
-    return { processed };
+
+    try {
+      for (let index = 0; index < limit; index += 1) {
+        transactionsExecuted += 1;
+        try {
+          const didProcess = await this.repository.processEvent((tx, event) => this.incrementMetrics(tx, event));
+          if (!didProcess) break;
+          processed += 1;
+        } catch (error) {
+          errors += 1;
+          this.logger.error('Analytics rollup failed', { error });
+        }
+      }
+      return { processed };
+    } finally {
+      const finishedAt = new Date();
+      this.activeExecutions -= 1;
+      this.logTelemetry('ROLLUP_EXECUTION_FINISHED', {
+        executionId,
+        timestamp: finishedAt.toISOString(),
+        startedAt: startedAt.toISOString(),
+        finishedAt: finishedAt.toISOString(),
+        durationMs: Date.now() - startTime,
+        eventsProcessed: processed,
+        transactionsExecuted,
+        errors,
+        simultaneousExecutions: this.activeExecutions,
+      });
+    }
+  }
+
+  private logTelemetry(event: string, data: Record<string, unknown>) {
+    this.logger.log(JSON.stringify({ event, ...data }));
   }
 
   private async incrementMetrics(tx: Prisma.TransactionClient, event: AnalyticsEvent) {
