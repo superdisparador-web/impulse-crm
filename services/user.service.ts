@@ -1,5 +1,5 @@
 import { api } from './api';
-import { ListUsersParams, User, UserFormData, UserListResponse } from '@/types/user';
+import { ListUsersParams, User, UserFormData, UserListResponse, UserMetrics } from '@/types/user';
 
 function toQueryString(params: ListUsersParams) {
   const searchParams = new URLSearchParams();
@@ -17,6 +17,10 @@ class UserService {
 
   async getMe(): Promise<User> {
     return api.get<User>('/users/me');
+  }
+
+  async getMetrics(params: Pick<ListUsersParams, 'organizationId'> = {}): Promise<UserMetrics> {
+    return api.get<UserMetrics>(`/users/metrics${toQueryString(params)}`);
   }
 
   async create(data: UserFormData): Promise<User> {

@@ -14,6 +14,7 @@ import {
   Send,
   Settings,
   UserRoundCog,
+  UsersRound,
   Users,
 } from "lucide-react";
 import { getCurrentUser } from "@/services/auth";
@@ -55,6 +56,12 @@ export const sidebarMenu = [
     title: "Corretores",
     href: "/corretores",
     icon: UserRoundCog,
+  },
+  {
+    title: "Usuários",
+    href: "/users",
+    icon: UsersRound,
+    administrative: true,
   },
   {
     title: "WhatsApp",
@@ -117,7 +124,7 @@ export default function Sidebar() {
       </div>
 
       <nav aria-label="Navegação principal" className="relative flex-1 space-y-1 overflow-y-auto px-2.5 py-5 lg:px-3">
-        {sidebarMenu.map((item) => {
+        {sidebarMenu.filter((item) => !('administrative' in item) || !['CORRETOR', 'BROKER'].includes(user?.role ?? '')).map((item) => {
           const Icon = item.icon;
           const active = isRouteActive(pathname, item.href);
 

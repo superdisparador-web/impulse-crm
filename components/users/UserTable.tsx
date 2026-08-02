@@ -1,31 +1,16 @@
 "use client";
-
+import { useState } from "react";
+import { MoreHorizontal, Pencil, Eye, KeyRound, Power, Archive } from "lucide-react";
+import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
-import { User } from "@/types/user";
-
-interface UserTableProps {
-  users: User[];
-  loading: boolean;
-  error: string;
-  canManage: boolean;
-  onEdit: (user: User) => void;
-  onStatus: (user: User) => void;
-  onDelete: (user: User) => void;
-  onResetPassword: (user: User) => void;
-}
-
-function formatDate(value: string) { return new Intl.DateTimeFormat('pt-BR').format(new Date(value)); }
-
-export default function UserTable({ users, loading, error, canManage, onEdit, onStatus, onDelete, onResetPassword }: UserTableProps) {
-  return <div className="overflow-hidden rounded-xl border border-slate-800 bg-slate-900">
-    <table className="w-full min-w-[1080px]">
-      <thead className="bg-slate-800"><tr><th className="p-4 text-left">Nome</th><th className="p-4 text-left">E-mail</th><th className="p-4 text-left">Telefone</th><th className="p-4 text-left">Organização</th><th className="p-4 text-left">Papel</th><th className="p-4 text-center">Status</th><th className="p-4 text-left">Criado em</th><th className="p-4 text-right">Ações</th></tr></thead>
-      <tbody>
-        {loading && <tr><td colSpan={8} className="p-8 text-center">Carregando usuários...</td></tr>}
-        {!loading && error && <tr><td colSpan={8} className="p-8 text-center text-red-400">{error}</td></tr>}
-        {!loading && !error && users.length === 0 && <tr><td colSpan={8} className="p-8 text-center text-slate-400">Nenhum usuário encontrado.</td></tr>}
-        {!loading && !error && users.map((user) => <tr key={user.id} className="border-t border-slate-800 hover:bg-slate-800/50"><td className="p-4 font-medium">{user.name}</td><td className="p-4 text-slate-300">{user.email}</td><td className="p-4 text-slate-300">{user.phone || "—"}</td><td className="p-4 text-slate-300">{user.organization?.name || "Global"}</td><td className="p-4 text-slate-300">{user.role}</td><td className="p-4 text-center">{user.active ? "🟢 Ativo" : "🔴 Inativo"}</td><td className="p-4 text-slate-300">{formatDate(user.createdAt)}</td><td className="p-4"><div className="flex flex-wrap justify-end gap-2">{canManage ? <><Button variant="secondary" onClick={() => onEdit(user)}>Editar</Button><Button variant="secondary" onClick={() => onResetPassword(user)}>Resetar senha</Button><Button variant="secondary" onClick={() => onStatus(user)}>{user.active ? "Desativar" : "Ativar"}</Button><Button variant="danger" onClick={() => onDelete(user)}>Excluir</Button></> : <span className="text-sm text-slate-500">Sem permissão</span>}</div></td></tr>)}
-      </tbody>
-    </table>
-  </div>;
-}
+import { Table, TableBody, TableCell, TableContainer, TableHead, TableHeader, TableRow } from "@/components/ui/Table";
+import { User, UserRole } from "@/types/user";
+const roleLabel: Record<UserRole, string> = { GLOBAL_ADMIN: "Administrador global", ADMIN: "Administrador", ORG_ADMIN: "Administrador da organização", MANAGER: "Gerente", CORRETOR: "Corretor", BROKER: "Corretor" };
+const date = (value: string) => new Intl.DateTimeFormat("pt-BR").format(new Date(value));
+interface Props { users: User[]; loading: boolean; error: string; canManage: boolean; onRetry: () => void; onCreate: () => void; onView: (user: User) => void; onEdit: (user: User) => void; onStatus: (user: User) => void; onResetPassword: (user: User) => void; onArchive: (user: User) => void; }
+export default function UserTable({ users, loading, error, canManage, onRetry, onCreate, onView, onEdit, onStatus, onResetPassword, onArchive }: Props) { const [open, setOpen] = useState<string | null>(null); return <TableContainer><Table className="min-w-[920px]"><TableHeader><TableRow><TableHead>Usuário</TableHead><TableHead>Contato</TableHead><TableHead>Função</TableHead><TableHead>Organização</TableHead><TableHead>Status</TableHead><TableHead>Criado em</TableHead><TableHead align="right">Ações</TableHead></TableRow></TableHeader><TableBody>
+{loading && Array.from({length:5}).map((_,i)=><TableRow key={i}><TableCell colSpan={7}><div className="h-9 animate-pulse rounded-lg bg-slate-100" /></TableCell></TableRow>)}
+{!loading && error && <TableRow><TableCell colSpan={7}><div className="rounded-xl border border-red-200 bg-red-50 p-5 text-center text-red-700"><p className="font-semibold">Não foi possível carregar os usuários.</p><Button className="mt-3" variant="secondary" onClick={onRetry}>Tentar novamente</Button></div></TableCell></TableRow>}
+{!loading && !error && !users.length && <TableRow><TableCell colSpan={7}><div className="py-10 text-center"><p className="font-semibold text-slate-900">Nenhum usuário encontrado</p><p className="mt-1 text-slate-500">Ajuste os filtros ou cadastre um novo usuário.</p>{canManage&&<Button className="mt-4" onClick={onCreate}>Novo usuário</Button>}</div></TableCell></TableRow>}
+{!loading && !error && users.map((u)=><TableRow key={u.id}><TableCell><button className="flex items-center gap-3 text-left" onClick={()=>onView(u)}><span className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-blue-100 to-indigo-100 font-bold text-blue-700">{u.name.split(/\s+/).slice(0,2).map(n=>n[0]).join("").toUpperCase()}</span><span><span className="block font-semibold text-slate-900">{u.name}</span><span className="text-xs text-slate-500">ID {u.id.slice(0,8)}</span></span></button></TableCell><TableCell><span className="block text-slate-800">{u.email}</span><span className="text-xs text-slate-500">{u.phone||"Sem telefone"}</span></TableCell><TableCell><Badge variant="primary">{roleLabel[u.role]}</Badge></TableCell><TableCell>{u.organization?.name||"Escopo global"}</TableCell><TableCell><Badge variant={u.active?"success":"neutral"}>{u.active?"Ativo":"Inativo"}</Badge></TableCell><TableCell>{date(u.createdAt)}</TableCell><TableCell align="right"><div className="relative inline-block"><Button variant="ghost" aria-label={`Ações de ${u.name}`} onClick={()=>setOpen(open===u.id?null:u.id)}><MoreHorizontal className="h-4 w-4" /></Button>{open===u.id&&<div className="absolute right-0 z-20 mt-1 w-52 rounded-xl border border-slate-200 bg-white p-1.5 text-left shadow-xl">{([{Icon:Eye,label:"Visualizar",action:onView},{Icon:Pencil,label:"Editar",action:onEdit},{Icon:KeyRound,label:"Redefinir senha",action:onResetPassword},{Icon:Power,label:u.active?"Desativar":"Ativar",action:onStatus},{Icon:Archive,label:"Arquivar",action:onArchive}]).map(({Icon,label,action})=><button key={label} onClick={()=>{action(u);setOpen(null)}} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"><Icon className="h-4 w-4" />{label}</button>)}</div>}</div></TableCell></TableRow>)}
+</TableBody></Table></TableContainer> }

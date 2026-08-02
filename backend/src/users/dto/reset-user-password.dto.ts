@@ -1,6 +1,6 @@
 import { MinLength } from 'class-validator';
 
 export class ResetUserPasswordDto {
-  @MinLength(6)
+  @MinLength(8)
   password: string;
 }

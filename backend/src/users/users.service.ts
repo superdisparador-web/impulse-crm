@@ -52,6 +52,23 @@ export class UsersService {
     return { items, meta: { total, page, limit, totalPages: Math.max(1, Math.ceil(total / limit)) } };
   }
 
+  async metrics(query: ListUsersDto = {}, user?: AuthenticatedUserRef) {
+    const actor = await this.accessContext.resolve(user);
+    const where: Prisma.UserWhereInput = {
+      deletedAt: null,
+      ...(actor.global && query.organizationId ? { organizationId: query.organizationId } : actor.global ? {} : { organizationId: actor.organizationId }),
+    };
+    const [total, active, inactive, administrators, managers, brokers] = await this.prisma.$transaction([
+      this.prisma.user.count({ where }),
+      this.prisma.user.count({ where: { ...where, status: UserStatus.ACTIVE } }),
+      this.prisma.user.count({ where: { ...where, status: UserStatus.INACTIVE } }),
+      this.prisma.user.count({ where: { ...where, role: { in: [Role.ADMIN, Role.GLOBAL_ADMIN, Role.ORG_ADMIN] } } }),
+      this.prisma.user.count({ where: { ...where, role: Role.MANAGER } }),
+      this.prisma.user.count({ where: { ...where, role: { in: [Role.CORRETOR, Role.BROKER] } } }),
+    ]);
+    return { total, active, inactive, administrators, managers, brokers };
+  }
+
   async findOne(id: string, user?: AuthenticatedUserRef) {
     const actor = await this.accessContext.resolve(user);
     const target = await this.findExisting(id);
@@ -107,6 +124,10 @@ export class UsersService {
     const target = await this.findExisting(id);
     this.ensureCanManageTarget(actor, target);
     if (id === actor.id && active === false) throw new BadRequestException('Não é possível inativar o próprio usuário');
+    if (!active && target.organizationId === null && this.roleLevel(target.role, true) === 4) {
+      const remaining = await this.prisma.user.count({ where: { id: { not: id }, organizationId: null, role: { in: [Role.ADMIN, Role.GLOBAL_ADMIN] }, status: UserStatus.ACTIVE, deletedAt: null } });
+      if (remaining === 0) throw new BadRequestException('Não é possível inativar o último administrador global');
+    }
     const status = active ? UserStatus.ACTIVE : UserStatus.INACTIVE;
     const updated = await this.prisma.user.update({ where: { id }, data: this.statusData(status), select: userSelect });
     if (!active) await this.revokeSessions(id);
@@ -158,7 +179,7 @@ export class UsersService {
     if (actor.global) payload.role = requestedRole ?? (partial ? undefined : Role.CORRETOR);
     else if (!partial) {
       const desired = requestedRole ?? Role.CORRETOR;
-      if (this.roleLevel(desired, false) >= this.actorLevel(actor)) throw new ForbiddenException('Não é permitido criar função de nível igual ou superior');
+      if (this.roleLevel(desired, false) > this.actorLevel(actor)) throw new ForbiddenException('Não é permitido criar função de nível superior');
       payload.role = desired;
     } else if (requestedRole && requestedRole !== target?.role) {
       if (target?.id === actor.id || this.roleLevel(requestedRole, false) >= this.actorLevel(actor)) throw new ForbiddenException('Elevação de privilégio não permitida');
