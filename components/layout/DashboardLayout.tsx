@@ -5,13 +5,16 @@ import { usePathname } from "next/navigation";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
 import AuthBoundary from "@/components/auth/AuthBoundary";
+import type { BuildInformation } from "@/lib/build-information";
 
 interface DashboardLayoutProps {
   children: ReactNode;
+  build: BuildInformation;
 }
 
 export default function DashboardLayout({
   children,
+  build,
 }: DashboardLayoutProps) {
   const pathname = usePathname();
 
@@ -21,7 +24,7 @@ export default function DashboardLayout({
 
   return <AuthBoundary>
     <div className="flex h-dvh bg-[radial-gradient(circle_at_top_right,_#eff6ff_0,_#f8fafc_32%,_#f1f5f9_100%)]">
-      <Sidebar />
+      <Sidebar build={build} />
 
       <div className="flex flex-1 flex-col overflow-hidden">
         <Header />

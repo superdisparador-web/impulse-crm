@@ -18,6 +18,7 @@ import {
   Users,
 } from "lucide-react";
 import { getCurrentUser } from "@/services/auth";
+import type { BuildInformation } from "@/lib/build-information";
 
 const Image = dynamic(() => import("next/image"));
 
@@ -103,7 +104,7 @@ function isRouteActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export default function Sidebar() {
+export default function Sidebar({build}:{build:BuildInformation}) {
   const pathname = usePathname();
   const user = getCurrentUser();
 
@@ -156,6 +157,11 @@ export default function Sidebar() {
       </nav>
 
       <div className="relative hidden border-t border-white/8 p-3 lg:block">
+        <dl className="mb-2 rounded-xl border border-white/10 bg-slate-950/30 px-4 py-3 text-[11px] text-slate-400" title={`Build ID: ${build.buildId}`}>
+          <div className="flex justify-between gap-2"><dt>Commit</dt><dd className="font-mono text-slate-200">{build.commit.slice(0,7)}</dd></div>
+          <div className="mt-1 flex justify-between gap-2"><dt>Branch</dt><dd className="max-w-32 truncate font-mono text-slate-200">{build.branch}</dd></div>
+          <div className="mt-1 flex justify-between gap-2"><dt>Build</dt><dd className="text-slate-200">{build.buildDate==="unknown"?"unknown":new Date(build.buildDate).toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"short",timeZone:"UTC"})} UTC</dd></div>
+        </dl>
         <div className="rounded-xl border border-white/10 bg-white/[0.055] px-4 py-3 shadow-inner backdrop-blur-sm">
           <p className="text-sm font-semibold text-white">
             {user?.name ?? "Usuário"}
