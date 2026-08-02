@@ -5,7 +5,6 @@ export class UpdateWhatsappAccountDto {
   @IsOptional() @IsString() phoneNumber?: string;
   @IsOptional() @IsString() phoneNumberId?: string;
   @IsOptional() @IsString() businessAccountId?: string;
-  @IsOptional() @IsString() accessToken?: string;
   @IsOptional() @IsString() verifyToken?: string;
   @IsOptional() @IsString() appId?: string;
   @IsOptional() @IsString() appSecret?: string;

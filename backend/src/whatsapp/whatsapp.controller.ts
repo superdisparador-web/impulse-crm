@@ -6,7 +6,7 @@ import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { AuthenticatedUserRef } from '../auth/access-context.service';
 import { AssignConversationDto, UpdateConversationDto } from './dto/conversations.dto';
-import { CreateWhatsappAccountDto } from './dto/create-whatsapp-account.dto';
+import { CompleteEmbeddedSignupDto } from './dto/embedded-signup.dto';
 import { CreateWhatsappTemplateDto } from './dto/create-whatsapp-template.dto';
 import { ListWhatsappDto } from './dto/list-whatsapp.dto';
 import { ListWhatsappTemplatesDto } from './dto/list-whatsapp-templates.dto';
@@ -15,14 +15,16 @@ import { SyncWhatsappTemplatesDto } from './dto/sync-whatsapp-templates.dto';
 import { UpdateWhatsappAccountDto, UpdateWhatsappAccountStatusDto } from './dto/update-whatsapp-account.dto';
 import { UpdateWhatsappTemplateDto } from './dto/update-whatsapp-template.dto';
 import { WhatsappService } from './whatsapp.service';
+import { MetaEmbeddedSignupService } from './meta/meta-embedded-signup.service';
 
 type RawReq = Request & { rawBody?: Buffer };
 @ApiTags('WhatsApp Oficial Meta')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('whatsapp')
 export class WhatsappController {
-  constructor(private readonly service: WhatsappService) {}
-  @Post('accounts') @Permissions('whatsapp:accounts:create') createAccount(@Body() d: CreateWhatsappAccountDto, @CurrentUser() u: AuthenticatedUserRef) { return this.service.createAccount(d, u); }
+  constructor(private readonly service: WhatsappService, private readonly embeddedSignup:MetaEmbeddedSignupService) {}
+  @Get('embedded-signup/config') @Permissions('whatsapp:accounts:create') signupConfig(@Query('accountId') accountId:string|undefined,@CurrentUser() u:AuthenticatedUserRef){ return this.embeddedSignup.signupConfiguration(u,accountId); }
+  @Post('embedded-signup/complete') @Permissions('whatsapp:accounts:create') completeSignup(@Body() d:CompleteEmbeddedSignupDto,@CurrentUser() u:AuthenticatedUserRef){ return this.embeddedSignup.complete(d,u); }
   @Get('accounts') @Permissions('whatsapp:accounts:read') findAccounts(@Query() q: ListWhatsappDto, @CurrentUser() u: AuthenticatedUserRef) { return this.service.findAccounts(q, u); }
   @Get('accounts/:id') @Permissions('whatsapp:accounts:read') getAccount(@Param('id') id: string, @CurrentUser() u: AuthenticatedUserRef) { return this.service.getAccount(id, u); }
   @Patch('accounts/:id') @Permissions('whatsapp:accounts:update') updateAccount(@Param('id') id: string, @Body() d: UpdateWhatsappAccountDto, @CurrentUser() u: AuthenticatedUserRef) { return this.service.updateAccount(id, d, u); }

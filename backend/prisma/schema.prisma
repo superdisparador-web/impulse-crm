@@ -1029,6 +1029,12 @@ enum WhatsappAccountStatus {
   DISCONNECTED
   ERROR
   SUSPENDED
+  TOKEN_EXPIRED
+}
+
+enum WhatsappCredentialType {
+  OAUTH_USER
+  SYSTEM_USER
 }
 
 enum WhatsappConversationStatus {
@@ -1092,6 +1098,12 @@ model WhatsappAccount {
   businessAccountId  String                 @db.VarChar(128)
   appId              String?                @db.VarChar(128)
   accessToken        String                 @db.Text
+  credentialType     WhatsappCredentialType @default(OAUTH_USER)
+  tokenExpiresAt     DateTime?
+  tokenLastRenewedAt DateTime?
+  grantedScopes      Json?
+  metaBusinessId     String?                @db.VarChar(128)
+  metaBusinessName   String?                @db.VarChar(255)
   verifyToken        String                 @db.Text
   appSecret          String?                @db.Text
   webhookSecret      String?                @db.Text
