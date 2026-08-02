@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { AnalyticsEvent, Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AnalyticsDomainEvent } from '../analytics-domain-event';
@@ -17,6 +17,9 @@ type MetricListArgs<TWhere> = {
 
 @Injectable()
 export class AnalyticsRepository {
+  private readonly logger = new Logger(AnalyticsRepository.name);
+  private transactionSequence = 0;
+
   constructor(private readonly prisma: PrismaService) {}
 
   listDaily(where: Prisma.DailyMetricWhereInput, query: AnalyticsQueryDto) {
@@ -68,21 +71,39 @@ export class AnalyticsRepository {
   }
 
   async processEvent(apply: (tx: Prisma.TransactionClient, event: AnalyticsEvent) => Promise<void>) {
-    return this.prisma.$transaction(async (tx) => {
-      const [event] = await tx.$queryRaw<AnalyticsEvent[]>`
-        SELECT *
-        FROM "analytics_events"
-        WHERE "processedAt" IS NULL
-        ORDER BY "occurredAt" ASC, "id" ASC
-        FOR UPDATE SKIP LOCKED
-        LIMIT 1
-      `;
+    const transactionId = `analytics-transaction-${++this.transactionSequence}`;
+    const startedAt = new Date();
+    const startTime = Date.now();
+    let status: 'COMPLETED' | 'FAILED' = 'COMPLETED';
 
-      if (!event) return false;
-      await apply(tx, event);
-      await tx.analyticsEvent.update({ where: { id: event.id }, data: { processedAt: new Date() } });
-      return true;
-    });
+    this.logTransaction('ANALYTICS_TRANSACTION_STARTED', transactionId, startedAt, 0, 'STARTED');
+
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        const [event] = await tx.$queryRaw<AnalyticsEvent[]>`
+          SELECT *
+          FROM "analytics_events"
+          WHERE "processedAt" IS NULL
+          ORDER BY "occurredAt" ASC, "id" ASC
+          FOR UPDATE SKIP LOCKED
+          LIMIT 1
+        `;
+
+        if (!event) return false;
+        await apply(tx, event);
+        await tx.analyticsEvent.update({ where: { id: event.id }, data: { processedAt: new Date() } });
+        return true;
+      });
+    } catch (error) {
+      status = 'FAILED';
+      throw error;
+    } finally {
+      this.logTransaction('ANALYTICS_TRANSACTION_FINISHED', transactionId, new Date(), Date.now() - startTime, status);
+    }
+  }
+
+  private logTransaction(event: string, transactionId: string, timestamp: Date, durationMs: number, status: 'STARTED' | 'COMPLETED' | 'FAILED') {
+    this.logger.log(JSON.stringify({ event, transactionId, timestamp: timestamp.toISOString(), durationMs, status }));
   }
 
   private listArgs<TWhere>(where: TWhere, query: AnalyticsQueryDto): MetricListArgs<TWhere> {
