@@ -19,6 +19,7 @@ type MetricListArgs<TWhere> = {
 export class AnalyticsRepository {
   private readonly logger = new Logger(AnalyticsRepository.name);
   private transactionSequence = 0;
+  private activeTransactions = 0;
 
   constructor(private readonly prisma: PrismaService) {}
 
@@ -75,11 +76,18 @@ export class AnalyticsRepository {
     const startedAt = new Date();
     const startTime = Date.now();
     let status: 'COMPLETED' | 'FAILED' = 'COMPLETED';
+    let connectionAcquiredAt: number | undefined;
+    let transactionError: unknown;
 
-    this.logTransaction('ANALYTICS_TRANSACTION_STARTED', transactionId, startedAt, 0, 'STARTED');
+    this.logTransaction('ANALYTICS_TRANSACTION_STARTED', transactionId, startedAt, 0, 'STARTED', { activeTransactions: this.activeTransactions });
+    void this.prisma.logPoolSnapshot('ANALYTICS_TRANSACTION_REQUESTED', { transactionId, activeTransactions: this.activeTransactions });
 
     try {
       return await this.prisma.$transaction(async (tx) => {
+        connectionAcquiredAt = Date.now();
+        this.activeTransactions += 1;
+        const acquireDurationMs = connectionAcquiredAt - startTime;
+        void this.prisma.logPoolSnapshot('ANALYTICS_TRANSACTION_CONNECTION_ACQUIRED', { transactionId, acquireDurationMs, activeTransactions: this.activeTransactions });
         const [event] = await tx.$queryRaw<AnalyticsEvent[]>`
           SELECT *
           FROM "analytics_events"
@@ -96,14 +104,24 @@ export class AnalyticsRepository {
       });
     } catch (error) {
       status = 'FAILED';
+      transactionError = error;
       throw error;
     } finally {
-      this.logTransaction('ANALYTICS_TRANSACTION_FINISHED', transactionId, new Date(), Date.now() - startTime, status);
+      const finishedAt = new Date();
+      const durationMs = Date.now() - startTime;
+      const acquireDurationMs = connectionAcquiredAt === undefined ? durationMs : connectionAcquiredAt - startTime;
+      if (connectionAcquiredAt !== undefined) this.activeTransactions -= 1;
+      this.logTransaction('ANALYTICS_TRANSACTION_FINISHED', transactionId, finishedAt, durationMs, status, {
+        acquireDurationMs,
+        activeTransactions: this.activeTransactions,
+        error: transactionError === undefined ? undefined : this.prisma.errorDetails(transactionError),
+      });
+      void this.prisma.logPoolSnapshot('ANALYTICS_TRANSACTION_RELEASED', { transactionId, durationMs, acquireDurationMs, status, activeTransactions: this.activeTransactions });
     }
   }
 
-  private logTransaction(event: string, transactionId: string, timestamp: Date, durationMs: number, status: 'STARTED' | 'COMPLETED' | 'FAILED') {
-    this.logger.log(JSON.stringify({ event, transactionId, timestamp: timestamp.toISOString(), durationMs, status }));
+  private logTransaction(event: string, transactionId: string, timestamp: Date, durationMs: number, status: 'STARTED' | 'COMPLETED' | 'FAILED', context: Record<string, unknown> = {}) {
+    this.logger.log(JSON.stringify({ event, transactionId, timestamp: timestamp.toISOString(), ...this.prisma.processIdentity, durationMs, status, ...context }));
   }
 
   private listArgs<TWhere>(where: TWhere, query: AnalyticsQueryDto): MetricListArgs<TWhere> {

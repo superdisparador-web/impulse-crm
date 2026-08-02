@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AuditModule } from '../audit/audit.module';
 import { AuthModule } from '../auth/auth.module';
+import { IamModule } from '../iam/iam.module';
 import { PrismaModule } from '../prisma/prisma.module';
 import { MetaWhatsappClient } from './meta/meta-whatsapp.client';
 import { MetaWhatsappHttpClient } from './meta/meta-whatsapp-http.client';
@@ -11,7 +12,7 @@ import { WhatsappController, WhatsappWebhookController } from './whatsapp.contro
 import { WhatsappService } from './whatsapp.service';
 
 @Module({
-  imports: [PrismaModule, AuthModule, AuditModule],
+  imports: [PrismaModule, AuthModule, IamModule, AuditModule],
   controllers: [WhatsappController, WhatsappWebhookController],
   providers: [
     WhatsappService,

@@ -1,6 +1,7 @@
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { AnalyticsEvent, Prisma } from '@prisma/client';
 import { AnalyticsRepository } from '../repositories/analytics.repository';
+import { PrismaService } from '../../prisma/prisma.service';
 
 type IncrementData = Record<string, { increment: number }>;
 
@@ -11,7 +12,7 @@ export class AnalyticsRollupJob implements OnModuleInit, OnModuleDestroy {
   private activeExecutions = 0;
   private executionSequence = 0;
 
-  constructor(private readonly repository: AnalyticsRepository) {}
+  constructor(private readonly repository: AnalyticsRepository, private readonly prisma: PrismaService) {}
 
   onModuleInit() {
     this.timer = setInterval(() => void this.runOnce(), 60_000);
@@ -75,7 +76,8 @@ export class AnalyticsRollupJob implements OnModuleInit, OnModuleDestroy {
   }
 
   private logTelemetry(event: string, data: Record<string, unknown>) {
-    this.logger.log(JSON.stringify({ event, ...data }));
+    this.logger.log(JSON.stringify({ event, ...this.prisma.processIdentity, ...data }));
+    void this.prisma.logPoolSnapshot(`${event}_POOL`, { activeExecutions: this.activeExecutions, ...data });
   }
 
   private async incrementMetrics(tx: Prisma.TransactionClient, event: AnalyticsEvent) {
