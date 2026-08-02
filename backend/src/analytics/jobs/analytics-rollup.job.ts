@@ -8,29 +8,62 @@ type IncrementData = Record<string, { increment: number }>;
 export class AnalyticsRollupJob implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(AnalyticsRollupJob.name);
   private timer?: NodeJS.Timeout;
+  private running = false;
+  private consecutiveFailures = 0;
+  private readonly intervalMs = Number(process.env.ANALYTICS_ROLLUP_INTERVAL_MS || 60_000);
+  private readonly maxBackoffMs = Number(process.env.ANALYTICS_ROLLUP_MAX_BACKOFF_MS || 300_000);
 
   constructor(private readonly repository: AnalyticsRepository) {}
 
   onModuleInit() {
-    this.timer = setInterval(() => void this.runOnce(), 60_000);
+    if (this.timer) return;
+    this.logger.log('Analytics rollup scheduler iniciado');
+    this.schedule(this.intervalMs);
   }
 
   onModuleDestroy() {
-    if (this.timer) clearInterval(this.timer);
+    if (this.timer) clearTimeout(this.timer);
+    this.timer = undefined;
   }
 
   async runOnce(limit = 100) {
+    if (this.running) {
+      this.logger.warn('Analytics rollup ignorado: execução anterior ainda ativa');
+      return { processed: 0, skipped: true };
+    }
+    this.running = true;
+    const startedAt = Date.now();
     let processed = 0;
-    for (let index = 0; index < limit; index += 1) {
-      try {
+    try {
+      this.logger.log('Analytics rollup iniciado');
+      for (let index = 0; index < limit; index += 1) {
         const didProcess = await this.repository.processEvent((tx, event) => this.incrementMetrics(tx, event));
         if (!didProcess) break;
         processed += 1;
-      } catch (error) {
-        this.logger.error('Analytics rollup failed', { error });
       }
+      this.consecutiveFailures = 0;
+      this.logger.log(`Analytics rollup concluído: ${processed} evento(s), ${Date.now() - startedAt}ms`);
+      return { processed, skipped: false };
+    } catch (error) {
+      this.consecutiveFailures += 1;
+      const code = (error as { code?: string }).code ?? 'UNKNOWN';
+      this.logger.error(`Analytics rollup falhou (Prisma ${code}); próxima tentativa em ${this.nextDelayMs()}ms`);
+      throw error;
+    } finally {
+      this.running = false;
     }
-    return { processed };
+  }
+
+  nextDelayMs() {
+    if (!this.consecutiveFailures) return this.intervalMs;
+    return Math.min(this.intervalMs * 2 ** (this.consecutiveFailures - 1), this.maxBackoffMs);
+  }
+
+  private schedule(delayMs: number) {
+    this.timer = setTimeout(async () => {
+      try { await this.runOnce(); } catch { /* runOnce already logged the controlled retry */ }
+      if (this.timer) this.schedule(this.nextDelayMs());
+    }, delayMs);
   }
 
   private async incrementMetrics(tx: Prisma.TransactionClient, event: AnalyticsEvent) {
