@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { APP_INTERCEPTOR } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
@@ -19,6 +20,7 @@ import { PipelineModule } from './pipeline/pipeline.module';
 import { IamModule } from './iam/iam.module';
 import { DistributionModule } from './distribution/distribution.module';
 import { AnalyticsModule } from './analytics/analytics.module';
+import { PrismaHttpTelemetryInterceptor } from './prisma/prisma-http-telemetry.interceptor';
 
 @Module({
   imports: [
@@ -43,5 +45,6 @@ import { AnalyticsModule } from './analytics/analytics.module';
     DistributionModule,
     AnalyticsModule,
   ],
+  providers: [{ provide: APP_INTERCEPTOR, useClass: PrismaHttpTelemetryInterceptor }],
 })
 export class AppModule {}
