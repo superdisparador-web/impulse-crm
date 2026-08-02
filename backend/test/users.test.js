@@ -87,7 +87,7 @@ test('common user cannot manage users', async () => {
 
 test('org admin may create another org admin in the same tenant and normalizes email', async () => {
   const prisma = makePrisma();
-  await new UsersService(prisma, new AccessContextService(prisma)).create({ name: ' New ', email: 'NEW@EXAMPLE.COM', password: 'Senha123', role: Role.CORRETOR, organizationId: 'org-2' }, orgAdmin);
+  await new UsersService(prisma, new AccessContextService(prisma)).create({ name: ' New ', email: 'NEW@EXAMPLE.COM', password: 'Senha123', role: Role.ADMIN, organizationId: 'org-2' }, orgAdmin);
   assert.equal(prisma.__state.created.data.email, 'new@example.com');
   assert.equal(prisma.__state.created.data.organizationId, 'org-1');
   assert.equal(prisma.__state.created.data.role, Role.ADMIN);

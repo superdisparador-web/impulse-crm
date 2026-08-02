@@ -15,6 +15,7 @@
 
 # next.js
 /.next/
+/.impulse-build.json
 /out/
 
 # production
