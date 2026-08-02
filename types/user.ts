@@ -39,6 +39,8 @@ export interface UserListResponse {
   };
 }
 
+export interface UserMetrics { total: number; active: number; inactive: number; administrators: number; managers: number; brokers: number; }
+
 export interface ListUsersParams {
   page?: number;
   limit?: number;

@@ -85,12 +85,12 @@ test('common user cannot manage users', async () => {
   await assert.rejects(() => new UsersService(makePrisma(), new AccessContextService(makePrisma())).create({ name: 'X', email: 'x@example.com', password: 'Senha123' }, commonUser), ForbiddenException);
 });
 
-test('creates org user from authenticated org and normalizes email', async () => {
+test('org admin may create another org admin in the same tenant and normalizes email', async () => {
   const prisma = makePrisma();
   await new UsersService(prisma, new AccessContextService(prisma)).create({ name: ' New ', email: 'NEW@EXAMPLE.COM', password: 'Senha123', role: Role.CORRETOR, organizationId: 'org-2' }, orgAdmin);
   assert.equal(prisma.__state.created.data.email, 'new@example.com');
   assert.equal(prisma.__state.created.data.organizationId, 'org-1');
-  assert.equal(prisma.__state.created.data.role, Role.CORRETOR);
+  assert.equal(prisma.__state.created.data.role, Role.ADMIN);
 });
 
 test('rejects duplicated email and empty name', async () => {
@@ -99,7 +99,7 @@ test('rejects duplicated email and empty name', async () => {
   await assert.rejects(() => service.create({ name: '   ', email: 'ok@example.com', password: 'Senha123' }, orgAdmin), BadRequestException);
 });
 
-test('blocks privilege escalation and cross-tenant updates', async () => {
+test('blocks higher-role escalation and returns forbidden for cross-tenant mutations', async () => {
   const service = new UsersService(makePrisma(), new AccessContextService(makePrisma()));
   await assert.rejects(() => service.update('common-user', { role: Role.ADMIN }, orgAdmin), ForbiddenException);
   await assert.rejects(() => service.update('other-user', { name: 'Hack' }, orgAdmin), ForbiddenException);

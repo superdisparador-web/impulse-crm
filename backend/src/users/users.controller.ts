@@ -28,6 +28,13 @@ export class UsersController {
     return this.usersService.findAll(query, request.user);
   }
 
+  @Get('metrics')
+  @Permissions('users:read')
+  @UseGuards(PermissionsGuard)
+  metrics(@Query() query: ListUsersDto, @Req() request: AuthenticatedRequest) {
+    return this.usersService.metrics(query, request.user);
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string, @Req() request: AuthenticatedRequest) {
     return this.usersService.findOne(id, request.user);
