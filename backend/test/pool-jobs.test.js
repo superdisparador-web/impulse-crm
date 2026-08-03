@@ -44,6 +44,7 @@ test('MessagingWorker never overlaps, including 100 callers', async () => {
 });
 
 test('AnalyticsRollupJob never overlaps, including 100 callers', async () => {
+  const previous = process.env.ANALYTICS_JOBS_ENABLED; process.env.ANALYTICS_JOBS_ENABLED = 'true';
   const gate = deferred(); let calls = 0;
   const repository = { processEvent: async () => { calls += 1; await gate.promise; return false; } };
   const prisma = { processIdentity: {}, logPoolSnapshot: async () => undefined };
@@ -51,6 +52,7 @@ test('AnalyticsRollupJob never overlaps, including 100 callers', async () => {
   const requests = Array.from({ length: 100 }, () => job.runOnce());
   await new Promise(setImmediate); gate.resolve(); await Promise.all(requests);
   assert.equal(calls, 1);
+  if (previous === undefined) delete process.env.ANALYTICS_JOBS_ENABLED; else process.env.ANALYTICS_JOBS_ENABLED = previous;
 });
 
 test('scheduler hot reload guard prevents duplicate timer and shutdown cancels it', () => {
