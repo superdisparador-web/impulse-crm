@@ -47,23 +47,19 @@ export class MessagingService {
 
   async enqueueRecipients(organizationId: string, data: CreateMessageQueueDto, campaignRecipients: { id: string; phone: string; name: string | null }[] = []) {
     const recipients = data.recipients?.length ? data.recipients : campaignRecipients.map((recipient) => ({ recipientId: recipient.id }));
-    const created = await this.prisma.$transaction(async (tx) => {
-      const result = await Promise.all(recipients.map((recipient) => tx.messageQueue.create({
-        data: {
+    const queueData: Prisma.MessageQueueCreateManyInput[] = recipients.map((recipient) => ({
           organizationId,
           campaignId: data.campaignId,
           recipientId: recipient.recipientId ?? null,
           whatsappAccountId: recipient.whatsappAccountId ?? data.whatsappAccountId ?? null,
-          status: 'PENDING',
+          status: 'PENDING' as QueueStatus,
           priority: recipient.priority ?? data.priority ?? 'NORMAL',
           maxAttempts: recipient.maxAttempts ?? data.maxAttempts ?? 3,
           scheduledAt: recipient.scheduledAt ? new Date(recipient.scheduledAt) : data.scheduledAt ? new Date(data.scheduledAt) : new Date(),
           payload: (recipient.payload ?? data.payload ?? {}) as Prisma.InputJsonValue,
-        },
-      })));
-      await Promise.all(result.map((queue) => tx.messageLog.create({ data: { queueId: queue.id, campaignId: queue.campaignId, recipientId: queue.recipientId, status: 'PENDING', message: 'Mensagem adicionada à fila' } })));
-      return result;
-    });
+    }));
+    const created = await this.prisma.messageQueue.createManyAndReturn({ data: queueData });
+    await this.prisma.messageLog.createMany({ data: created.map((queue) => ({ queueId: queue.id, campaignId: queue.campaignId, recipientId: queue.recipientId, status: 'PENDING', message: 'Mensagem adicionada à fila' })) });
     return { items: created, count: created.length };
   }
 

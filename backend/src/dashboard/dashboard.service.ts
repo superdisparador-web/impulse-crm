@@ -52,13 +52,13 @@ export class DashboardService {
       scheduledCampaigns,
       whatsappAccounts,
       topLeadGroups,
-    ] = await Promise.all([
+    ] = await this.prisma.$transaction([
       this.prisma.lead.count({ where: leadWhere }),
       this.prisma.lead.count({ where: { ...leadWhere, createdAt: { gte: todayStart } } }),
       this.prisma.lead.count({ where: { ...leadWhere, createdAt: { gte: weekStart } } }),
       this.prisma.campaign.count({ where: campaignWhere }),
-      this.prisma.campaign.groupBy({ by: ['status'], where: campaignWhere, _count: { _all: true } }),
-      this.prisma.whatsappAccount.groupBy({ by: ['status'], where: whatsappWhere, _count: { _all: true } }),
+      this.prisma.campaign.groupBy({ by: ['status'], where: campaignWhere, orderBy: { status: 'asc' }, _count: { _all: true } }),
+      this.prisma.whatsappAccount.groupBy({ by: ['status'], where: whatsappWhere, orderBy: { status: 'asc' }, _count: { _all: true } }),
       this.prisma.campaign.aggregate({
         where: campaignWhere,
         _sum: {
@@ -98,9 +98,9 @@ export class DashboardService {
       this.prisma.lead.groupBy({ by: ['assignedUserId'], where: { ...leadWhere, assignedUserId: { not: null } }, _count: { _all: true }, orderBy: { _count: { assignedUserId: 'desc' } }, take: 5 }),
     ]);
 
-    const topUsers = await this.getTopUsers(organizationId, topLeadGroups);
-    const campaignsByStatus = this.formatCampaignStatuses(campaignsByStatusRaw);
-    const whatsappCounts = this.countWhatsappStatus(whatsappByStatusRaw);
+    const topUsers = await this.getTopUsers(organizationId, topLeadGroups as { assignedUserId: string | null; _count: { _all: number } }[]);
+    const campaignsByStatus = this.formatCampaignStatuses(campaignsByStatusRaw as { status: CampaignStatus; _count: { _all: number } }[]);
+    const whatsappCounts = this.countWhatsappStatus(whatsappByStatusRaw as { status: WhatsappAccountStatus; _count: { _all: number } }[]);
     const performance = {
       sent: campaignMetrics._sum.totalSent ?? 0,
       delivered: campaignMetrics._sum.totalDelivered ?? 0,
