@@ -4,6 +4,8 @@ import { AnalyticsRepository } from '../repositories/analytics.repository';
 import { PrismaService } from '../../prisma/prisma.service';
 import { prismaErrorCode, SerializedJob } from '../../jobs/serialized-job';
 import { acquireScheduler, releaseScheduler } from '../../jobs/scheduler-registry';
+import { analyticsJobsEnabled } from '../../config/runtime-config';
+import { AppLifecycleService } from '../../app-lifecycle.service';
 
 type IncrementData = Record<string, { increment: number }>;
 
@@ -14,11 +16,19 @@ export class AnalyticsRollupJob implements OnModuleInit, OnModuleDestroy {
   private stopped = false;
   private readonly serialized = new SerializedJob('analytics-rollup', 60_000, this.logger);
   private executionSequence = 0;
+  private unregisterShutdown?: () => void;
 
-  constructor(private readonly repository: AnalyticsRepository, private readonly prisma: PrismaService) {}
+  constructor(private readonly repository: AnalyticsRepository, private readonly prisma: PrismaService, private readonly lifecycle?: AppLifecycleService) {}
 
   onModuleInit() {
     this.stopped = false;
+    if (!analyticsJobsEnabled()) {
+      this.stopped = true;
+      this.logger.log('Analytics background jobs disabled');
+      return;
+    }
+    this.logger.log('Analytics background jobs enabled');
+    this.unregisterShutdown = this.lifecycle?.onShutdown(() => this.stop());
     if (!acquireScheduler('analytics-rollup', this)) {
       this.logger.log(JSON.stringify({ job: 'analytics-rollup', event: 'scheduler_duplicate_ignored' }));
       return;
@@ -27,12 +37,20 @@ export class AnalyticsRollupJob implements OnModuleInit, OnModuleDestroy {
   }
 
   onModuleDestroy() {
-    this.stopped = true;
-    if (this.timer) clearTimeout(this.timer);
+    this.stop();
+    this.unregisterShutdown?.();
+    this.unregisterShutdown = undefined;
     releaseScheduler('analytics-rollup', this);
   }
 
+  private stop() {
+    this.stopped = true;
+    if (this.timer) clearTimeout(this.timer);
+    this.timer = undefined;
+  }
+
   async runOnce(limit = 100) {
+    if (!analyticsJobsEnabled() || this.stopped || this.lifecycle?.isShuttingDown()) return undefined;
     return this.serialized.run(() => this.execute(limit));
   }
 
@@ -83,6 +101,7 @@ export class AnalyticsRollupJob implements OnModuleInit, OnModuleDestroy {
     if (this.stopped) return;
     this.timer = setTimeout(async () => {
       await this.runOnce();
+      if (this.stopped || this.lifecycle?.isShuttingDown()) return;
       this.schedule(this.serialized.nextIntervalMs);
     }, delay);
   }

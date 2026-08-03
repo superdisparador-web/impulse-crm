@@ -21,10 +21,13 @@ import { IamModule } from './iam/iam.module';
 import { DistributionModule } from './distribution/distribution.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { PrismaHttpTelemetryInterceptor } from './prisma/prisma-http-telemetry.interceptor';
+import { pipelineModuleEnabled } from './config/runtime-config';
+import { AppLifecycleModule } from './app-lifecycle.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    AppLifecycleModule,
     AuthModule,
     UsersModule,
     PrismaModule,
@@ -40,7 +43,7 @@ import { PrismaHttpTelemetryInterceptor } from './prisma/prisma-http-telemetry.i
     OrganizationsModule,
     LeadsModule,
     MessagingModule,
-    PipelineModule,
+    ...(pipelineModuleEnabled() ? [PipelineModule] : []),
     IamModule,
     DistributionModule,
     AnalyticsModule,

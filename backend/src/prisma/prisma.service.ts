@@ -1,6 +1,7 @@
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 import { hostname } from 'node:os';
+import { configuredDatabaseUrl, PrismaPoolConfiguration } from './prisma-connection-config';
 
 type TelemetryContext = Record<string, unknown>;
 
@@ -12,9 +13,24 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
     pid: process.pid,
     instanceId: process.env.INSTANCE_ID ?? process.env.HOSTNAME ?? `${hostname()}-${process.pid}`,
   };
+  readonly poolConfiguration: PrismaPoolConfiguration;
+
+  constructor() {
+    const configuration = configuredDatabaseUrl();
+    super({ datasources: { db: { url: configuration.url } } });
+    this.poolConfiguration = configuration.pool;
+  }
 
   async onModuleInit() {
     await this.$connect();
+    this.telemetryLogger.log(JSON.stringify({
+      event: 'PRISMA_POOL_CONFIGURED',
+      ...this.processIdentity,
+      connectionLimit: this.poolConfiguration.connectionLimit,
+      poolTimeoutSeconds: this.poolConfiguration.poolTimeoutSeconds,
+      connectTimeoutSeconds: this.poolConfiguration.connectTimeoutSeconds,
+      applicationName: this.poolConfiguration.applicationName,
+    }));
     void this.logPoolSnapshot('PRISMA_POOL_CONNECTED');
   }
 
