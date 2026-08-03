@@ -51,14 +51,14 @@ export default function AgentsPage() {
           </p>
         </div>
 
-        <button className="bg-blue-600 hover:bg-blue-700 px-5 py-3 rounded-lg font-semibold transition">
+        <button className="ds-primary ds-primary-hover px-5 py-3 ds-radius-control font-semibold transition">
           + Novo Agente
         </button>
       </div>
 
-      <div className="bg-slate-900 rounded-xl border border-slate-800 overflow-hidden">
+      <div className="ds-surface ds-radius-surface border ds-border overflow-hidden">
         <table className="w-full">
-          <thead className="bg-slate-800">
+          <thead className="ds-surface-raised">
             <tr>
               <th className="text-left p-4">Nome</th>
               <th className="text-left p-4">WhatsApp</th>
@@ -99,7 +99,7 @@ export default function AgentsPage() {
               agents.map((agent) => (
                 <tr
                   key={agent.id}
-                  className="border-t border-slate-800 hover:bg-slate-800/50"
+                  className="border-t ds-border ds-secondary-hover"
                 >
                   <td className="p-4 font-medium">{agent.name}</td>
                   <td className="p-4">{agent.whatsapp}</td>

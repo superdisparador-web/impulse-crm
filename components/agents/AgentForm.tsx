@@ -20,7 +20,7 @@ export default function AgentForm({
           <input
             type="text"
             placeholder="Nome do agente"
-            className="w-full rounded-lg bg-slate-800 border border-slate-700 px-4 py-3 text-white outline-none focus:border-blue-500"
+            className="w-full ds-radius-control ds-surface-raised border ds-border px-4 py-3 text-white outline-none focus:border-blue-500"
           />
         </div>
 
@@ -32,7 +32,7 @@ export default function AgentForm({
           <input
             type="text"
             placeholder="11999999999"
-            className="w-full rounded-lg bg-slate-800 border border-slate-700 px-4 py-3 text-white outline-none focus:border-blue-500"
+            className="w-full ds-radius-control ds-surface-raised border ds-border px-4 py-3 text-white outline-none focus:border-blue-500"
           />
         </div>
       </div>
@@ -45,7 +45,7 @@ export default function AgentForm({
         <input
           type="email"
           placeholder="email@empresa.com"
-          className="w-full rounded-lg bg-slate-800 border border-slate-700 px-4 py-3 text-white outline-none focus:border-blue-500"
+          className="w-full ds-radius-control ds-surface-raised border ds-border px-4 py-3 text-white outline-none focus:border-blue-500"
         />
       </div>
 
@@ -58,7 +58,7 @@ export default function AgentForm({
           <input
             type="text"
             placeholder="Zona Sul"
-            className="w-full rounded-lg bg-slate-800 border border-slate-700 px-4 py-3 text-white outline-none focus:border-blue-500"
+            className="w-full ds-radius-control ds-surface-raised border ds-border px-4 py-3 text-white outline-none focus:border-blue-500"
           />
         </div>
 
@@ -70,7 +70,7 @@ export default function AgentForm({
           <input
             type="number"
             defaultValue={1}
-            className="w-full rounded-lg bg-slate-800 border border-slate-700 px-4 py-3 text-white outline-none focus:border-blue-500"
+            className="w-full ds-radius-control ds-surface-raised border ds-border px-4 py-3 text-white outline-none focus:border-blue-500"
           />
         </div>
 
@@ -82,7 +82,7 @@ export default function AgentForm({
           <input
             type="number"
             defaultValue={20}
-            className="w-full rounded-lg bg-slate-800 border border-slate-700 px-4 py-3 text-white outline-none focus:border-blue-500"
+            className="w-full ds-radius-control ds-surface-raised border ds-border px-4 py-3 text-white outline-none focus:border-blue-500"
           />
         </div>
       </div>
@@ -93,7 +93,7 @@ export default function AgentForm({
         </label>
 
         <select
-          className="w-full rounded-lg bg-slate-800 border border-slate-700 px-4 py-3 text-white outline-none focus:border-blue-500"
+          className="w-full ds-radius-control ds-surface-raised border ds-border px-4 py-3 text-white outline-none focus:border-blue-500"
           defaultValue="true"
         >
           <option value="true">Ativo</option>
@@ -101,11 +101,11 @@ export default function AgentForm({
         </select>
       </div>
 
-      <div className="flex justify-end gap-3 pt-6 border-t border-slate-700">
+      <div className="flex justify-end gap-3 pt-6 border-t ds-border">
         <button
           type="button"
           onClick={onCancel}
-          className="rounded-lg border border-slate-600 px-6 py-3 text-white hover:bg-slate-800 transition"
+          className="ds-radius-control border border-slate-600 px-6 py-3 text-white ds-secondary-hover transition"
         >
           Cancelar
         </button>
@@ -113,7 +113,7 @@ export default function AgentForm({
         <button
           type="button"
           onClick={onSave}
-          className="rounded-lg bg-blue-600 px-6 py-3 text-white hover:bg-blue-700 transition"
+          className="ds-radius-control ds-primary px-6 py-3 text-white ds-primary-hover transition"
         >
           Salvar
         </button>

@@ -27,14 +27,14 @@ export default function AgentTable({
   return (
     <>
       {error && (
-        <div className="mb-6 rounded-lg bg-red-600 p-4 text-white">
+        <div className="mb-6 ds-radius-control bg-red-600 p-4 text-white">
           {error}
         </div>
       )}
 
-      <div className="overflow-hidden rounded-xl bg-slate-900 shadow-lg">
+      <div className="overflow-hidden ds-radius-surface ds-surface ds-shadow-raised">
         <table className="w-full">
-          <thead className="bg-slate-800">
+          <thead className="ds-surface-raised">
             <tr>
               <th className="p-4 text-left">Nome</th>
               <th className="p-4 text-left">WhatsApp</th>
@@ -73,7 +73,7 @@ export default function AgentTable({
               agents.map((agent) => (
                 <tr
                   key={agent.id}
-                  className="border-t border-slate-800 transition hover:bg-slate-800"
+                  className="border-t ds-border transition ds-secondary-hover"
                 >
                   <td className="p-4 font-medium text-white">
                     {agent.name}

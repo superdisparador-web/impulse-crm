@@ -121,9 +121,9 @@ export default function OrganizationsPage() {
         {canManageOrganizations && <Button onClick={openCreateForm}>+ Nova Empresa</Button>}
       </div>
 
-      {success && <p className="rounded-lg border border-green-500/30 bg-green-500/10 p-3 text-sm text-green-300">{success}</p>}
+      {success && <p className="ds-radius-control border border-green-500/30 bg-green-500/10 p-3 text-sm text-green-300">{success}</p>}
 
-      <div className="grid gap-3 rounded-xl border border-slate-800 bg-slate-900 p-4 md:grid-cols-[1fr_220px]">
+      <div className="grid gap-3 ds-radius-surface border ds-border ds-surface p-4 md:grid-cols-[1fr_220px]">
         <Input label="Buscar" value={search} onChange={(event) => { setPage(1); setSearch(event.target.value); }} placeholder="Nome, documento, e-mail ou telefone" />
         <Select label="Status" value={active} onChange={(event) => { setPage(1); setActive(event.target.value); }} options={[{ label: "Todas", value: "" }, { label: "Ativas", value: "true" }, { label: "Inativas", value: "false" }]} />
       </div>

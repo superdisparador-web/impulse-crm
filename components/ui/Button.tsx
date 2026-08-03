@@ -13,16 +13,16 @@ interface ButtonProps
 
 const variants = {
   primary:
-    "bg-blue-600 hover:bg-blue-700 text-white",
+    "border border-blue-500/50 ds-primary text-white shadow-sm shadow-blue-950/20 hover:bg-blue-500",
 
   secondary:
-    "bg-slate-700 hover:bg-slate-600 text-white",
+    "border border-slate-600/70 ds-surface-raised text-slate-100 hover:border-slate-500 ds-secondary-hover",
 
   danger:
-    "bg-red-600 hover:bg-red-700 text-white",
+    "border border-red-500/40 bg-red-600 text-white hover:bg-red-500",
 
   success:
-    "bg-green-600 hover:bg-green-700 text-white",
+    "border border-emerald-500/40 bg-emerald-600 text-white hover:bg-emerald-500",
 };
 
 export default function Button({
@@ -36,11 +36,10 @@ export default function Button({
     <button
       {...props}
       className={`
-        rounded-lg
-        px-5
-        py-3
-        font-medium
-        transition
+        ui-focus inline-flex min-h-11 items-center justify-center rounded-[var(--radius-control)]
+        px-5 py-2.5 text-sm font-semibold
+        transition-[color,background-color,border-color,box-shadow,transform]
+        active:translate-y-px
         disabled:opacity-50
         disabled:cursor-not-allowed
         ${variants[variant]}

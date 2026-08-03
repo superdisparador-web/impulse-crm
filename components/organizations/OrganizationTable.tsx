@@ -25,9 +25,9 @@ function formatUsage(organization: Organization) {
 
 export default function OrganizationTable({ organizations, loading, error, canManage, onEdit, onToggleStatus, onDelete }: OrganizationTableProps) {
   return (
-    <div className="overflow-x-auto rounded-xl border border-slate-800 bg-slate-900">
+    <div className="overflow-x-auto ds-radius-surface border ds-border ds-surface">
       <table className="w-full min-w-[980px]">
-        <thead className="bg-slate-800">
+        <thead className="ds-surface-raised">
           <tr>
             <th className="p-4 text-left">Empresa</th>
             <th className="p-4 text-left">Documento</th>
@@ -43,7 +43,7 @@ export default function OrganizationTable({ organizations, loading, error, canMa
           {!loading && error && <tr><td colSpan={canManage ? 7 : 6} className="p-8 text-center text-red-400">{error}</td></tr>}
           {!loading && !error && organizations.length === 0 && <tr><td colSpan={canManage ? 7 : 6} className="p-8 text-center text-slate-400">Nenhuma empresa encontrada.</td></tr>}
           {!loading && !error && organizations.map((organization) => (
-            <tr key={organization.id} className="border-t border-slate-800 hover:bg-slate-800/50">
+            <tr key={organization.id} className="border-t ds-border ds-secondary-hover">
               <td className="p-4 font-medium">{organization.name}</td>
               <td className="p-4 text-slate-300">{organization.document || "—"}</td>
               <td className="p-4 text-slate-300"><div>{organization.email || "—"}</div><div className="text-sm text-slate-500">{organization.phone || "—"}</div></td>

@@ -3,6 +3,9 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { login } from "@/services/auth";
+import Button from "@/components/ui/Button";
+import Input from "@/components/ui/Input";
+import { Surface } from "@/components/ui/Layout";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -31,44 +34,46 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-950">
-      <form
-        onSubmit={handleLogin}
-        className="w-full max-w-md rounded-xl bg-slate-900 p-8 shadow-xl"
-      >
-        <h1 className="mb-8 text-center text-3xl font-bold text-white">
-          Impulse CRM
-        </h1>
+    <main className="flex min-h-screen items-center justify-center ds-canvas">
+      <Surface className="mx-4 w-full max-w-md p-8 ds-shadow-raised">
+      <form onSubmit={handleLogin} className="space-y-5">
+        <div className="mb-7 text-center">
+          <span aria-hidden="true" className="text-xl">🚀</span>
+          <h1 className="mt-2 text-2xl font-bold tracking-tight text-white">Impulse CRM</h1>
+          <p className="mt-1 text-sm text-slate-400">Inteligência comercial</p>
+        </div>
 
-        <input
+        <Input
+          label="E-mail"
           type="email"
-          placeholder="E-mail"
+          placeholder="voce@empresa.com"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="mb-4 w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 text-white"
+          autoComplete="email"
+          required
         />
 
-        <input
+        <Input
+          label="Senha"
           type="password"
-          placeholder="Senha"
+          placeholder="Sua senha"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="mb-4 w-full rounded-lg border border-slate-700 bg-slate-800 px-4 py-3 text-white"
+          autoComplete="current-password"
+          required
         />
 
         {error && (
-          <p className="mb-4 text-sm text-red-500">
+          <p role="alert" className="ds-alert border-red-900/70 bg-red-950/30 text-red-200">
             {error}
           </p>
         )}
 
-        <button
-          disabled={loading}
-          className="w-full rounded-lg bg-blue-600 py-3 font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
-        >
+        <Button type="submit" disabled={loading} fullWidth>
           {loading ? "Entrando..." : "Entrar"}
-        </button>
+        </Button>
       </form>
+      </Surface>
     </main>
   );
 }

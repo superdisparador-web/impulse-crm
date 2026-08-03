@@ -52,7 +52,7 @@ export default function ContactsPage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-950 p-8 text-white">
+    <main className="min-h-screen ds-canvas p-8 text-white">
       <div className="mb-8 flex items-center justify-between">
         <div>
           <h1 className="text-4xl font-bold">Agentes</h1>
@@ -64,7 +64,7 @@ export default function ContactsPage() {
 
         <button
           onClick={() => setModalOpen(true)}
-          className="rounded-lg bg-blue-600 px-5 py-3 transition hover:bg-blue-700"
+          className="ds-radius-control ds-primary px-5 py-3 transition ds-primary-hover"
         >
           Novo Agente
         </button>

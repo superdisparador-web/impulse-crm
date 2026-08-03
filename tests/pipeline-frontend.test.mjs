@@ -185,8 +185,18 @@ test('19. o mesmo card não aparece duas vezes', () => {
   assert.equal(moved.stages.flatMap((stage) => stage.cards).filter((card) => card.id === 'card-1').length, 1);
 });
 
-test('20. menu contém Pipeline somente uma vez', () => {
-  assert.equal(sidebarMenu.filter((item) => item.href === '/pipeline' && item.title === 'Pipeline').length, 1);
+test('20. menu lateral segue a navegação simplificada sem Pipeline', () => {
+  assert.deepEqual(sidebarMenu.map(({ title, href }) => ({ title, href })), [
+    { title: 'Dashboard', href: '/dashboard' },
+    { title: 'Leads', href: '/leads' },
+    { title: 'Campanhas', href: '/campaigns' },
+    { title: 'WhatsApp', href: '/whatsapp' },
+    { title: 'Templates', href: '/templates' },
+    { title: 'Corretores', href: '/agents' },
+    { title: 'Usuários', href: '/users' },
+    { title: 'Relatórios', href: '/reports' },
+    { title: 'Configurações', href: '/settings' },
+  ]);
 });
 
 test('21. nome do corretor aparece quando existir', () => {
