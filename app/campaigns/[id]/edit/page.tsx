@@ -87,7 +87,7 @@ export default function EditCampaignPage() {
 
       <input
         disabled={locked}
-        className="w-full rounded-xl border border-slate-700 bg-slate-900 p-3"
+        className="w-full ds-radius-surface border ds-border ds-surface p-3"
         value={campaign.name}
         onChange={(event) =>
           setCampaign({ ...campaign, name: event.target.value })
@@ -95,7 +95,7 @@ export default function EditCampaignPage() {
       />
       <textarea
         disabled={locked}
-        className="w-full rounded-xl border border-slate-700 bg-slate-900 p-3"
+        className="w-full ds-radius-surface border ds-border ds-surface p-3"
         value={campaign.description ?? ""}
         onChange={(event) =>
           setCampaign({ ...campaign, description: event.target.value })
@@ -103,7 +103,7 @@ export default function EditCampaignPage() {
       />
       <select
         disabled={locked}
-        className="w-full rounded-xl border border-slate-700 bg-slate-900 p-3"
+        className="w-full ds-radius-surface border ds-border ds-surface p-3"
         value={campaign.whatsappAccountId ?? ""}
         onChange={(event) =>
           setCampaign({ ...campaign, whatsappAccountId: event.target.value })
@@ -118,7 +118,7 @@ export default function EditCampaignPage() {
       </select>
       <select
         disabled={locked}
-        className="w-full rounded-xl border border-slate-700 bg-slate-900 p-3"
+        className="w-full ds-radius-surface border ds-border ds-surface p-3"
         value={campaign.whatsappTemplateId ?? ""}
         onChange={(event) =>
           setCampaign({ ...campaign, whatsappTemplateId: event.target.value })
@@ -133,7 +133,7 @@ export default function EditCampaignPage() {
       </select>
       <button
         disabled={locked || saving}
-        className="rounded bg-blue-600 px-4 py-2 disabled:opacity-50"
+        className="rounded ds-primary px-4 py-2 disabled:opacity-50"
         onClick={() => void save()}
       >
         {saving ? "Salvando..." : "Salvar alterações"}

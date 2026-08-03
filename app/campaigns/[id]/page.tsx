@@ -87,7 +87,7 @@ export default function CampaignDetailPage() {
         </div>
         <div className="flex gap-2">
           <Link
-            className="rounded bg-slate-800 px-4 py-2"
+            className="rounded ds-surface-raised px-4 py-2"
             href={`/campaigns/${id}/edit`}
           >
             Editar
@@ -109,7 +109,7 @@ export default function CampaignDetailPage() {
       )}
 
       <section className="grid gap-3 md:grid-cols-3">
-        <div className="rounded-xl bg-slate-900 p-4">
+        <div className="ds-radius-surface ds-surface p-4">
           <h2 className="font-semibold">Informações gerais</h2>
           <p>{campaign.description || "Sem descrição"}</p>
           <p>Criada por: {campaign.createdBy?.name}</p>
@@ -121,12 +121,12 @@ export default function CampaignDetailPage() {
               : "-"}
           </p>
         </div>
-        <div className="rounded-xl bg-slate-900 p-4">
+        <div className="ds-radius-surface ds-surface p-4">
           <h2 className="font-semibold">Conta</h2>
           <p>{campaign.whatsappAccount?.name ?? "-"}</p>
           <p>{campaign.whatsappAccount?.phoneNumber ?? ""}</p>
         </div>
-        <div className="rounded-xl bg-slate-900 p-4">
+        <div className="ds-radius-surface ds-surface p-4">
           <h2 className="font-semibold">Template</h2>
           <p>{campaign.whatsappTemplate?.name ?? "-"}</p>
           <p>
@@ -137,21 +137,21 @@ export default function CampaignDetailPage() {
 
       <section className="grid gap-3 md:grid-cols-7">
         {metrics.map(([label, value]) => (
-          <div key={label} className="rounded-xl bg-slate-900 p-4">
+          <div key={label} className="ds-radius-surface ds-surface p-4">
             <p className="text-slate-400">{label}</p>
             <strong className="text-2xl">{value}</strong>
           </div>
         ))}
       </section>
 
-      <section className="rounded-xl border border-slate-800">
+      <section className="ds-radius-surface border ds-border">
         <h2 className="p-4 text-xl font-semibold">Destinatários e erros</h2>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <tbody>
               {campaign.recipients?.length ? (
                 campaign.recipients.map((recipient) => (
-                  <tr key={recipient.id} className="border-t border-slate-800">
+                  <tr key={recipient.id} className="border-t ds-border">
                     <td className="p-3">{recipient.name}</td>
                     <td>{recipient.phone}</td>
                     <td>{recipient.status}</td>

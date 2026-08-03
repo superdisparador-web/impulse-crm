@@ -23,19 +23,9 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
           {...props}
           className={`
             w-full
-            rounded-lg
-            border
-            border-slate-700
-            bg-slate-800
-            px-4
-            py-3
-            text-white
-            outline-none
-            transition
+            ui-control
+            px-4 py-2.5
             placeholder:text-slate-500
-            focus:border-blue-500
-            focus:ring-2
-            focus:ring-blue-500/20
             ${error ? "border-red-500" : ""}
             ${className}
           `}

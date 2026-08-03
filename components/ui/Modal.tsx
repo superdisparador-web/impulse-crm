@@ -48,21 +48,27 @@ export default function Modal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-6"
+      role="presentation"
+      className="fixed inset-0 z-50 flex items-center justify-center ds-canvas p-4 backdrop-blur-sm sm:p-6"
       onClick={onClose}
     >
       <div
-        className={`w-full ${widthClasses[width]} rounded-2xl bg-slate-900 border border-slate-700 shadow-2xl`}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="modal-title"
+        className={`ui-card w-full ${widthClasses[width]} max-h-[calc(100dvh-2rem)] overflow-y-auto shadow-2xl`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between border-b border-slate-700 px-6 py-4">
-          <h2 className="text-xl font-semibold text-white">
+        <div className="flex items-center justify-between border-b ds-border px-6 py-4">
+          <h2 id="modal-title" className="text-lg font-semibold tracking-tight text-white">
             {title}
           </h2>
 
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-white text-2xl transition"
+            type="button"
+            aria-label="Fechar modal"
+            className="ui-focus grid h-9 w-9 place-items-center ds-radius-control text-xl text-slate-400 transition-colors ds-secondary-hover hover:text-white"
           >
             ×
           </button>
