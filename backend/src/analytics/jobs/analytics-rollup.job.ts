@@ -2,6 +2,8 @@ import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/commo
 import { AnalyticsEvent, Prisma } from '@prisma/client';
 import { AnalyticsRepository } from '../repositories/analytics.repository';
 import { PrismaService } from '../../prisma/prisma.service';
+import { prismaErrorCode, SerializedJob } from '../../jobs/serialized-job';
+import { acquireScheduler, releaseScheduler } from '../../jobs/scheduler-registry';
 
 type IncrementData = Record<string, { increment: number }>;
 
@@ -9,42 +11,44 @@ type IncrementData = Record<string, { increment: number }>;
 export class AnalyticsRollupJob implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(AnalyticsRollupJob.name);
   private timer?: NodeJS.Timeout;
-  private activeExecutions = 0;
+  private stopped = false;
+  private readonly serialized = new SerializedJob('analytics-rollup', 60_000, this.logger);
   private executionSequence = 0;
 
   constructor(private readonly repository: AnalyticsRepository, private readonly prisma: PrismaService) {}
 
   onModuleInit() {
-    this.timer = setInterval(() => void this.runOnce(), 60_000);
+    this.stopped = false;
+    if (!acquireScheduler('analytics-rollup', this)) {
+      this.logger.log(JSON.stringify({ job: 'analytics-rollup', event: 'scheduler_duplicate_ignored' }));
+      return;
+    }
+    this.schedule(60_000);
   }
 
   onModuleDestroy() {
-    if (this.timer) clearInterval(this.timer);
+    this.stopped = true;
+    if (this.timer) clearTimeout(this.timer);
+    releaseScheduler('analytics-rollup', this);
   }
 
   async runOnce(limit = 100) {
+    return this.serialized.run(() => this.execute(limit));
+  }
+
+  private async execute(limit: number) {
     const executionId = `analytics-rollup-${++this.executionSequence}`;
     const startedAt = new Date();
     const startTime = Date.now();
     let processed = 0;
     let transactionsExecuted = 0;
     let errors = 0;
-    this.activeExecutions += 1;
-
     this.logTelemetry('ROLLUP_EXECUTION_STARTED', {
       executionId,
       timestamp: startedAt.toISOString(),
-      simultaneousExecutions: this.activeExecutions,
+      simultaneousExecutions: 1,
       limit,
     });
-    if (this.activeExecutions > 1) {
-      this.logTelemetry('ROLLUP_OVERLAP_DETECTED', {
-        executionId,
-        timestamp: startedAt.toISOString(),
-        simultaneousExecutions: this.activeExecutions,
-      });
-    }
-
     try {
       for (let index = 0; index < limit; index += 1) {
         transactionsExecuted += 1;
@@ -55,12 +59,12 @@ export class AnalyticsRollupJob implements OnModuleInit, OnModuleDestroy {
         } catch (error) {
           errors += 1;
           this.logger.error('Analytics rollup failed', { error });
+          if (['P2024', 'P2028', 'P1001'].includes(prismaErrorCode(error) ?? '')) throw error;
         }
       }
       return { processed };
     } finally {
       const finishedAt = new Date();
-      this.activeExecutions -= 1;
       this.logTelemetry('ROLLUP_EXECUTION_FINISHED', {
         executionId,
         timestamp: finishedAt.toISOString(),
@@ -70,14 +74,22 @@ export class AnalyticsRollupJob implements OnModuleInit, OnModuleDestroy {
         eventsProcessed: processed,
         transactionsExecuted,
         errors,
-        simultaneousExecutions: this.activeExecutions,
+        simultaneousExecutions: 0,
       });
     }
   }
 
+  private schedule(delay: number) {
+    if (this.stopped) return;
+    this.timer = setTimeout(async () => {
+      await this.runOnce();
+      this.schedule(this.serialized.nextIntervalMs);
+    }, delay);
+  }
+
   private logTelemetry(event: string, data: Record<string, unknown>) {
     this.logger.log(JSON.stringify({ event, ...this.prisma.processIdentity, ...data }));
-    void this.prisma.logPoolSnapshot(`${event}_POOL`, { activeExecutions: this.activeExecutions, ...data });
+    void this.prisma.logPoolSnapshot(`${event}_POOL`, data);
   }
 
   private async incrementMetrics(tx: Prisma.TransactionClient, event: AnalyticsEvent) {

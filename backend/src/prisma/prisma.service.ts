@@ -1,11 +1,12 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 import { hostname } from 'node:os';
 
 type TelemetryContext = Record<string, unknown>;
 
 @Injectable()
-export class PrismaService extends PrismaClient implements OnModuleInit {
+export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
+  private disconnected = false;
   private readonly telemetryLogger = new Logger('PrismaPoolTelemetry');
   readonly processIdentity = {
     pid: process.pid,
@@ -15,6 +16,12 @@ export class PrismaService extends PrismaClient implements OnModuleInit {
   async onModuleInit() {
     await this.$connect();
     void this.logPoolSnapshot('PRISMA_POOL_CONNECTED');
+  }
+
+  async onModuleDestroy() {
+    if (this.disconnected) return;
+    this.disconnected = true;
+    await this.$disconnect();
   }
 
   async logPoolSnapshot(event: string, context: TelemetryContext = {}) {
