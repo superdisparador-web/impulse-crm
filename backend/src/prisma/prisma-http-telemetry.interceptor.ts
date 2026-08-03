@@ -33,8 +33,8 @@ export class PrismaHttpTelemetryInterceptor implements NestInterceptor {
         const details = this.prisma.errorDetails(error);
         const message = 'message' in details ? details.message : '';
         const code = 'code' in details ? details.code : undefined;
-        if (code === 'P2024' || /connection pool|acquir|timed?\s*out/i.test(message ?? '')) {
-          this.logger.error(JSON.stringify({ event: 'HTTP_PRISMA_CONNECTION_ACQUIRE_TIMEOUT', timestamp: new Date().toISOString(), ...this.prisma.processIdentity, method, path, durationMs: Date.now() - startedAt, error: details }));
+        if (code === 'P2024' || code === 'P2028' || code === 'P1001' || /connection pool|acquir|timed?\s*out|server has closed the connection/i.test(message ?? '')) {
+          this.logger.error(JSON.stringify({ event: 'HTTP_PRISMA_KNOWN_ERROR', timestamp: new Date().toISOString(), ...this.prisma.processIdentity, method, path, durationMs: Date.now() - startedAt, code: code ?? 'CONNECTION_CLOSED' }));
           void this.prisma.logPoolSnapshot('HTTP_PRISMA_CONNECTION_ACQUIRE_TIMEOUT_POOL', { method, path });
         }
         return throwError(() => error);
