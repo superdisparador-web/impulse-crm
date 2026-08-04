@@ -1,33 +1,38 @@
 "use client";
 
-import { ReactNode, useState } from "react";
+import { ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
+import AuthBoundary from "@/components/auth/AuthBoundary";
+import type { BuildInformation } from "@/lib/build-information";
 
-interface DashboardLayoutProps { children: ReactNode; }
+interface DashboardLayoutProps {
+  children: ReactNode;
+  build: BuildInformation;
+}
 
-export default function DashboardLayout({ children }: DashboardLayoutProps) {
+export default function DashboardLayout({
+  children,
+  build,
+}: DashboardLayoutProps) {
   const pathname = usePathname();
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  if (pathname === "/login") return children;
+  if (pathname === "/login") {
+    return <AuthBoundary>{children}</AuthBoundary>;
+  }
 
-  return (
-    <div className="flex min-h-dvh ds-canvas text-slate-100">
-      <Sidebar
-        collapsed={sidebarCollapsed}
-        mobileOpen={mobileMenuOpen}
-        onCollapse={() => setSidebarCollapsed((value) => !value)}
-        onCloseMobile={() => setMobileMenuOpen(false)}
-      />
-      <div className="flex min-w-0 flex-1 flex-col">
-        <Header onOpenMenu={() => setMobileMenuOpen(true)} mobileMenuOpen={mobileMenuOpen} />
-        <main className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-4 sm:p-6">
-          {children}
+  return <AuthBoundary>
+    <div className="flex h-dvh bg-[radial-gradient(circle_at_top_right,_#eff6ff_0,_#f8fafc_32%,_#f1f5f9_100%)]">
+      <Sidebar build={build} />
+
+      <div className="flex flex-1 flex-col overflow-hidden">
+        <Header />
+
+        <main className="flex-1 overflow-y-auto px-4 py-5 sm:px-6 sm:py-6 xl:px-8 xl:py-7">
+          <div className="mx-auto w-full max-w-[1600px]">{children}</div>
         </main>
       </div>
     </div>
-  );
+  </AuthBoundary>;
 }

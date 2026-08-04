@@ -42,7 +42,7 @@ export default function OrganizationForm({ organization, saving, onCancel, onSub
       </div>
       <Input label="E-mail" type="email" value={formData.email} onChange={(event) => setFormData({ ...formData, email: event.target.value })} placeholder="contato@empresa.com" maxLength={255} />
       <Select label="Status" value={String(formData.active)} onChange={(event) => setFormData({ ...formData, active: event.target.value === "true" })} options={[{ label: "Ativa", value: "true" }, { label: "Inativa", value: "false" }]} />
-      <div className="flex justify-end gap-3 border-t ds-border pt-6">
+      <div className="flex justify-end gap-3 border-t border-slate-700 pt-6">
         <Button type="button" variant="secondary" onClick={onCancel}>Cancelar</Button>
         <Button type="submit" disabled={saving}>{saving ? "Salvando..." : "Salvar"}</Button>
       </div>

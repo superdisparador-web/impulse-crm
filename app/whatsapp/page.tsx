@@ -1,25 +1,91 @@
 "use client";
 
-import Script from "next/script";
-import { useCallback, useEffect, useState } from "react";
-import { Building2, CheckCircle2, Link2, RefreshCw, ShieldCheck } from "lucide-react";
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ConnectionsEnterprise } from "@/components/connections/ConnectionsEnterprise";
+import { AccessTokenModal, ArchiveModal, ManualAccountModal } from "@/components/whatsapp";
+import Modal from "@/components/ui/Modal";
+import Button from "@/components/ui/Button";
+import Input from "@/components/ui/Input";
+import { getCurrentUser, isGlobalAdmin as hasGlobalAdminRole } from "@/services/auth";
 import { whatsappService } from "@/services/whatsapp.service";
-import { WhatsappAccount, WhatsappAccountStatus } from "@/types/whatsapp";
+import { organizationService } from "@/services/organization.service";
+import type { Organization } from "@/types/organization";
+import type { ManualWhatsappAccountFormData, WhatsappAccount, WhatsappAccountFormData } from "@/types/whatsapp";
 
-declare global { interface Window { FB?: { init(options:Record<string,unknown>):void; login(callback:(response:{authResponse?:{code?:string}})=>void,options:Record<string,unknown>):void } } }
-const statusLabels:Record<WhatsappAccountStatus,string>={ACTIVE:"Ativa",INACTIVE:"Inativa",PENDING:"Pendente",ERROR:"Erro",DISCONNECTED:"Desconectada",SUSPENDED:"Suspensa",TOKEN_EXPIRED:"Token expirado"};
-function date(value?:string|null){ return value?new Intl.DateTimeFormat("pt-BR",{dateStyle:"short",timeStyle:"short"}).format(new Date(value)):"—"; }
+const EMPTY: WhatsappAccountFormData = { name: "", phoneNumber: "", wabaId: "", businessAccountId: "", phoneNumberId: "", credential: "", verifyToken: "", apiVersion: "v20.0", active: true };
+const EMPTY_MANUAL: ManualWhatsappAccountFormData = { organizationId: "", name: "", wabaId: "", phoneNumberId: "", businessAccountId: "", accessToken: "", apiVersion: "v23.0", isDefault: false };
+const friendlySignupErrors: Record<string, string> = {
+  cancelled: "Login cancelado.", permission_denied: "Permissão não concedida.", no_business: "Nenhuma empresa selecionada.",
+  no_waba: "Nenhuma conta WhatsApp selecionada.", phone_in_use: "Número já vinculado.", failed: "Não foi possível concluir a conexão.",
+};
 
-export default function WhatsappPage(){
- const [accounts,setAccounts]=useState<WhatsappAccount[]>([]),[loading,setLoading]=useState(true),[busy,setBusy]=useState<string|null>(null),[message,setMessage]=useState(""),[error,setError]=useState("");
- const load=useCallback(async()=>{setLoading(true);try{setAccounts((await whatsappService.getAccounts({pageSize:100})).items);}catch(e){setError(e instanceof Error?e.message:"Falha ao carregar contas.");}finally{setLoading(false);}},[]);
- useEffect(()=>{const id=window.setTimeout(()=>{void load();},0);return()=>window.clearTimeout(id);},[load]);
- async function connect(accountId?:string){setBusy(accountId||"new");setError("");try{const config=await whatsappService.getEmbeddedSignupConfig(accountId); if(!window.FB) throw new Error("O SDK seguro da Meta ainda está carregando."); window.FB.init({appId:config.appId,cookie:true,xfbml:false,version:config.apiVersion}); window.FB.login(async response=>{try{const code=response.authResponse?.code;if(!code) throw new Error("A autorização da Meta foi cancelada.");const result=await whatsappService.completeEmbeddedSignup({code,state:config.state,accountId});setMessage(`${result.accountsConnected} conta(s) sincronizada(s) com sucesso.`);await load();}catch(e){setError(e instanceof Error?e.message:"Falha ao concluir a conexão.");}finally{setBusy(null);}},{config_id:config.configId,response_type:"code",override_default_response_type:true,extras:{feature:"whatsapp_embedded_signup",sessionInfoVersion:"3"}});}catch(e){setError(e instanceof Error?e.message:"Falha ao abrir a Meta.");setBusy(null);}}
- async function sync(account:WhatsappAccount){setBusy(account.id);setError("");try{await whatsappService.syncAccount(account.id);await whatsappService.syncTemplates({accountId:account.id});setMessage("Dados e templates atualizados.");await load();}catch(e){setError(e instanceof Error?e.message:"Falha ao sincronizar.");}finally{setBusy(null);}}
- return <main className="space-y-6"><Script src="https://connect.facebook.net/pt_BR/sdk.js" strategy="afterInteractive"/>
-  <header className="flex flex-wrap items-center justify-between gap-4"><div><h1 className="text-4xl font-bold">WhatsApp Business Platform</h1><p className="mt-2 max-w-3xl text-slate-400">Conexão enterprise pela autorização oficial da Meta. Credenciais são recebidas pelo OAuth, criptografadas e nunca precisam ser copiadas.</p></div><button onClick={()=>void connect()} disabled={!!busy} className="inline-flex items-center gap-2 ds-radius-control ds-primary px-5 py-3 font-semibold hover:bg-blue-500 disabled:opacity-50"><Link2 size={18}/>Conectar com Meta</button></header>
-  {message&&<div className="ds-radius-control border border-green-800 bg-green-950/50 p-3 text-green-200">{message}</div>}{error&&<div className="ds-radius-control border border-red-800 bg-red-950/50 p-3 text-red-200">{error}</div>}
-  <section className="grid gap-3 md:grid-cols-3"><div className="ds-radius-surface border ds-border ds-surface p-4"><ShieldCheck className="text-green-400"/><strong className="mt-2 block">OAuth oficial</strong><span className="text-sm text-slate-400">Embedded Signup com permissões gerenciadas pela Meta.</span></div><div className="ds-radius-surface border ds-border ds-surface p-4"><Building2 className="text-blue-400"/><strong className="mt-2 block">Múltiplas contas</strong><span className="text-sm text-slate-400">Businesses, WABAs e números autorizados são descobertos automaticamente.</span></div><div className="ds-radius-surface border ds-border ds-surface p-4"><RefreshCw className="text-violet-400"/><strong className="mt-2 block">Sincronização segura</strong><span className="text-sm text-slate-400">Status, qualidade, display name e templates sempre atualizados.</span></div></section>
-  <section className="overflow-hidden ds-radius-surface border ds-border ds-surface"><div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="border-b ds-border text-slate-400"><tr><th className="p-4">Business / WABA</th><th className="p-4">Número</th><th className="p-4">Qualidade</th><th className="p-4">Credencial</th><th className="p-4">Ações</th></tr></thead><tbody>{loading?<tr><td colSpan={5} className="p-6 text-slate-400">Carregando...</td></tr>:accounts.length===0?<tr><td colSpan={5} className="p-8 text-center text-slate-400">Nenhuma conta conectada. Use “Conectar com Meta” para começar.</td></tr>:accounts.map(account=><tr key={account.id} className="border-b ds-border last:border-0"><td className="p-4"><strong>{account.metaBusinessName||"Business Meta"}</strong><div className="text-slate-400">{account.name}</div><div className="text-xs text-slate-500">WABA {account.businessAccountId}</div></td><td className="p-4"><div>{account.displayPhoneNumber||account.phoneNumber}</div><div className="text-slate-400">{account.verifiedName||"Display name pendente"}</div><span className="mt-1 inline-flex items-center gap-1 text-xs text-green-300"><CheckCircle2 size={12}/>{statusLabels[account.status]}</span></td><td className="p-4">{account.qualityRating||"Não informada"}<div className="text-xs text-slate-500">Sync: {date(account.lastSyncAt)}</div></td><td className="p-4"><span className="rounded-full ds-surface-raised px-2 py-1 text-xs">{account.credentialType==="SYSTEM_USER"?"System User":"OAuth"}</span><div className="mt-2 text-xs text-slate-500">Expira: {account.credentialType==="SYSTEM_USER"?"não expira":date(account.tokenExpiresAt)}</div></td><td className="p-4"><div className="flex flex-wrap gap-2"><button disabled={!!busy} onClick={()=>void connect(account.id)} className="rounded border border-blue-700 px-3 py-2">Reconectar</button><button disabled={!!busy} onClick={()=>void connect(account.id)} className="rounded border border-violet-700 px-3 py-2">Atualizar permissões</button><button disabled={!!busy} onClick={()=>void sync(account)} className="rounded border ds-border p-2" aria-label="Sincronizar"><RefreshCw size={16}/></button></div></td></tr>)}</tbody></table></div></section>
- </main>;
+const META_NOT_CONFIGURED = "A integração com a Meta ainda não foi configurada pelo administrador.";
+const BACKEND_UNAVAILABLE = "Não foi possível acessar o servidor. Verifique se o backend está iniciado.";
+const META_REJECTED = "A Meta não autorizou o início da conexão. Verifique as configurações do aplicativo.";
+
+export function embeddedSignupErrorMessage(error: unknown) {
+  if (error instanceof TypeError) return BACKEND_UNAVAILABLE;
+  const cause = error instanceof Error ? error.message : String(error);
+  if (/META_EMBEDDED_SIGNUP_NOT_CONFIGURED|não foi configurada|configuração de conexão com a Meta é inválida/i.test(cause)) return META_NOT_CONFIGURED;
+  return META_REJECTED;
 }
+
+export function manualAccountErrorMessage(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  if (message.includes("WHATSAPP_ACCOUNT_DUPLICATE_PHONE")) return "Esta conta já está cadastrada para a organização selecionada.";
+  if (message.includes("WHATSAPP_ACCOUNT_ALREADY_LINKED")) return "Este número já está vinculado a outra organização.";
+  if (message.includes("WHATSAPP_INVALID_ACCESS_TOKEN")) return "O access token foi recusado pela Meta.";
+  if (message.includes("WHATSAPP_INSUFFICIENT_PERMISSION")) return "O token não possui as permissões necessárias na Meta.";
+  if (message.includes("WHATSAPP_PHONE_NOT_FOUND_IN_WABA")) return "O Phone Number ID não pertence à WABA informada.";
+  if (message.includes("WHATSAPP_WABA_NOT_OWNED_BY_BUSINESS")) return "A WABA não pertence ao Business Account informado.";
+  if (message.includes("WHATSAPP_MANUAL_ACCOUNT_GLOBAL_ADMIN_ONLY")) return "Somente um administrador global pode fazer o cadastro manual.";
+  return "Não foi possível validar a conta na Meta. Revise os identificadores e a credencial.";
+}
+
+export function accessTokenErrorMessage(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  if (message.includes("WHATSAPP_INVALID_ACCESS_TOKEN")) return "O Access Token informado é inválido ou expirou.";
+  if (message.includes("WHATSAPP_INSUFFICIENT_PERMISSION")) return "O token não possui as permissões necessárias para essa conta.";
+  if (message.includes("WHATSAPP_PHONE_NOT_FOUND_IN_WABA")) return "O número configurado não foi encontrado na conta WhatsApp informada.";
+  if (message.includes("WHATSAPP_META_REQUEST_TIMEOUT")) return "A Meta demorou para responder. Tente novamente.";
+  return "A Meta não conseguiu validar a credencial.";
+}
+
+export default function WhatsappPage() {
+  const [accounts, setAccounts] = useState<WhatsappAccount[]>([]), [total, setTotal] = useState(0), [loading, setLoading] = useState(true);
+  const [error, setError] = useState(""), [notice, setNotice] = useState(""), [busyId, setBusyId] = useState<string | null>(null), [connecting, setConnecting] = useState(false);
+  const [editing, setEditing] = useState<WhatsappAccount | null>(null), [archive, setArchive] = useState<WhatsappAccount | null>(null), [saving, setSaving] = useState(false), [formError, setFormError] = useState(""), [form, setForm] = useState<WhatsappAccountFormData>(EMPTY);
+  const [manualOpen, setManualOpen] = useState(false), [manualSaving, setManualSaving] = useState(false), [manualError, setManualError] = useState(""), [manualForm, setManualForm] = useState<ManualWhatsappAccountFormData>(EMPTY_MANUAL), [organizations, setOrganizations] = useState<Organization[]>([]);
+  const [credentialAccount, setCredentialAccount] = useState<WhatsappAccount | null>(null), [credentialSaving, setCredentialSaving] = useState(false), [credentialError, setCredentialError] = useState("");
+  const loadingRef = useRef(false);
+  const role = getCurrentUser()?.role;
+  const globalAdmin = useMemo(() => hasGlobalAdminRole() || role === "GLOBAL_ADMIN", [role]);
+  const canManage = globalAdmin || role === "ORG_ADMIN";
+
+  const load = useCallback(async (quiet = false) => { if (loadingRef.current) return; loadingRef.current = true; if (!quiet) setLoading(true); setError(""); try { const result = await whatsappService.getAccounts({ state: "all", page: 1, pageSize: 100 }); setAccounts(result.items); setTotal(result.total); } catch { setError("Não foi possível carregar as contas WhatsApp."); } finally { setLoading(false); loadingRef.current = false; } }, []);
+  useEffect(() => { const initial = window.setTimeout(() => void load(), 0); const poll = window.setInterval(() => { if (document.visibilityState === "visible" && !busyId) void load(true); }, 60_000); return () => { window.clearTimeout(initial); window.clearInterval(poll); }; }, [busyId, load]);
+  useEffect(() => { const timer = window.setTimeout(() => { const params = new URLSearchParams(window.location.search); const result = params.get("connection") ?? params.get("signup"); if (!result) return; if (result === "success") { setNotice("Conta conectada com sucesso. Números e templates foram sincronizados."); void load(true); } else setError(friendlySignupErrors[params.get("reason") ?? result] ?? friendlySignupErrors.failed); window.history.replaceState({}, "", "/whatsapp"); }, 0); return () => window.clearTimeout(timer); }, [load]);
+
+  async function connect() { if (!canManage || connecting) return; setConnecting(true); setError(""); try { const session = await whatsappService.startEmbeddedSignup(); window.location.assign(session.authorizationUrl); } catch (cause) { if (process.env.NODE_ENV !== "production") console.error("[WhatsApp Embedded Signup] Não foi possível criar a sessão:", cause); setError(embeddedSignupErrorMessage(cause)); setConnecting(false); } }
+  async function openManual() { if (!globalAdmin) return; setManualError(""); setManualOpen(true); try { const result = await organizationService.getAll({ page: 1, limit: 100, active: true }); setOrganizations(result.items); } catch { setManualError("Não foi possível carregar as organizações ativas."); } }
+  function closeManual() { if (manualSaving) return; setManualOpen(false); setManualForm({ ...EMPTY_MANUAL }); setManualError(""); }
+  async function submitManual(event: FormEvent) { event.preventDefault(); if (!globalAdmin || manualSaving) return; setManualSaving(true); setManualError(""); try { await whatsappService.createManualAccount({ ...manualForm, name: manualForm.name.trim(), wabaId: manualForm.wabaId.trim(), phoneNumberId: manualForm.phoneNumberId.trim(), businessAccountId: manualForm.businessAccountId?.trim() || undefined, accessToken: manualForm.accessToken.trim(), apiVersion: manualForm.apiVersion?.trim() }); setManualOpen(false); setManualForm({ ...EMPTY_MANUAL }); setNotice("Conta validada na Meta e cadastrada com segurança."); await load(true); } catch (cause) { setManualError(manualAccountErrorMessage(cause)); } finally { setManualSaving(false); } }
+  function openEdit(account: WhatsappAccount) { if (!globalAdmin) return; setEditing(account); setForm({ name: account.name, phoneNumber: account.phoneNumber, wabaId: account.wabaId, businessAccountId: account.businessAccountId ?? "", phoneNumberId: account.phoneNumberId, credential: "", verifyToken: "", apiVersion: account.apiVersion ?? "v20.0", active: account.status === "ACTIVE" }); }
+  function closeEdit() { setEditing(null); setForm({ ...EMPTY }); setFormError(""); }
+  async function submit(event: FormEvent) { event.preventDefault(); if (!editing?.id || !globalAdmin || saving) return; setSaving(true); setFormError(""); try { await whatsappService.updateAccount(editing.id, { name: form.name.trim(), phoneNumber: form.phoneNumber?.trim(), apiVersion: form.apiVersion?.trim() }); closeEdit(); setNotice("Configuração avançada atualizada."); await load(true); } catch { setFormError("Não foi possível atualizar a configuração."); } finally { setSaving(false); } }
+  function openCredential(account: WhatsappAccount) { if (!globalAdmin) return; setCredentialError(""); setCredentialAccount(account); }
+  function closeCredential() { if (credentialSaving) return; setCredentialAccount(null); setCredentialError(""); }
+  async function submitCredential(accessToken: string) { if (!credentialAccount || !globalAdmin || credentialSaving) return; setCredentialSaving(true); setCredentialError(""); try { await whatsappService.updateAccessToken(credentialAccount.id, accessToken); setCredentialAccount(null); setNotice("Credencial atualizada e conta validada com sucesso."); await load(true); } catch (cause) { setCredentialError(accessTokenErrorMessage(cause)); } finally { setCredentialSaving(false); } }
+  async function action(account: WhatsappAccount, operation: () => Promise<unknown>, success: string) { if (!canManage || busyId) return; setBusyId(account.id); setError(""); try { await operation(); setNotice(success); await load(true); } catch { setError("Não foi possível concluir a ação. Tente novamente."); } finally { setBusyId(null); } }
+
+  return <>
+    <ConnectionsEnterprise accounts={accounts} total={total} loading={loading} error={error} notice={notice} busyId={busyId} canManage={canManage} isGlobalAdmin={globalAdmin} connecting={connecting} onDismissNotice={() => setNotice("")} onRefresh={() => void load()} onConnect={() => void connect()} onManualConnect={() => void openManual()} onEdit={openEdit} onUpdateCredential={openCredential} onArchive={setArchive} onTest={a => void action(a, () => whatsappService.testAccount(a.id), "Teste de conexão concluído.")} onSync={a => void action(a, () => whatsappService.syncAccount(a.id), "Conta, número e templates sincronizados.")} onToggle={a => void action(a, () => whatsappService.updateStatus(a.id, a.status === "ACTIVE" ? "INACTIVE" : "ACTIVE"), "Status atualizado.")} onDefault={a => void action(a, () => whatsappService.setDefault(a.id), "Conta padrão atualizada.")} onRestore={a => void action(a, () => whatsappService.restoreAccount(a.id), "Conta restaurada.")}/>
+    {credentialAccount && <AccessTokenModal account={credentialAccount} saving={credentialSaving} error={credentialError} onClose={closeCredential} onSubmit={submitCredential}/>}
+    {manualOpen && <ManualAccountModal open form={manualForm} organizations={organizations} saving={manualSaving} error={manualError} onChange={setManualForm} onClose={closeManual} onSubmit={submitManual}/>}
+    <Modal isOpen={Boolean(editing)} title="Editar conta" onClose={closeEdit}><form onSubmit={submit} className="space-y-4"><p className="text-sm text-slate-500">Edite somente informações operacionais. Identificadores e credenciais são administrados automaticamente pela integração.</p>{formError && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{formError}</p>}<label className="block text-sm font-semibold">Nome interno<Input autoFocus value={form.name} onChange={e => setForm(current => ({ ...current, name: e.target.value }))} required/></label><label className="block text-sm font-semibold">Número exibido<Input value={form.phoneNumber} onChange={e => setForm(current => ({ ...current, phoneNumber: e.target.value }))}/></label><label className="block text-sm font-semibold">Versão da API<Input value={form.apiVersion} onChange={e => setForm(current => ({ ...current, apiVersion: e.target.value }))}/></label><div className="flex justify-end gap-2"><Button variant="secondary" onClick={closeEdit}>Cancelar</Button><Button type="submit" loading={saving}>Salvar</Button></div></form></Modal>
+    <ArchiveModal account={archive} saving={Boolean(archive && busyId === archive.id)} onCancel={() => setArchive(null)} onConfirm={() => { if (!archive) return; const target = archive; void action(target, () => whatsappService.deleteAccount(target.id), "Conta arquivada.").then(() => setArchive(null)); }}/>
+    <SignupProgress open={connecting}/>
+  </>;
+}
+
+function SignupProgress({ open }: { open: boolean }) { const steps = ["Conectando com a Meta", "Autorização concluída", "Configurando sua conta", "Sincronizando número e templates", "Conta conectada com sucesso"]; return <Modal isOpen={open} title="Conectar WhatsApp Oficial" onClose={() => {}}><p className="text-sm text-slate-500">Você será direcionado ao ambiente seguro da Meta. Não será necessário copiar identificadores ou tokens.</p><ol className="mt-5 space-y-3">{steps.map((step, index) => <li key={step} className="flex items-center gap-3 text-sm"><span className={`grid h-7 w-7 place-items-center rounded-full font-bold ${index === 0 ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-500"}`}>{index + 1}</span>{step}</li>)}</ol></Modal>; }

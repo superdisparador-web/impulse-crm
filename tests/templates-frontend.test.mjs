@@ -7,7 +7,10 @@ test('templates menu, list page and service are wired', () => {
   const page = readFileSync('app/templates/page.tsx', 'utf8');
   const service = readFileSync('services/templates.service.ts', 'utf8');
   assert.match(sidebar, /title: "Templates"/);
-  assert.match(page, /Novo Template/);
+  assert.match(page, /Criar rascunho/);
+  assert.doesNotMatch(page, /items\[0\]\?\.lastSyncedAt/);
+  assert.match(page, /meta\.lastSyncedAt/);
+  assert.match(page, /t\.variables\.map/);
   assert.match(page, /templatesService\.getTemplates/);
   assert.match(service, /getTemplates/);
   assert.match(service, /archiveTemplate/);

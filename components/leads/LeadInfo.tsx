@@ -3,7 +3,7 @@ import { formatDateTime, translateStatus, translateTemperature } from "./lead360
 
 function InfoRow({ label, value, copyable = false }: { label: string; value?: string | null; copyable?: boolean }) {
   if (!value) return null;
-  return <div className="ds-radius-surface border ds-border p-3"><dt className="text-xs uppercase text-slate-500">{label}</dt><dd className="mt-1 text-sm text-slate-100">{copyable ? <button onClick={() => void navigator.clipboard?.writeText(value)} className="text-left text-blue-300 hover:text-blue-200">{value}</button> : value}</dd></div>;
+  return <div className="rounded-xl border border-slate-800 p-3"><dt className="text-xs uppercase text-slate-500">{label}</dt><dd className="mt-1 text-sm text-slate-100">{copyable ? <button onClick={() => void navigator.clipboard?.writeText(value)} className="text-left text-blue-300 hover:text-blue-200">{value}</button> : value}</dd></div>;
 }
 
 export function LeadInfo({ lead }: { lead: Lead }) {

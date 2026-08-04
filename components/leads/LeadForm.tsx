@@ -1,23 +1,333 @@
 "use client";
+
 import { useEffect, useRef, useState } from "react";
+
+import Button from "@/components/ui/Button";
+import Input from "@/components/ui/Input";
+import Modal from "@/components/ui/Modal";
+import Select from "@/components/ui/Select";
+
 import { leadService } from "@/services/lead.service";
-import { Lead, LeadFormData, LeadSource, LeadStatus, LeadTemperature } from "@/types/lead";
+
+import {
+  Lead,
+  LeadFormData,
+  LeadSource,
+  LeadStatus,
+  LeadTemperature,
+} from "@/types/lead";
 import { User } from "@/types/user";
-import { leadSourceLabels, leadStatusLabels, leadTemperatureLabels } from "./lead-labels";
 
-const sources = Object.keys(leadSourceLabels) as LeadSource[];
-const statuses = Object.keys(leadStatusLabels) as LeadStatus[];
-const temperatures = Object.keys(leadTemperatureLabels) as LeadTemperature[];
-type Props = { lead?: Lead | null; users: User[]; onSuccess: (lead: Lead) => void; onCancel: () => void };
-const onlyDigits = (value?: string | null) => value?.replace(/\D/g, "") || "";
+import {
+  leadSourceLabels,
+  leadStatusLabels,
+  leadTemperatureLabels,
+} from "./lead-labels";
 
-export default function LeadForm({ lead, users, onSuccess, onCancel }: Props) {
+const sources = Object.keys(
+  leadSourceLabels
+) as LeadSource[];
+
+const statuses = Object.keys(
+  leadStatusLabels
+) as LeadStatus[];
+
+const temperatures = Object.keys(
+  leadTemperatureLabels
+) as LeadTemperature[];
+
+type Props = {
+  lead?: Lead | null;
+  users: User[];
+  onSuccess: (lead: Lead) => void;
+  onCancel: () => void;
+};
+
+const onlyDigits = (value?: string | null) =>
+  value?.replace(/\D/g, "") || "";
+
+const inputClasses =
+  "w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-blue-600 focus:ring-4 focus:ring-blue-100";
+
+export default function LeadForm({
+  lead,
+  users,
+  onSuccess,
+  onCancel,
+}: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
   const nameRef = useRef<HTMLInputElement>(null);
-  const [form, setForm] = useState<LeadFormData>({ name: lead?.name ?? "", phone: lead?.phone ?? "", email: lead?.email ?? "", document: lead?.document ?? "", source: lead?.source ?? "MANUAL", status: lead?.status ?? "NEW", temperature: lead?.temperature ?? "UNKNOWN", assignedUserId: lead?.assignedUserId ?? "", managerUserId: lead?.managerUserId ?? "", notes: lead?.notes ?? "" });
-  useEffect(() => { nameRef.current?.focus(); const onKey = (event: KeyboardEvent) => { if (event.key === "Escape" && !loading) onCancel(); }; window.addEventListener("keydown", onKey); return () => window.removeEventListener("keydown", onKey); }, [loading, onCancel]);
-  function update(field: keyof LeadFormData, value: string) { setForm((current) => ({ ...current, [field]: value })); }
-  async function submit(event: React.FormEvent<HTMLFormElement>) { event.preventDefault(); if (loading) return; const email = form.email?.trim() ?? ""; if (!form.name?.trim() && !form.phone?.trim() && !email) { setError("Informe pelo menos nome, telefone ou e-mail."); return; } if (email && !/^\S+@\S+\.\S+$/.test(email)) { setError("Informe um e-mail válido."); return; } setLoading(true); setError(""); const payload: LeadFormData = { ...form, name: form.name?.trim() || null, phone: onlyDigits(form.phone) || null, email: email || null, document: onlyDigits(form.document) || null, assignedUserId: form.assignedUserId || null, managerUserId: form.managerUserId || null, notes: form.notes?.trim() || null }; try { const saved = lead?.id ? await leadService.update(lead.id, payload) : await leadService.create(payload); onSuccess(saved); } catch (err) { setError(err instanceof Error ? err.message : "Erro ao salvar lead."); } finally { setLoading(false); } }
-  return <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" role="dialog" aria-modal="true" aria-labelledby="lead-form-title"><button aria-label="Fechar formulário" className="absolute inset-0" disabled={loading} onClick={onCancel} /><form onSubmit={submit} className="relative max-h-[90vh] w-full max-w-3xl space-y-4 overflow-y-auto ds-radius-surface ds-surface p-6"><div><h2 id="lead-form-title" className="text-2xl font-bold">{lead ? "Editar lead" : "Novo Lead"}</h2><p className="text-sm text-slate-400">Informe pelo menos nome, telefone ou e-mail.</p></div>{error && <div className="ds-radius-control border border-red-800 bg-red-950/50 p-3 text-sm text-red-200">{error}</div>}<div className="grid gap-4 md:grid-cols-2"><label className="space-y-1 text-sm">Nome<input ref={nameRef} className="w-full ds-radius-control ds-surface-raised p-3" value={form.name ?? ""} onChange={(e) => update("name", e.target.value)} /></label><label className="space-y-1 text-sm">Telefone<input className="w-full ds-radius-control ds-surface-raised p-3" value={form.phone ?? ""} onChange={(e) => update("phone", e.target.value)} /></label><label className="space-y-1 text-sm">E-mail<input className="w-full ds-radius-control ds-surface-raised p-3" type="email" value={form.email ?? ""} onChange={(e) => update("email", e.target.value)} /></label><label className="space-y-1 text-sm">CPF/documento<input className="w-full ds-radius-control ds-surface-raised p-3" value={form.document ?? ""} onChange={(e) => update("document", e.target.value)} /></label><label className="space-y-1 text-sm">Origem<select className="w-full ds-radius-control ds-surface-raised p-3" value={form.source} onChange={(e) => update("source", e.target.value)}>{sources.map((item) => <option key={item} value={item}>{leadSourceLabels[item]}</option>)}</select></label><label className="space-y-1 text-sm">Status<select className="w-full ds-radius-control ds-surface-raised p-3" value={form.status} onChange={(e) => update("status", e.target.value)}>{statuses.map((item) => <option key={item} value={item}>{leadStatusLabels[item]}</option>)}</select></label><label className="space-y-1 text-sm">Temperatura<select className="w-full ds-radius-control ds-surface-raised p-3" value={form.temperature} onChange={(e) => update("temperature", e.target.value)}>{temperatures.map((item) => <option key={item} value={item}>{leadTemperatureLabels[item]}</option>)}</select></label><label className="space-y-1 text-sm">Corretor responsável<select className="w-full ds-radius-control ds-surface-raised p-3" value={form.assignedUserId ?? ""} onChange={(e) => update("assignedUserId", e.target.value)}><option value="">Sem corretor</option>{users.map((user) => <option key={user.id} value={user.id}>{user.name}</option>)}</select></label></div><label className="block space-y-1 text-sm">Observação inicial<textarea className="w-full ds-radius-control ds-surface-raised p-3" rows={4} value={form.notes ?? ""} onChange={(e) => update("notes", e.target.value)} /></label><div className="flex justify-end gap-3"><button type="button" disabled={loading} onClick={onCancel} className="ds-radius-control ds-surface-raised px-5 py-3 disabled:opacity-60">Cancelar</button><button disabled={loading} className="ds-radius-control ds-primary px-5 py-3 disabled:opacity-60">{loading ? "Salvando..." : "Salvar"}</button></div></form></div>;
+
+  const [form, setForm] = useState<LeadFormData>({
+    name: lead?.name ?? "",
+    phone: lead?.phone ?? "",
+    email: lead?.email ?? "",
+    document: lead?.document ?? "",
+    source: lead?.source ?? "MANUAL",
+    status: lead?.status ?? "NEW",
+    temperature: lead?.temperature ?? "UNKNOWN",
+    assignedUserId: lead?.assignedUserId ?? "",
+    managerUserId: lead?.managerUserId ?? "",
+    notes: lead?.notes ?? "",
+  });
+
+  useEffect(() => {
+    nameRef.current?.focus();
+  }, []);
+
+  function update(
+    field: keyof LeadFormData,
+    value: string
+  ) {
+    setForm((current) => ({
+      ...current,
+      [field]: value,
+    }));
+  }
+
+  async function submit(
+    event: React.FormEvent<HTMLFormElement>
+  ) {
+    event.preventDefault();
+
+    if (loading) {
+      return;
+    }
+
+    const email = form.email?.trim() ?? "";
+
+    if (
+      !form.name?.trim() &&
+      !form.phone?.trim() &&
+      !email
+    ) {
+      setError(
+        "Informe pelo menos nome, telefone ou e-mail."
+      );
+      return;
+    }
+
+    if (
+      email &&
+      !/^\S+@\S+\.\S+$/.test(email)
+    ) {
+      setError("Informe um e-mail válido.");
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+
+    const payload: LeadFormData = {
+      ...form,
+      name: form.name?.trim() || null,
+      phone: onlyDigits(form.phone) || null,
+      email: email || null,
+      document: onlyDigits(form.document) || null,
+      assignedUserId:
+        form.assignedUserId || null,
+      managerUserId:
+        form.managerUserId || null,
+      notes: form.notes?.trim() || null,
+    };
+
+    try {
+      const saved = lead?.id
+        ? await leadService.update(
+            lead.id,
+            payload
+          )
+        : await leadService.create(payload);
+
+      onSuccess(saved);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Erro ao salvar lead."
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <Modal
+      isOpen
+      title={
+        lead ? "Editar Lead" : "Novo Lead"
+      }
+      onClose={() => {
+        if (!loading) {
+          onCancel();
+        }
+      }}
+      width="lg"
+    >
+      <form
+        onSubmit={submit}
+        className="space-y-6"
+      >
+        <div>
+          <p className="text-sm text-slate-500">
+            Informe pelo menos nome, telefone ou
+            e-mail para cadastrar o lead.
+          </p>
+        </div>
+
+        {error && (
+          <div
+            role="alert"
+            className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700"
+          >
+            {error}
+          </div>
+        )}
+
+        <div className="grid gap-5 md:grid-cols-2">
+          <Input
+            ref={nameRef}
+            label="Nome"
+            placeholder="Nome completo"
+            value={form.name ?? ""}
+            onChange={(event) =>
+              update("name", event.target.value)
+            }
+          />
+
+          <Input
+            label="Telefone"
+            placeholder="(11) 99999-9999"
+            value={form.phone ?? ""}
+            onChange={(event) =>
+              update("phone", event.target.value)
+            }
+          />
+
+          <Input
+            label="E-mail"
+            type="email"
+            placeholder="cliente@email.com"
+            value={form.email ?? ""}
+            onChange={(event) =>
+              update("email", event.target.value)
+            }
+          />
+
+          <Input
+            label="CPF ou documento"
+            placeholder="000.000.000-00"
+            value={form.document ?? ""}
+            onChange={(event) =>
+              update(
+                "document",
+                event.target.value
+              )
+            }
+          />
+
+          <Select
+            label="Origem"
+            value={form.source}
+            onChange={(event) =>
+              update("source", event.target.value)
+            }
+            options={sources.map((item) => ({
+              value: item,
+              label: leadSourceLabels[item],
+            }))}
+          />
+
+          <Select
+            label="Status"
+            value={form.status}
+            onChange={(event) =>
+              update("status", event.target.value)
+            }
+            options={statuses.map((item) => ({
+              value: item,
+              label: leadStatusLabels[item],
+            }))}
+          />
+
+          <Select
+            label="Temperatura"
+            value={form.temperature}
+            onChange={(event) =>
+              update(
+                "temperature",
+                event.target.value
+              )
+            }
+            options={temperatures.map((item) => ({
+              value: item,
+              label:
+                leadTemperatureLabels[item],
+            }))}
+          />
+
+          <Select
+            label="Corretor responsável"
+            value={form.assignedUserId ?? ""}
+            onChange={(event) =>
+              update(
+                "assignedUserId",
+                event.target.value
+              )
+            }
+            options={[
+              {
+                value: "",
+                label: "Sem corretor",
+              },
+              ...users.map((user) => ({
+                value: user.id,
+                label: user.name,
+              })),
+            ]}
+          />
+        </div>
+
+        <div>
+          <label className="mb-2 block text-sm font-medium text-slate-700">
+            Observação inicial
+          </label>
+
+          <textarea
+            className={inputClasses}
+            rows={4}
+            placeholder="Digite alguma informação importante sobre este lead..."
+            value={form.notes ?? ""}
+            onChange={(event) =>
+              update("notes", event.target.value)
+            }
+          />
+        </div>
+
+        <div className="flex justify-end gap-3 border-t border-slate-200 pt-5">
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={loading}
+            onClick={onCancel}
+          >
+            Cancelar
+          </Button>
+
+          <Button
+            type="submit"
+            disabled={loading}
+          >
+            {loading
+              ? "Salvando..."
+              : lead
+                ? "Salvar alterações"
+                : "Criar Lead"}
+          </Button>
+        </div>
+      </form>
+    </Modal>
+  );
 }

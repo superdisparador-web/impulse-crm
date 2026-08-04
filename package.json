@@ -2,8 +2,13 @@
   "name": "frontend",
   "version": "0.1.0",
   "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
+    "predev": "node scripts/prepare-build-information.mjs",
     "dev": "next dev",
+    "prebuild": "node scripts/prepare-build-information.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
@@ -17,7 +22,8 @@
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-hook-form": "^7.82.0",
-    "zod": "^4.4.3"
+    "zod": "^4.4.3",
+    "@dnd-kit/core": "file:packages/dnd-kit-core"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

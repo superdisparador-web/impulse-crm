@@ -1,47 +1,88 @@
 "use client";
 
-import { Bell, Menu, Search } from "lucide-react";
+import {
+  Bell,
+  ChevronDown,
+  LogOut,
+  Search,
+  UserCircle2,
+} from "lucide-react";
+import { useRouter } from "next/navigation";
+import { getCurrentUser, logout } from "@/services/auth";
 
-export default function Header({ onOpenMenu, mobileMenuOpen }: { onOpenMenu: () => void; mobileMenuOpen: boolean }) {
+export default function Header() {
+  const router = useRouter();
+  const user = getCurrentUser();
+
+  async function handleLogout() {
+    try {
+      await logout();
+    } finally {
+      router.replace("/login");
+    }
+  }
+
   return (
-    <header className="sticky top-0 z-20 flex h-16 shrink-0 items-center justify-between gap-3 border-b ds-border ds-canvas px-4 backdrop-blur-xl sm:px-6">
-      <button type="button" onClick={onOpenMenu} aria-label="Abrir menu lateral" aria-controls="primary-sidebar" aria-expanded={mobileMenuOpen} className="ui-focus ds-radius-control p-2 text-slate-300 transition-colors ds-secondary-hover hover:text-white lg:hidden">
-        <Menu size={22} aria-hidden="true" />
-      </button>
-      <label className="relative hidden w-96 max-w-full sm:block">
-        <span className="sr-only">Pesquisar no CRM</span>
+    <header className="z-20 flex min-h-[68px] shrink-0 items-center justify-between gap-4 border-b border-slate-200/80 bg-white/90 px-4 shadow-[0_1px_12px_rgba(15,23,42,0.035)] backdrop-blur-xl sm:px-6 xl:px-8">
+      <div className="relative hidden w-full max-w-md md:block">
         <Search
-          className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+          className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
           size={18}
         />
 
         <input
-          type="text"
-          placeholder="Pesquisar..."
-          aria-label="Pesquisar no CRM"
-          className="ui-control w-full py-2 pl-10 pr-12 text-sm placeholder:text-slate-500"
+          type="search"
+          aria-label="Pesquisar no Impulse CRM"
+          placeholder="Pesquisar leads, campanhas e usuários..."
+          className="h-10 w-full rounded-xl border border-slate-200/90 bg-slate-100/70 pl-10 pr-4 text-sm text-slate-900 outline-none transition-all placeholder:text-slate-400 hover:border-slate-300 hover:bg-slate-50 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100/80"
         />
-        <kbd className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 rounded border ds-border ds-surface-raised px-1.5 py-0.5 text-[10px] text-slate-500 xl:block">⌘ K</kbd>
-      </label>
+      </div>
 
-      <div className="flex items-center gap-2 sm:gap-3">
-        <button type="button" className="ui-focus relative grid h-9 w-9 place-items-center ds-radius-control text-slate-400 transition-colors ds-secondary-hover hover:text-slate-100" aria-label="Notificações">
-          <Bell className="text-slate-300" size={22} />
-          <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-sky-400 ring-2 ring-slate-950"></span>
+      <div className="ml-auto flex items-center gap-2">
+        <button
+          type="button"
+          aria-label="Abrir notificações"
+          className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-transparent text-slate-500 transition hover:border-slate-200 hover:bg-slate-50 hover:text-slate-900 focus:outline-none focus:ring-4 focus:ring-blue-100"
+        >
+          <Bell size={20} />
+
+          <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-red-500 ring-2 ring-white" />
         </button>
 
-        <div className="hidden items-center gap-2.5 border-l ds-border pl-3 md:flex">
-          <span className="grid h-8 w-8 place-items-center rounded-full border ds-border bg-gradient-to-br from-slate-700 to-blue-950 text-[10px] font-bold text-slate-100 shadow-sm">RL</span>
-          <div className="leading-tight">
-            <p className="text-sm font-semibold text-slate-100">
-              Rodrigo Lopes
+        <button
+          type="button"
+          aria-label="Abrir menu do usuário"
+          className="flex items-center gap-3 rounded-xl border border-transparent px-2 py-1.5 text-left transition hover:border-slate-200 hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-blue-100"
+        >
+          <UserCircle2
+            className="shrink-0 text-slate-700"
+            size={34}
+          />
+
+          <div className="hidden min-w-0 sm:block">
+            <p className="truncate text-sm font-semibold text-slate-900">
+              {user?.name ?? "Usuário"}
             </p>
 
-            <p className="mt-0.5 text-xs text-slate-500">
-              Superintendência
+            <p className="truncate text-xs text-slate-500">
+              {user?.email ?? ""}
             </p>
           </div>
-        </div>
+
+          <ChevronDown
+            className="hidden shrink-0 text-slate-400 sm:block"
+            size={16}
+          />
+        </button>
+        <button
+          type="button"
+          onClick={handleLogout}
+          aria-label="Sair"
+          title="Sair"
+          className="flex h-10 w-10 items-center justify-center rounded-xl text-slate-500 transition hover:bg-red-50 hover:text-red-600 focus:outline-none focus:ring-4 focus:ring-red-100"
+        >
+          <LogOut size={19} />
+        </button>
       </div>
     </header>
   );

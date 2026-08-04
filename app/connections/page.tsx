@@ -1,2 +1,6 @@
 import { redirect } from "next/navigation";
-export default function ConnectionsPage(){ redirect("/whatsapp"); }
+
+/** Legacy entry point kept so bookmarks and external links remain valid. */
+export default function ConnectionsPage() {
+  redirect("/whatsapp");
+}

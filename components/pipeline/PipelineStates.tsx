@@ -1,7 +1,16 @@
+import { AlertCircle, Columns3 } from "lucide-react";
+import Card from "@/components/ui/Card";
+import EmptyState from "@/components/ui/EmptyState";
+
 export function PipelineEmptyState({ title, description }: { title: string; description: string }) {
-  return <div className="ds-radius-surface border border-dashed ds-border ds-surface p-8 text-center"><h2 className="text-lg font-semibold text-white">{title}</h2><p className="mt-2 text-sm text-slate-400">{description}</p></div>;
+  return <EmptyState title={title} description={description} icon={<Columns3 size={22} />} />;
 }
 
 export function PipelineErrorState({ message }: { message: string }) {
-  return <div role="alert" className="ds-radius-surface border border-red-800 bg-red-950/40 p-4 text-sm text-red-100">{message}</div>;
+  return (
+    <Card role="alert" padding="sm" className="flex items-start gap-3 border-red-200 bg-red-50 text-sm text-red-700 hover:border-red-200">
+      <AlertCircle className="mt-0.5 shrink-0" size={18} />
+      <div><strong className="block text-red-900">Não foi possível concluir a operação</strong><span>{message}</span></div>
+    </Card>
+  );
 }

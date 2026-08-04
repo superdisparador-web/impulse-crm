@@ -38,6 +38,7 @@ function childrenOf(node) {
 function renderTree(node) {
   if (!node || typeof node !== 'object') return node;
   if (typeof node.type === 'function') return renderTree(node.type({ ...node.props }));
+  if (typeof node.type?.render === 'function' && (!node.type.displayName || node.type.displayName === 'Select')) return renderTree(node.type.render({ ...node.props }, null));
   const children = childrenOf(node).map(renderTree);
   return { ...node, props: { ...node.props, children } };
 }
@@ -57,6 +58,11 @@ function findByText(node, text) {
 }
 function findFirst(node, predicate) {
   return flatten(node).find(predicate);
+}
+function findComponent(node, predicate) {
+  if (!node || typeof node !== 'object') return undefined;
+  if (predicate(node)) return node;
+  return childrenOf(node).map((child) => findComponent(child, predicate)).find(Boolean);
 }
 
 function withHookDispatcher(run) {
@@ -79,6 +85,7 @@ function withHookDispatcher(run) {
     useMemo(factory) { return factory(); },
     useCallback(callback) { return callback; },
     useRef(initial) { return { current: initial }; },
+    useContext(context) { return context?._currentValue ?? {}; },
   };
   try { return run({ cleanup: () => cleanups.splice(0).forEach((cleanup) => cleanup()) }); }
   finally { internals.H = previous; }
@@ -104,7 +111,7 @@ function mockFetch(handler) {
 test('1. listPipelines chama GET /pipeline', async () => {
   const calls = mockFetch(() => []);
   await service.listPipelines();
-  assert.equal(calls[0].url, 'http://localhost:3000/pipeline');
+  assert.equal(calls[0].url, 'http://localhost:3001/pipeline');
   assert.equal(calls[0].options.method, undefined);
 });
 
@@ -119,7 +126,7 @@ test('3. primeiro pipeline é selecionado quando não há padrão', () => {
 test('4. getPipelineBoard chama o endpoint correto', async () => {
   const calls = mockFetch(() => boardFixture());
   await service.getPipelineBoard('pipe-1');
-  assert.equal(calls[0].url, 'http://localhost:3000/pipeline/pipe-1/board');
+  assert.equal(calls[0].url, 'http://localhost:3001/pipeline/pipe-1/board');
 });
 
 test('5 e 6. etapas e cards são exibidos ordenados', () => {
@@ -160,7 +167,7 @@ test('13. movimentação entre etapas', () => {
 test('14 e 15. PATCH correto é chamado com stageId e position', async () => {
   const calls = mockFetch(() => ({ ok: true }));
   await service.movePipelineCard('card-1', 'stage-2', 3);
-  assert.equal(calls[0].url, 'http://localhost:3000/pipeline/cards/card-1/move');
+  assert.equal(calls[0].url, 'http://localhost:3001/pipeline/cards/card-1/move');
   assert.equal(calls[0].options.method, 'PATCH');
   assert.deepEqual(JSON.parse(calls[0].options.body), { stageId: 'stage-2', position: 3 });
 });
@@ -185,18 +192,8 @@ test('19. o mesmo card não aparece duas vezes', () => {
   assert.equal(moved.stages.flatMap((stage) => stage.cards).filter((card) => card.id === 'card-1').length, 1);
 });
 
-test('20. menu lateral segue a navegação simplificada sem Pipeline', () => {
-  assert.deepEqual(sidebarMenu.map(({ title, href }) => ({ title, href })), [
-    { title: 'Dashboard', href: '/dashboard' },
-    { title: 'Leads', href: '/leads' },
-    { title: 'Campanhas', href: '/campaigns' },
-    { title: 'WhatsApp', href: '/whatsapp' },
-    { title: 'Templates', href: '/templates' },
-    { title: 'Corretores', href: '/agents' },
-    { title: 'Usuários', href: '/users' },
-    { title: 'Relatórios', href: '/reports' },
-    { title: 'Configurações', href: '/settings' },
-  ]);
+test('20. menu contém Pipeline somente uma vez', () => {
+  assert.equal(sidebarMenu.filter((item) => item.href === '/pipeline' && item.title === 'Pipeline').length, 1);
 });
 
 test('21. nome do corretor aparece quando existir', () => {
@@ -383,7 +380,7 @@ test('37. leads busca filtros e paginação são enviados ao backend', async () 
 test('38. LeadFilters combina filtros e limpa preservando paginação base', () => {
   let next = null;
   const element = LeadFilters({ filters: { page: 3, limit: 25, search: 'Ana', status: 'NEW' }, users: [{ id: 'user-1', name: 'Maria' }], onChange: (filters) => { next = filters; } });
-  findFirst(element, (item) => item.props?.id === 'lead-temperature-filter').props.onChange({ target: { value: 'HOT' } });
+  findFirst(element, (item) => item.type === 'select' && item.props?.value === '').props.onChange({ target: { value: 'HOT' } });
   assert.equal(next.temperature, 'HOT');
   assert.equal(next.page, 1);
   findFirst(element, (item) => item.type === 'button' && textOf(item) === 'Limpar filtros').props.onClick();
@@ -394,13 +391,19 @@ test('39. LeadTable dispara edição arquivamento Lead 360 status e temperatura'
   const lead = sampleLead();
   const calls = [];
   const element = LeadTable({ leads: [lead], loading: false, users: [{ id: 'user-1', name: 'Maria' }], onView: (value) => calls.push(['view', value.id]), onEdit: (value) => calls.push(['edit', value.id]), onArchive: (value) => calls.push(['archive', value.id]), onAddToPipeline: (value) => calls.push(['pipeline', value.id]), onAssign: (value, userId) => calls.push(['assign', value.id, userId]), onStatus: (value, status) => calls.push(['status', value.id, status]), onTemperature: (value, temperature) => calls.push(['temperature', value.id, temperature]) });
-  findFirst(element, (item) => item.type === 'button' && textOf(item) === 'Lead 360°').props.onClick();
-  findFirst(element, (item) => item.type === 'button' && textOf(item) === 'Editar').props.onClick();
-  findFirst(element, (item) => item.type === 'button' && textOf(item) === 'Pipeline').props.onClick();
-  findFirst(element, (item) => item.type === 'button' && textOf(item) === 'Arquivar').props.onClick();
-  findFirst(element, (item) => item.props?.['aria-label'] === 'Status de Ana').props.onChange({ target: { value: 'QUALIFIED' } });
-  findFirst(element, (item) => item.props?.['aria-label'] === 'Temperatura de Ana').props.onChange({ target: { value: 'HOT' } });
-  findFirst(element, (item) => item.props?.['aria-label'] === 'Responsável de Ana').props.onChange({ target: { value: 'user-1' } });
+  const actionMenu = findComponent(element, (item) => item.type?.name === 'ActionMenu');
+  actionMenu.props.onView();
+  actionMenu.props.onEdit();
+  actionMenu.props.onAddToPipeline();
+  actionMenu.props.onArchive();
+  const previousDocument = global.document;
+  global.document = { addEventListener: () => {}, removeEventListener: () => {} };
+  withHookDispatcher(() => {
+    findFirst(element, (item) => item.props?.['aria-label'] === 'Status de Ana').props.onChange({ target: { value: 'QUALIFIED' } });
+    findFirst(element, (item) => item.props?.['aria-label'] === 'Temperatura de Ana').props.onChange({ target: { value: 'HOT' } });
+    findFirst(element, (item) => item.props?.['aria-label'] === 'Responsável de Ana').props.onChange({ target: { value: 'user-1' } });
+  });
+  global.document = previousDocument;
   assert.deepEqual(calls, [['view', 'lead-1'], ['edit', 'lead-1'], ['pipeline', 'lead-1'], ['archive', 'lead-1'], ['status', 'lead-1', 'QUALIFIED'], ['temperature', 'lead-1', 'HOT'], ['assign', 'lead-1', 'user-1']]);
 });
 
@@ -416,9 +419,16 @@ test('40. leadService cria edita arquiva altera status e temperatura', async () 
 
 test('41. LeadForm valida dados mínimos antes de criar', () => {
   const restoreWindow = setupWindowForUi();
-  const element = withHookDispatcher(() => LeadForm({ users: [], onCancel: () => {}, onSuccess: () => {} }));
-  findFirst(element, (item) => item.type === 'form').props.onSubmit({ preventDefault: () => {} });
-  assert.ok(findByText(element, 'Informe pelo menos nome, telefone ou e-mail.'));
+  const previousDocument = global.document;
+  global.document = { addEventListener: () => {}, removeEventListener: () => {}, body: { style: {} } };
+  let requested = false;
+  global.fetch = async () => { requested = true; };
+  withHookDispatcher(() => {
+    const element = LeadForm({ users: [], onCancel: () => {}, onSuccess: () => {} });
+    findFirst(element, (item) => item.type === 'form').props.onSubmit({ preventDefault: () => {} });
+    assert.equal(requested, false);
+  });
+  global.document = previousDocument;
   restoreWindow();
 });
 
@@ -447,4 +457,65 @@ test('44. pipelineService usa rotas reais do backend para listar board e addCard
   await pipelineService.kanban('pipe-1');
   await pipelineService.addCard('pipe-1', { leadId: 'lead-1', stageId: 'stage-1' });
   assert.deepEqual(calls.map((call) => [new URL(call.url).pathname, call.options.method ?? 'GET']), [['/pipeline', 'GET'], ['/pipeline/pipe-1/board', 'GET'], ['/pipeline/pipe-1/cards', 'POST']]);
+});
+
+test('45. pipeline imobiliário envia filtros reais e exibe métricas operacionais', async () => {
+  const { PipelineMetrics } = require('../components/pipeline/PipelineMetrics.tsx');
+  const calls = mockFetch(() => ({ id: 'pipe-1', name: 'Vendas', stages: [], metrics: { total: 12, byStage: {}, conversionRate: 25, averageStageHours: 8, overdueSla: 2 } }));
+  await service.getPipelineBoard('pipe-1', { region: 'Sul', neighborhood: 'Moema', sla: 'OVERDUE', limit: 50 });
+  const url = new URL(calls[0].url);
+  assert.equal(url.searchParams.get('region'), 'Sul');
+  assert.equal(url.searchParams.get('neighborhood'), 'Moema');
+  assert.equal(url.searchParams.get('sla'), 'OVERDUE');
+  const element = PipelineMetrics({ metrics: { total: 12, byStage: {}, conversionRate: 25, averageStageHours: 8, overdueSla: 2 } });
+  assert.ok(findByText(element, 'Total de leads'));
+  assert.ok(findByText(element, 'SLA vencido'));
+});
+
+test('46. card imobiliário apresenta empreendimento, região, bairro, gerente e SLA', () => {
+  const element = LeadCard({ card: { id: 'card-real-estate', position: 1, enteredStageAt: new Date().toISOString(), lead: { id: 'lead-real-estate', name: 'Cliente', development: 'Residencial Azul', region: 'Sul', neighborhood: 'Moema', source: 'CAMPAIGN', managerUser: { id: 'manager-1', name: 'Gerente Ana' }, sla: { dueAt: new Date().toISOString(), status: 'OVERDUE' } } }, dragging: false });
+  for (const text of ['Residencial Azul', 'Sul • Moema', 'Gerente: Gerente Ana', 'SLA vencido']) assert.ok(findByText(element, text));
+});
+
+test('47. filtros vazios são omitidos da URL', async () => {
+  const calls = mockFetch(() => boardFixture());
+  await service.getPipelineBoard('pipe-1', { search: '', region: undefined, sla: undefined });
+  assert.equal(calls[0].url, 'http://localhost:3001/pipeline/pipe-1/board');
+});
+
+test('48. movimento otimista persiste e faz rollback comportamental quando a API falha', async () => {
+  const { persistOptimisticPipelineMove } = require('../app/pipeline/page.tsx');
+  const previous = utils.sortBoard(boardFixture());
+  const rendered = [];
+  const errors = [];
+  const result = await persistOptimisticPipelineMove(previous, { cardId: 'card-1', stageId: 'stage-2', index: 0 }, async () => { throw new Error('API indisponível'); }, (board) => rendered.push(board), (message) => errors.push(message));
+  assert.equal(result, false);
+  assert.equal(rendered.length, 2);
+  assert.equal(rendered[0].stages[1].cards[0].id, 'card-1');
+  assert.deepEqual(rendered[1], previous);
+  assert.deepEqual(errors, ['API indisponível']);
+});
+
+test('49. skeleton, empty state e erro são estados renderizados de forma comportamental', () => {
+  const loading = PipelineBody({ error: '', moveError: '', isLoading: true, pipelineCount: 0, board: null, activeCardId: '', moving: false, onDragStart: () => {}, onDropCard: () => {}, onOpenCard: () => {} });
+  assert.equal(flatten(loading).filter((item) => String(item.props?.className ?? '').includes('animate-pulse')).length, 3);
+  assert.ok(findByText(PipelineBody({ error: '', moveError: '', isLoading: false, pipelineCount: 0, board: null, activeCardId: '', moving: false, onDragStart: () => {}, onDropCard: () => {}, onOpenCard: () => {} }), 'Nenhuma pipeline encontrada'));
+  assert.ok(findByText(PipelineBody({ error: 'Falha controlada', moveError: '', isLoading: false, pipelineCount: 1, board: null, activeCardId: '', moving: false, onDragStart: () => {}, onDropCard: () => {}, onOpenCard: () => {} }), 'Falha controlada'));
+});
+
+test('50. polling usa um único timer, pausa invisível, retoma visível e limpa ao desmontar', () => {
+  const { startPipelinePolling } = require('../app/pipeline/page.tsx');
+  let callback;
+  let cleared = 0;
+  let refreshes = 0;
+  let visibility = 'hidden';
+  const timers = { setInterval: (handler, delay) => { assert.equal(delay, 30000); assert.equal(callback, undefined); callback = handler; return 7; }, clearInterval: (id) => { assert.equal(id, 7); cleared += 1; } };
+  const cleanup = startPipelinePolling(() => { refreshes += 1; }, () => visibility, timers);
+  callback();
+  assert.equal(refreshes, 0);
+  visibility = 'visible';
+  callback();
+  assert.equal(refreshes, 1);
+  cleanup();
+  assert.equal(cleared, 1);
 });

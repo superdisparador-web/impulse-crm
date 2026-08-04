@@ -1,138 +1,177 @@
 "use client";
 
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
 import {
-  BarChart3,
-  ChevronLeft,
+  Building2,
   FileText,
+  KanbanSquare,
   LayoutDashboard,
+  ChartNoAxesCombined,
   Megaphone,
   MessageCircle,
+  Send,
   Settings,
   UserRoundCog,
+  UsersRound,
   Users,
-  X,
 } from "lucide-react";
-const styles = {
-  sidebar: "impulse-sidebar",
-  collapsed: "impulse-collapsed",
-  brandRow: "impulse-brandRow",
-  brand: "impulse-brand",
-  brandMark: "impulse-brandMark",
-  brandCopy: "impulse-brandCopy",
-  userCopy: "impulse-userCopy",
-  navigation: "impulse-navigation",
-  navItem: "impulse-navItem",
-  navIcon: "impulse-navIcon",
-  active: "impulse-active",
-  activeRail: "impulse-activeRail",
-  footer: "impulse-footer",
-  userCard: "impulse-userCard",
-  avatar: "impulse-avatar",
-  collapseButton: "impulse-collapseButton",
-  navLabel: "impulse-navLabel",
-  mobileClose: "impulse-mobileClose",
-  backdrop: "impulse-backdrop",
-  backdropVisible: "impulse-backdropVisible",
-  mobileOpen: "impulse-mobileOpen"
-};
+import { getCurrentUser } from "@/services/auth";
+import type { BuildInformation } from "@/lib/build-information";
+
+const Image = dynamic(() => import("next/image"));
 
 export const sidebarMenu = [
-  { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { title: "Leads", href: "/leads", icon: Users },
-  { title: "Campanhas", href: "/campaigns", icon: Megaphone },
-  { title: "WhatsApp", href: "/whatsapp", icon: MessageCircle },
-  { title: "Templates", href: "/templates", icon: FileText },
-  { title: "Corretores", href: "/agents", icon: UserRoundCog },
-  { title: "Usuários", href: "/users", icon: Users },
-  { title: "Relatórios", href: "/reports", icon: BarChart3 },
-  { title: "Configurações", href: "/settings", icon: Settings },
+  {
+    title: "Dashboard",
+    href: "/dashboard",
+    icon: LayoutDashboard,
+  },
+  {
+    title: "Leads",
+    href: "/leads",
+    icon: Users,
+  },
+  {
+    title: "Leads recebidos",
+    href: "/leads/received",
+    icon: Send,
+  },
+  {
+    title: "Analytics",
+    href: "/analytics",
+    icon: ChartNoAxesCombined,
+  },
+  {
+    title: "Relatórios",
+    href: "/reports",
+    icon: FileText,
+  },
+  {
+    title: "Pipeline",
+    href: "/pipeline",
+    icon: KanbanSquare,
+  },
+  {
+    title: "Corretores",
+    href: "/corretores",
+    icon: UserRoundCog,
+  },
+  {
+    title: "Usuários",
+    href: "/users",
+    icon: UsersRound,
+    administrative: true,
+  },
+  {
+    title: "WhatsApp",
+    href: "/whatsapp",
+    icon: MessageCircle,
+  },
+  {
+    title: "Templates",
+    href: "/templates",
+    icon: FileText,
+  },
+  {
+    title: "Campanhas",
+    href: "/campaigns",
+    icon: Megaphone,
+  },
+  {
+    title: "Disparos",
+    href: "/messaging",
+    icon: Send,
+  },
+  {
+    title: "Organizações",
+    href: "/organizations",
+    icon: Building2,
+  },
+  {
+    title: "Configurações",
+    href: "/settings",
+    icon: Settings,
+  },
 ];
 
-interface SidebarProps {
-  collapsed: boolean;
-  mobileOpen: boolean;
-  onCollapse: () => void;
-  onCloseMobile: () => void;
+function isRouteActive(pathname: string, href: string) {
+  if (href === "/dashboard") {
+    return pathname === href;
+  }
+
+  return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export default function Sidebar({ collapsed, mobileOpen, onCollapse, onCloseMobile }: SidebarProps) {
+export default function Sidebar({build}:{build:BuildInformation}) {
   const pathname = usePathname();
+  const user = getCurrentUser();
 
   return (
-    <>
-      <button
-        type="button"
-        aria-label="Fechar menu lateral"
-        className={`${styles.backdrop} ${mobileOpen ? styles.backdropVisible : ""}`}
-        onClick={onCloseMobile}
-      />
-      <aside
-        id="primary-sidebar"
-        aria-label="Navegação principal"
-        className={`${styles.sidebar} ${collapsed ? styles.collapsed : ""} ${mobileOpen ? styles.mobileOpen : ""}`}
-      >
-        <div className={styles.brandRow}>
-          <Link
-            href="/dashboard"
-            className={styles.brand}
-            aria-label="Impulse CRM — ir para o Dashboard"
-            onClick={onCloseMobile}
-          >
-            <span className={styles.brandMark} aria-hidden="true">🚀</span>
-            <span className={styles.brandCopy}>
-              <strong>Impulse CRM</strong>
-              <small>Inteligência comercial</small>
-            </span>
-          </Link>
-          <button type="button" className={styles.mobileClose} onClick={onCloseMobile} aria-label="Fechar menu">
-            <X aria-hidden="true" />
-          </button>
-        </div>
+    <aside className="relative flex h-dvh w-20 shrink-0 flex-col overflow-hidden border-r border-white/10 bg-[linear-gradient(180deg,#071225_0%,#0a1730_52%,#07111f_100%)] shadow-[8px_0_32px_-20px_rgba(2,6,23,0.55)] transition-[width] duration-300 lg:w-64">
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-64 bg-[radial-gradient(circle_at_top,_rgba(37,99,235,0.18),_transparent_68%)]" />
+      <div className="relative flex min-h-24 items-center border-b border-white/8 px-2 lg:min-h-28 lg:px-3">
+        <Link href="/dashboard" className="flex w-full justify-center overflow-hidden rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400" aria-label="Impulse CRM — Dashboard">
+          <Image
+            src="/branding/impulse-logo-horizontal.png"
+            alt="Impulse CRM"
+            width={1536}
+            height={1024}
+            priority
+            className="h-16 w-16 scale-[1.65] object-cover object-center lg:h-24 lg:w-full lg:scale-125"
+          />
+        </Link>
+      </div>
 
-        <nav className={styles.navigation} aria-label="Menu principal">
-          {sidebarMenu.map((item) => {
-            const Icon = item.icon;
-            const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                aria-current={active ? "page" : undefined}
-                aria-label={collapsed ? item.title : undefined}
-                data-tooltip={item.title}
-                className={`${styles.navItem} ${active ? styles.active : ""}`}
-                onClick={onCloseMobile}
-              >
-                <span className={styles.activeRail} aria-hidden="true" />
-                <Icon className={styles.navIcon} aria-hidden="true" />
-                <span className={styles.navLabel}>{item.title}</span>
-              </Link>
-            );
-          })}
-        </nav>
+      <nav aria-label="Navegação principal" className="relative flex-1 space-y-1 overflow-y-auto px-2.5 py-5 lg:px-3">
+        {sidebarMenu.filter((item) => !('administrative' in item) || !['CORRETOR', 'BROKER'].includes(user?.role ?? '')).map((item) => {
+          const Icon = item.icon;
+          const active = isRouteActive(pathname, item.href);
 
-        <div className={styles.footer}>
-          <div className={styles.userCard} title={collapsed ? "Rodrigo Lopes — Superintendência" : undefined}>
-            <span className={styles.avatar} aria-hidden="true">RL</span>
-            <span className={styles.userCopy}>
-              <strong>Rodrigo Lopes</strong>
-              <small>Superintendência</small>
-            </span>
-          </div>
-          <button
-            type="button"
-            className={styles.collapseButton}
-            onClick={onCollapse}
-            aria-label={collapsed ? "Expandir menu lateral" : "Recolher menu lateral"}
-            aria-expanded={!collapsed}
-          >
-            <ChevronLeft aria-hidden="true" />
-            <span>{collapsed ? "Expandir" : "Recolher menu"}</span>
-          </button>
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              aria-current={active ? "page" : undefined}
+              title={item.title}
+              className={`group flex min-h-11 items-center justify-center gap-3 rounded-xl border px-3 py-2.5 text-sm font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-400/80 lg:justify-start ${
+                active
+                  ? "border-blue-400/20 bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-lg shadow-blue-950/30"
+                  : "border-transparent text-slate-300 hover:border-white/5 hover:bg-white/[0.07] hover:text-white"
+              }`}
+            >
+              <Icon
+                size={19}
+                className={
+                  active
+                    ? "text-white"
+                    : "text-slate-400 transition-colors group-hover:text-blue-300"
+                }
+              />
+
+              <span className="hidden lg:inline">{item.title}</span>
+            </Link>
+          );
+        })}
+      </nav>
+
+      <div className="relative hidden border-t border-white/8 p-3 lg:block">
+        <dl className="mb-2 rounded-xl border border-white/10 bg-slate-950/30 px-4 py-3 text-[11px] text-slate-400" title={`Build ID: ${build.buildId}`}>
+          <div className="flex justify-between gap-2"><dt>Commit</dt><dd className="font-mono text-slate-200">{build.commit.slice(0,7)}</dd></div>
+          <div className="mt-1 flex justify-between gap-2"><dt>Branch</dt><dd className="max-w-32 truncate font-mono text-slate-200">{build.branch}</dd></div>
+          <div className="mt-1 flex justify-between gap-2"><dt>Build</dt><dd className="text-slate-200">{build.buildDate==="unknown"?"unknown":new Date(build.buildDate).toLocaleString("pt-BR",{dateStyle:"short",timeStyle:"short",timeZone:"UTC"})} UTC</dd></div>
+        </dl>
+        <div className="rounded-xl border border-white/10 bg-white/[0.055] px-4 py-3 shadow-inner backdrop-blur-sm">
+          <p className="text-sm font-semibold text-white">
+            {user?.name ?? "Usuário"}
+          </p>
+
+          <p className="mt-0.5 text-xs text-slate-400">
+            {user?.email ?? ""}
+          </p>
         </div>
-      </aside>
-    </>
+      </div>
+    </aside>
   );
 }

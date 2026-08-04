@@ -1,31 +1,14 @@
-import Link from "next/link";
-import { BarChart3, Download, Gauge, Users } from "lucide-react";
-import { PageContainer, PageHeader, Surface } from "@/components/ui/Layout";
+"use client";
+import { useEffect, useState } from "react";
+import { Download, FileSpreadsheet, ShieldCheck } from "lucide-react";
+import { reportsService, ReportFilters } from "@/services/reports.service";
+import { campaignsService } from "@/services/campaigns.service";
+import { templatesService } from "@/services/templates.service";
+import { userService } from "@/services/user.service";
+import { Campaign } from "@/types/campaign";
+import { User } from "@/types/user";
+import { WhatsappTemplate } from "@/types/templates";
+import { AnalyticsCard, AnalyticsHeader, ErrorState } from "@/components/analytics/AnalyticsUi";
+const initial: ReportFilters = { dataset: "campaigns", campaignId: "", managerId: "", brokerId: "", templateId: "", from: "", to: "", source: "", status: "", product: "", development: "" };
+export default function ReportsPage() { const [filters, setFilters] = useState(initial), [campaigns, setCampaigns] = useState<Campaign[]>([]), [users, setUsers] = useState<User[]>([]), [templates, setTemplates] = useState<WhatsappTemplate[]>([]), [downloading, setDownloading] = useState(false), [error, setError] = useState(""); useEffect(() => { Promise.all([campaignsService.getCampaigns({ limit: 100 }), userService.getAll({ limit: 100 }), templatesService.getTemplates({ pageSize: 100 })]).then(([campaignData, userData, templateData]) => { setCampaigns(campaignData.items); setUsers(userData.items); setTemplates(templateData.items); }).catch(() => setError("Alguns filtros não puderam ser carregados.")); }, []); const set = (key: keyof ReportFilters, value: string) => setFilters((current) => ({ ...current, [key]: value })); async function download() { setDownloading(true); setError(""); try { await reportsService.downloadCsv(filters); } catch (reason) { setError(reason instanceof Error ? reason.message : "Não foi possível exportar o relatório."); } finally { setDownloading(false); } } const field = "rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm"; return <main className="space-y-6"><AnalyticsHeader eyebrow="Dados e governança" title="Central de Relatórios" description="Combine filtros comerciais e exporte dados auditáveis com isolamento por organização." actions={<div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-sm"><ShieldCheck/>CSV protegido contra fórmulas</div>}/>{error && <ErrorState message={error}/>}<AnalyticsCard title="Configuração do relatório"><div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3"><label className="text-xs font-bold text-slate-500">Relatório<select value={filters.dataset} onChange={(event) => set("dataset", event.target.value)} className={`mt-1 w-full ${field}`}><option value="campaigns">Campanhas</option><option value="events">Eventos</option><option value="conversions">Conversões</option></select></label><label className="text-xs font-bold text-slate-500">Campanha<select value={filters.campaignId} onChange={(event) => set("campaignId", event.target.value)} className={`mt-1 w-full ${field}`}><option value="">Todas</option>{campaigns.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label><label className="text-xs font-bold text-slate-500">Template<select value={filters.templateId} onChange={(event) => set("templateId", event.target.value)} className={`mt-1 w-full ${field}`}><option value="">Todos</option>{templates.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label><label className="text-xs font-bold text-slate-500">Corretor<select value={filters.brokerId} onChange={(event) => set("brokerId", event.target.value)} className={`mt-1 w-full ${field}`}><option value="">Todos</option>{users.filter((user) => ["BROKER", "CORRETOR"].includes(user.role)).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label><label className="text-xs font-bold text-slate-500">Gerente<select value={filters.managerId} onChange={(event) => set("managerId", event.target.value)} className={`mt-1 w-full ${field}`}><option value="">Todos</option>{users.filter((user) => user.role === "MANAGER").map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label><label className="text-xs font-bold text-slate-500">Origem<select value={filters.source} onChange={(event) => set("source", event.target.value)} className={`mt-1 w-full ${field}`}><option value="">Todas</option>{["MANUAL", "IMPORT", "WEBSITE", "PUBLIC_API", "WEBHOOK", "REFERRAL", "ORGANIC", "FACEBOOK", "INSTAGRAM", "LANDING_PAGE", "PHONE", "OTHER"].map((value) => <option key={value}>{value}</option>)}</select></label><label className="text-xs font-bold text-slate-500">Status{filters.dataset === "campaigns" ? <select value={filters.status} onChange={(event) => set("status", event.target.value)} className={`mt-1 w-full ${field}`}><option value="">Todos</option>{["DRAFT", "VALIDATING", "READY", "SCHEDULED", "QUEUED", "RUNNING", "PAUSED", "COMPLETED", "COMPLETED_WITH_ERRORS", "CANCELED", "FAILED"].map((value) => <option key={value}>{value}</option>)}</select> : <input value={filters.status} onChange={(event) => set("status", event.target.value)} placeholder="Tipo de evento" className={`mt-1 w-full ${field}`}/>}</label><label className="text-xs font-bold text-slate-500">Produto<input value={filters.product} onChange={(event) => set("product", event.target.value)} placeholder="Produto" className={`mt-1 w-full ${field}`}/></label><label className="text-xs font-bold text-slate-500">Empreendimento<input value={filters.development} onChange={(event) => set("development", event.target.value)} placeholder="Empreendimento" className={`mt-1 w-full ${field}`}/></label><label className="text-xs font-bold text-slate-500">Data inicial<input type="date" value={filters.from} onChange={(event) => set("from", event.target.value)} className={`mt-1 w-full ${field}`}/></label><label className="text-xs font-bold text-slate-500">Data final<input type="date" value={filters.to} onChange={(event) => set("to", event.target.value)} className={`mt-1 w-full ${field}`}/></label></div><div className="mt-6 flex flex-wrap gap-3"><button disabled={downloading} onClick={() => void download()} className="flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-blue-200 hover:bg-blue-700 disabled:opacity-50"><Download size={18}/>{downloading ? "Preparando..." : "Exportar CSV"}</button><button disabled title="XLSX será habilitado quando a dependência segura estiver disponível" className="flex items-center gap-2 rounded-xl border border-slate-200 px-5 py-3 text-sm font-bold text-slate-400"><FileSpreadsheet size={18}/>Exportar XLSX</button><button onClick={() => setFilters(initial)} className="rounded-xl px-5 py-3 text-sm font-bold text-slate-600 hover:bg-slate-100">Limpar filtros</button></div><p className="mt-3 text-xs text-slate-400">A infraestrutura de exportação permanece preparada para XLSX, sem workaround inseguro ou impacto no build.</p></AnalyticsCard></main>; }
 
-const reports = [
-  { title: "Conversão de leads", description: "Acompanhe volume, origem e evolução dos leads.", icon: Users },
-  { title: "Performance comercial", description: "Compare os indicadores da operação e dos corretores.", icon: Gauge },
-  { title: "Resultados de campanhas", description: "Consulte entregas, leituras, cliques e conversões.", icon: BarChart3 },
-];
-
-export default function ReportsPage() {
-  return (
-    <PageContainer className="gap-8">
-      <PageHeader title="Relatórios" description="Visões consolidadas para decisões comerciais mais precisas." />
-      <section className="grid gap-4 md:grid-cols-3">
-        {reports.map(({ title, description, icon: Icon }) => (
-          <Surface key={title} className="ui-card-interactive p-5">
-            <Icon className="mb-4 text-sky-400" aria-hidden="true" />
-            <h2 className="font-semibold text-white">{title}</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-400">{description}</p>
-          </Surface>
-        ))}
-      </section>
-      <div className="flex flex-wrap items-center gap-3 ds-radius-surface border ds-border ds-surface p-5">
-        <Download className="text-slate-400" aria-hidden="true" />
-        <p className="mr-auto text-sm text-slate-300">Os dados detalhados e exportações são acessados nas respectivas áreas.</p>
-        <Link href="/dashboard" className="ds-radius-control ds-primary px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-500 focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-sky-400">Ver visão geral</Link>
-      </div>
-    </PageContainer>
-  );
-}

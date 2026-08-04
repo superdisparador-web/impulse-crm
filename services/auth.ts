@@ -1,16 +1,20 @@
 import { api } from "./api";
-import { UserRole } from "@/types/user";
+import {
+  getAccessToken,
+  getSession,
+  getRefreshToken,
+  login as startSession,
+  logout as endSession,
+  SessionUser,
+} from "./session";
 
-export interface AuthenticatedUser {
-  id: string;
-  name: string;
-  email: string;
-  role: UserRole;
-  organizationId?: string | null;
-}
+export type AuthenticatedUser = SessionUser;
 
 export interface LoginResponse {
-  access_token: string;
+  accessToken: string;
+  refreshToken: string;
+  tokenType: string;
+  expiresIn: string;
   user: AuthenticatedUser;
 }
 
@@ -23,34 +27,31 @@ export async function login(email: string, password: string) {
     }),
   });
 
-  localStorage.setItem("token", response.access_token);
-  localStorage.setItem("user", JSON.stringify(response.user));
+  startSession(response);
 
   return response;
 }
 
-export function logout() {
-  localStorage.removeItem("token");
-  localStorage.removeItem("user");
+export async function logout() {
+  const refreshToken = getRefreshToken();
+  try {
+    if (getAccessToken()) await api.post<{ success: boolean }>("/auth/logout", { refreshToken });
+  } finally {
+    endSession();
+  }
 }
 
 export function getToken() {
-  return localStorage.getItem("token");
+  return getAccessToken();
 }
 
 export function getCurrentUser(): AuthenticatedUser | null {
-  const value = localStorage.getItem("user");
-  if (!value) return null;
-  try {
-    return JSON.parse(value) as AuthenticatedUser;
-  } catch {
-    logout();
-    return null;
-  }
+  return getSession()?.user ?? null;
 }
 
 export function isGlobalAdmin() {
   const user = getCurrentUser();
+
   return user?.role === "ADMIN" && !user.organizationId;
 }
 

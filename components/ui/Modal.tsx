@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useEffect } from "react";
+import { ReactNode, useEffect, useRef } from "react";
 
 interface ModalProps {
   isOpen: boolean;
@@ -24,16 +24,18 @@ export default function Modal({
   onClose,
   width = "md",
 }: ModalProps) {
+  const panelRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
         onClose();
-      }
+      } else if (event.key === "Tab") { const focusable=panelRef.current?.querySelectorAll<HTMLElement>('button,[href],input,select,textarea,[tabindex]:not([tabindex="-1"])');if(!focusable?.length)return;const first=focusable[0],last=focusable[focusable.length-1];if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus()}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus()} }
     }
 
     if (isOpen) {
       document.addEventListener("keydown", handleKeyDown);
       document.body.style.overflow = "hidden";
+      window.setTimeout(()=>panelRef.current?.querySelector<HTMLElement>("button")?.focus(),0);
     }
 
     return () => {
@@ -42,39 +44,39 @@ export default function Modal({
     };
   }, [isOpen, onClose]);
 
-  if (!isOpen) {
-    return null;
-  }
+  if (!isOpen) return null;
 
   return (
     <div
-      role="presentation"
-      className="fixed inset-0 z-50 flex items-center justify-center ds-canvas p-4 backdrop-blur-sm sm:p-6"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/30 p-4 backdrop-blur-sm sm:p-6"
       onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modal-title"
     >
       <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="modal-title"
-        className={`ui-card w-full ${widthClasses[width]} max-h-[calc(100dvh-2rem)] overflow-y-auto shadow-2xl`}
+        ref={panelRef}
+        className={`w-full ${widthClasses[width]} max-h-[calc(100dvh-2rem)] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between border-b ds-border px-6 py-4">
-          <h2 id="modal-title" className="text-lg font-semibold tracking-tight text-white">
+        <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+          <h2 id="modal-title" className="text-xl font-semibold text-slate-900">
             {title}
           </h2>
 
           <button
-            onClick={onClose}
             type="button"
+            onClick={onClose}
             aria-label="Fechar modal"
-            className="ui-focus grid h-9 w-9 place-items-center ds-radius-control text-xl text-slate-400 transition-colors ds-secondary-hover hover:text-white"
+            className="rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900"
           >
-            ×
+            ✕
           </button>
         </div>
 
-        <div className="p-6">{children}</div>
+        <div className="max-h-[calc(100dvh-7rem)] overflow-y-auto p-6">
+          {children}
+        </div>
       </div>
     </div>
   );
