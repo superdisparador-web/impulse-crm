@@ -6,7 +6,7 @@ import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { AuthenticatedUserRef } from '../auth/access-context.service';
 import { AssignConversationDto, UpdateConversationDto } from './dto/conversations.dto';
-import { CompleteEmbeddedSignupDto } from './dto/embedded-signup.dto';
+import { CompleteEmbeddedSignupDto, StartEmbeddedSignupDto } from './dto/embedded-signup.dto';
 import { CreateWhatsappTemplateDto } from './dto/create-whatsapp-template.dto';
 import { ListWhatsappDto } from './dto/list-whatsapp.dto';
 import { ListWhatsappTemplatesDto } from './dto/list-whatsapp-templates.dto';
@@ -23,6 +23,7 @@ type RawReq = Request & { rawBody?: Buffer };
 @Controller('whatsapp')
 export class WhatsappController {
   constructor(private readonly service: WhatsappService, private readonly embeddedSignup:MetaEmbeddedSignupService) {}
+  @Post('embedded-signup/session') @Permissions('whatsapp:accounts:create') signupSession(@Body() d:StartEmbeddedSignupDto,@CurrentUser() u:AuthenticatedUserRef){ return this.embeddedSignup.createSession(d,u); }
   @Get('embedded-signup/config') @Permissions('whatsapp:accounts:create') signupConfig(@Query('accountId') accountId:string|undefined,@CurrentUser() u:AuthenticatedUserRef){ return this.embeddedSignup.signupConfiguration(u,accountId); }
   @Post('embedded-signup/complete') @Permissions('whatsapp:accounts:create') completeSignup(@Body() d:CompleteEmbeddedSignupDto,@CurrentUser() u:AuthenticatedUserRef){ return this.embeddedSignup.complete(d,u); }
   @Get('accounts') @Permissions('whatsapp:accounts:read') findAccounts(@Query() q: ListWhatsappDto, @CurrentUser() u: AuthenticatedUserRef) { return this.service.findAccounts(q, u); }

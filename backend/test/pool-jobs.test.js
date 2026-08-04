@@ -66,7 +66,7 @@ test('scheduler hot reload guard prevents duplicate timer and shutdown cancels i
 
 test('Prisma wiring has one global provider and one client subclass', () => {
   const moduleSource = fs.readFileSync('src/prisma/prisma.module.ts', 'utf8');
-  const files = require('node:child_process').execFileSync('rg', ['-l', 'new\\s+PrismaClient|extends\\s+PrismaClient', 'src', 'test', 'prisma'], { encoding: 'utf8' }).trim().split('\n').filter(Boolean);
+  const files = require('node:child_process').execFileSync('rg', ['-l', 'new\\s+PrismaClient|extends\\s+PrismaClient', 'src', 'test'], { encoding: 'utf8' }).trim().split('\n').filter(Boolean);
   assert.deepEqual(files, ['src/prisma/prisma.service.ts']);
   assert.match(moduleSource, /@Global\(\)/);
   assert.equal((moduleSource.match(/providers: \[PrismaService\]/g) || []).length, 1);

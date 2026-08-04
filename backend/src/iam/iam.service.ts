@@ -10,7 +10,10 @@ export const STABLE_PERMISSIONS = [
   'leads:create', 'leads:read', 'leads:read-all', 'leads:update', 'leads:assign', 'leads:unassign', 'leads:archive', 'leads:restore', 'leads:manage-duplicates', 'leads:history:read',
   'whatsapp:accounts:create', 'whatsapp:accounts:read', 'whatsapp:accounts:update', 'whatsapp:accounts:archive', 'whatsapp:accounts:test',
   'whatsapp:conversations:read', 'whatsapp:conversations:read-all', 'whatsapp:conversations:update', 'whatsapp:conversations:assign',
-  'whatsapp:messages:read', 'whatsapp:messages:send', 'whatsapp:templates:read', 'whatsapp:templates:sync', 'whatsapp:templates:manage',
+  'whatsapp:messages:read', 'whatsapp:messages:send', 'whatsapp:templates:read', 'whatsapp:templates:create', 'whatsapp:templates:update', 'whatsapp:templates:sync', 'whatsapp:templates:manage',
+  'campaigns:read', 'campaigns:create', 'campaigns:update', 'campaigns:archive', 'campaigns:cancel',
+  'analytics.dashboard.read', 'analytics.campaign.read', 'analytics.broker.read', 'analytics.manager.read', 'analytics.whatsapp.read', 'analytics.event.create', 'analytics.rollup.manage',
+  'distribution.list.create', 'distribution.list.read', 'distribution.list.update', 'distribution.list.delete', 'distribution.list.import', 'distribution.member.manage', 'distribution.assignment.read', 'distribution.assignment.retry', 'distribution.report.export',
 ] as const;
 
 @Injectable()

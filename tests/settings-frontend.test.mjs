@@ -37,7 +37,7 @@ test('technical permission and notification names are translated before renderin
 });
 
 test('permission map translates every unique code returned by the permission matrix', () => {
-  assert.equal(new Set(apiPermissionCodes).size, 81);
+  assert.equal(new Set(apiPermissionCodes).size, 88);
   assert.equal(new Set(permissionMapCodes).size, permissionMapCodes.length);
   assert.deepEqual([...permissionMapCodes].sort(), [...new Set(apiPermissionCodes)].sort());
 });

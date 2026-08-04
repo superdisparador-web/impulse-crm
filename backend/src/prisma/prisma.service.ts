@@ -22,7 +22,20 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
   }
 
   async onModuleInit() {
-    await this.$connect();
+    try {
+      await this.$connect();
+    } catch (error) {
+      const details = this.errorDetails(error);
+      const code = 'code' in details ? details.code : undefined;
+      if (code !== 'P1001') throw error;
+      this.telemetryLogger.error(JSON.stringify({
+        event: 'PRISMA_DATABASE_UNAVAILABLE_AT_STARTUP',
+        timestamp: new Date().toISOString(),
+        ...this.processIdentity,
+        code,
+      }));
+      return;
+    }
     this.telemetryLogger.log(JSON.stringify({
       event: 'PRISMA_POOL_CONFIGURED',
       ...this.processIdentity,
@@ -69,7 +82,7 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
 
   errorDetails(error: unknown) {
     if (!(error instanceof Error)) return { value: String(error) };
-    const candidate = error as Error & { code?: string; clientVersion?: string };
-    return { name: candidate.name, message: candidate.message, code: candidate.code, clientVersion: candidate.clientVersion, stack: candidate.stack };
+    const candidate = error as Error & { code?: string; errorCode?: string; clientVersion?: string };
+    return { name: candidate.name, message: candidate.message, code: candidate.code ?? candidate.errorCode, clientVersion: candidate.clientVersion, stack: candidate.stack };
   }
 }

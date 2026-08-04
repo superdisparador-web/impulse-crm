@@ -11,5 +11,5 @@ export function analyticsJobsEnabled(): boolean {
 }
 
 export function pipelineModuleEnabled(): boolean {
-  return environmentFlag('PIPELINE_MODULE_ENABLED', false);
+  return environmentFlag('PIPELINE_MODULE_ENABLED', true);
 }

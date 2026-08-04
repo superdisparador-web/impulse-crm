@@ -11,6 +11,7 @@ function toQueryString(params: WhatsappListParams = {}) {
 class WhatsappService {
   /** Backend creates and stores OAuth state; only the one-time Meta URL reaches the browser. */
   startEmbeddedSignup() { return api.post<{ authorizationUrl: string; expiresAt: string }>('/whatsapp/embedded-signup/session', { returnUrl: `${window.location.origin}/whatsapp` }); }
+  completeEmbeddedSignup(code: string, state: string) { return api.post<{ accountsConnected: number }>('/whatsapp/embedded-signup/complete', { code, state }); }
   getAccounts(params: WhatsappListParams = {}) { return api.get<PaginatedWhatsappAccounts>(`/whatsapp/accounts${toQueryString(params)}`); }
   createAccount(data: WhatsappAccountFormData) { const { credential, ...rest } = data; return api.post<WhatsappAccount>('/whatsapp/accounts', { ...rest, accessToken: credential }); }
   createManualAccount(data: ManualWhatsappAccountFormData) { return api.post<WhatsappAccount>('/whatsapp/admin/accounts/manual', data); }

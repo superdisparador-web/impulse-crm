@@ -10,7 +10,7 @@ import { PipelineService } from './pipeline.service';
 type AuthRequest = Request & { user?: { id: string; role?: Role } };
 
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Role.ADMIN, Role.CORRETOR)
+@Roles(Role.ADMIN, Role.CORRETOR, Role.GLOBAL_ADMIN, Role.ORG_ADMIN, Role.MANAGER, Role.BROKER)
 @Controller('pipeline')
 export class PipelineController {
   constructor(private readonly service: PipelineService) {}

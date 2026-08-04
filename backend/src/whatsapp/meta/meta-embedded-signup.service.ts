@@ -3,7 +3,7 @@ import { createHmac, randomBytes, timingSafeEqual } from 'crypto';
 import { Prisma } from '@prisma/client';
 import { AccessContextService, AuthenticatedUserRef } from '../../auth/access-context.service';
 import { PrismaService } from '../../prisma/prisma.service';
-import { CompleteEmbeddedSignupDto } from '../dto/embedded-signup.dto';
+import { CompleteEmbeddedSignupDto, StartEmbeddedSignupDto } from '../dto/embedded-signup.dto';
 import { WhatsappCredentialCryptoService } from '../security/credential-crypto.service';
 import { MetaWhatsappClient, MetaTemplate } from './meta-whatsapp.client';
 
@@ -20,6 +20,14 @@ export class MetaEmbeddedSignupService {
   private async context(user:AuthenticatedUserRef){ const ctx=await this.access.resolve(user); if(ctx.global||!ctx.organizationId) throw new ForbiddenException('Organização obrigatória'); return ctx; }
 
   async signupConfiguration(user:AuthenticatedUserRef,accountId?:string){ const ctx=await this.context(user); if(accountId){ const found=await this.prisma.whatsappAccount.findFirst({where:{id:accountId,organizationId:ctx.organizationId!,deletedAt:null}}); if(!found) throw new BadRequestException('Conta WhatsApp não encontrada'); } const cfg=this.config(); return {appId:cfg.appId,configId:cfg.configId,apiVersion:cfg.apiVersion,state:this.encode({organizationId:ctx.organizationId!,userId:ctx.id,accountId,nonce:randomBytes(18).toString('hex'),exp:Date.now()+10*60_000},cfg.secret)}; }
+
+  async createSession(dto:StartEmbeddedSignupDto,user:AuthenticatedUserRef){
+    const allowedOrigin=new URL(process.env.FRONTEND_URL||dto.returnUrl).origin, returnUrl=new URL(dto.returnUrl);
+    if(returnUrl.origin!==allowedOrigin) throw new BadRequestException('META_REDIRECT_URI_INVALID');
+    const configuration=await this.signupConfiguration(user,dto.accountId), expiresAt=new Date(Date.now()+10*60_000).toISOString();
+    const params=new URLSearchParams({client_id:configuration.appId,config_id:configuration.configId,redirect_uri:returnUrl.toString(),response_type:'code',override_default_response_type:'true',state:configuration.state});
+    return {authorizationUrl:`https://www.facebook.com/${configuration.apiVersion}/dialog/oauth?${params}`,expiresAt};
+  }
 
   async complete(dto:CompleteEmbeddedSignupDto,user:AuthenticatedUserRef){ const ctx=await this.context(user), cfg=this.config(), state=this.decode(dto.state,cfg.secret); if(state.organizationId!==ctx.organizationId||state.userId!==ctx.id||state.accountId!==dto.accountId) throw new UnauthorizedException('META_OAUTH_STATE_MISMATCH'); const exchanged=await this.meta.exchangeCode(dto.code); let token=exchanged.accessToken, expiresAt=exchanged.expiresAt; try { const renewed=await this.meta.renewToken(token); token=renewed.accessToken; expiresAt=renewed.expiresAt; } catch { /* Meta does not permit every token type to be exchanged. */ }
     const inspected=await this.meta.inspectToken(token); if(!inspected.valid) throw new UnauthorizedException('META_ACCESS_TOKEN_INVALID'); const assets=await this.meta.discoverEmbeddedAssets(token); if(!assets.length) throw new BadRequestException('Nenhum número do WhatsApp Business foi autorizado'); const credentialType=inspected.type==='SYSTEM_USER'?'SYSTEM_USER':'OAUTH_USER'; const selected=state.accountId?assets.filter(asset=>true):assets; const accounts:Awaited<ReturnType<typeof this.prisma.whatsappAccount.upsert>>[]=[];
