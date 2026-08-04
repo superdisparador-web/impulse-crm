@@ -1,9 +1,16 @@
 const assert = require('node:assert/strict');
 const { test } = require('node:test');
 const { PipelineService } = require('../dist/src/pipeline/pipeline.service');
+const { PipelineController } = require('../dist/src/pipeline/pipeline.controller');
+const { ROLES_KEY } = require('../dist/src/auth/roles/roles.decorator');
 
 const user = { id: 'user-1', role: 'ADMIN' };
 const now = () => new Date('2026-07-23T12:00:00.000Z');
+
+test('pipeline accepts every current and legacy authenticated operational role', () => {
+  const roles = Reflect.getMetadata(ROLES_KEY, PipelineController);
+  assert.deepEqual(new Set(roles), new Set(['ADMIN', 'CORRETOR', 'GLOBAL_ADMIN', 'ORG_ADMIN', 'MANAGER', 'BROKER']));
+});
 
 function createHarness(seed = {}) {
   const state = {

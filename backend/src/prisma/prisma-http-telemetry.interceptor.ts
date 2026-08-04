@@ -1,4 +1,4 @@
-import { CallHandler, ExecutionContext, Injectable, Logger, NestInterceptor } from '@nestjs/common';
+import { CallHandler, ExecutionContext, Injectable, Logger, NestInterceptor, ServiceUnavailableException } from '@nestjs/common';
 import { Observable, catchError, tap, throwError } from 'rxjs';
 import { PrismaService } from './prisma.service';
 
@@ -33,9 +33,10 @@ export class PrismaHttpTelemetryInterceptor implements NestInterceptor {
         const details = this.prisma.errorDetails(error);
         const message = 'message' in details ? details.message : '';
         const code = 'code' in details ? details.code : undefined;
-        if (code === 'P2024' || code === 'P2028' || code === 'P1001' || /connection pool|acquir|timed?\s*out|server has closed the connection/i.test(message ?? '')) {
+        if (code === 'P2024' || code === 'P2028' || code === 'P1001' || /connection pool|acquir|timed?\s*out|server has closed the connection|can't reach database server/i.test(message ?? '')) {
           this.logger.error(JSON.stringify({ event: 'HTTP_PRISMA_KNOWN_ERROR', timestamp: new Date().toISOString(), ...this.prisma.processIdentity, method, path, durationMs: Date.now() - startedAt, code: code ?? 'CONNECTION_CLOSED' }));
           void this.prisma.logPoolSnapshot('HTTP_PRISMA_CONNECTION_ACQUIRE_TIMEOUT_POOL', { method, path });
+          return throwError(() => new ServiceUnavailableException('Banco de dados temporariamente indisponível'));
         }
         return throwError(() => error);
       }),

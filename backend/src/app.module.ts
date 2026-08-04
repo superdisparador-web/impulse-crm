@@ -23,11 +23,13 @@ import { AnalyticsModule } from './analytics/analytics.module';
 import { PrismaHttpTelemetryInterceptor } from './prisma/prisma-http-telemetry.interceptor';
 import { pipelineModuleEnabled } from './config/runtime-config';
 import { AppLifecycleModule } from './app-lifecycle.module';
+import { SystemModule } from './system/system.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     AppLifecycleModule,
+    SystemModule,
     AuthModule,
     UsersModule,
     PrismaModule,

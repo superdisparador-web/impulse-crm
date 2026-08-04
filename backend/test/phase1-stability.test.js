@@ -55,6 +55,19 @@ test('Prisma disconnect is idempotent', async () => {
   }
 });
 
+test('Prisma reports P1001 startup degradation without preventing the health server from starting', async () => {
+  const previous = process.env.DATABASE_URL;
+  process.env.DATABASE_URL = 'postgresql://u:p@localhost:5432/db';
+  try {
+    const prisma = new PrismaService();
+    prisma.$connect = async () => { const error = new Error('database unavailable'); error.errorCode = 'P1001'; throw error; };
+    await prisma.onModuleInit();
+    assert.equal(prisma.errorDetails(Object.assign(new Error('unavailable'), { errorCode: 'P1001' })).code, 'P1001');
+  } finally {
+    if (previous === undefined) delete process.env.DATABASE_URL; else process.env.DATABASE_URL = previous;
+  }
+});
+
 test('shutdown immediately prevents scheduler rescheduling', async () => {
   const lifecycle = new AppLifecycleService();
   let executions = 0;
@@ -85,15 +98,16 @@ test('disabled Analytics creates no timer and executes no transaction', async ()
   }
 });
 
-test('Pipeline routes are absent by default while operational modules remain loaded', () => {
+test('Pipeline routes and operational modules are loaded by default', () => {
   const imports = Reflect.getMetadata(MODULE_METADATA.IMPORTS, AppModule);
-  assert.ok(!imports.includes(PipelineModule));
+  assert.ok(imports.includes(PipelineModule));
   assert.ok(imports.includes(LeadsModule));
   assert.ok(imports.includes(CampaignsModule));
   assert.ok(imports.includes(DistributionModule));
 });
 
-test('schema and migrations are untouched by the Phase 1 implementation', () => {
-  const changed = require('node:child_process').execFileSync('git', ['diff', '--name-only'], { encoding: 'utf8' }).trim().split('\n').filter(Boolean);
-  assert.ok(!changed.some(file => file === 'backend/prisma/schema.prisma' || file.startsWith('backend/prisma/migrations/')));
+test('schema and ordered migrations include the operational RBAC synchronization', () => {
+  const migrations = fs.readdirSync('prisma/migrations').filter(name => fs.existsSync(`prisma/migrations/${name}/migration.sql`)).sort();
+  assert.equal(migrations.at(-1), '20260804000000_sync_operational_rbac');
+  assert.ok(fs.readFileSync(`prisma/migrations/${migrations.at(-1)}/migration.sql`, 'utf8').includes('campaigns:read'));
 });

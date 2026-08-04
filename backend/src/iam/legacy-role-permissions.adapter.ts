@@ -16,6 +16,9 @@ const DISTRIBUTION_BROKER_PERMISSIONS = ['distribution.list.read', 'distribution
 const ANALYTICS_ADMIN_PERMISSIONS = ['analytics.dashboard.read', 'analytics.campaign.read', 'analytics.broker.read', 'analytics.manager.read', 'analytics.whatsapp.read', 'analytics.event.create', 'analytics.rollup.manage'];
 const ANALYTICS_MANAGER_PERMISSIONS = ['analytics.dashboard.read', 'analytics.campaign.read', 'analytics.broker.read', 'analytics.manager.read', 'analytics.whatsapp.read'];
 const ANALYTICS_BROKER_PERMISSIONS = ['analytics.dashboard.read', 'analytics.broker.read'];
+const CAMPAIGNS_ADMIN_PERMISSIONS = ['campaigns:read', 'campaigns:create', 'campaigns:update', 'campaigns:archive', 'campaigns:cancel'];
+const CAMPAIGNS_MANAGER_PERMISSIONS = ['campaigns:read', 'campaigns:create', 'campaigns:update', 'campaigns:archive', 'campaigns:cancel'];
+const CAMPAIGNS_BROKER_PERMISSIONS = ['campaigns:read'];
 
 /** Compatibility adapter for users created before table-backed RBAC. */
 export class LegacyRolePermissionsAdapter {
@@ -25,10 +28,10 @@ export class LegacyRolePermissionsAdapter {
     }
 
     const rolePermissions = role === Role.ADMIN || role === Role.ORG_ADMIN
-      ? [...ORG_ADMIN_PERMISSIONS, ...LEADS_ADMIN_PERMISSIONS, ...WHATSAPP_ADMIN_PERMISSIONS, ...DISTRIBUTION_ADMIN_PERMISSIONS, ...ANALYTICS_ADMIN_PERMISSIONS]
+      ? [...ORG_ADMIN_PERMISSIONS, ...LEADS_ADMIN_PERMISSIONS, ...WHATSAPP_ADMIN_PERMISSIONS, ...DISTRIBUTION_ADMIN_PERMISSIONS, ...ANALYTICS_ADMIN_PERMISSIONS, ...CAMPAIGNS_ADMIN_PERMISSIONS]
       : role === Role.MANAGER
-        ? [...MANAGER_PERMISSIONS, ...LEADS_MANAGER_PERMISSIONS, ...WHATSAPP_MANAGER_PERMISSIONS, ...DISTRIBUTION_MANAGER_PERMISSIONS, ...ANALYTICS_MANAGER_PERMISSIONS]
-        : [...BROKER_PERMISSIONS, ...LEADS_BROKER_PERMISSIONS, ...WHATSAPP_BROKER_PERMISSIONS, ...DISTRIBUTION_BROKER_PERMISSIONS, ...ANALYTICS_BROKER_PERMISSIONS];
+        ? [...MANAGER_PERMISSIONS, ...LEADS_MANAGER_PERMISSIONS, ...WHATSAPP_MANAGER_PERMISSIONS, ...DISTRIBUTION_MANAGER_PERMISSIONS, ...ANALYTICS_MANAGER_PERMISSIONS, ...CAMPAIGNS_MANAGER_PERMISSIONS]
+        : [...BROKER_PERMISSIONS, ...LEADS_BROKER_PERMISSIONS, ...WHATSAPP_BROKER_PERMISSIONS, ...DISTRIBUTION_BROKER_PERMISSIONS, ...ANALYTICS_BROKER_PERMISSIONS, ...CAMPAIGNS_BROKER_PERMISSIONS];
 
     return [...AUTH_PERMISSIONS, ...rolePermissions];
   }
