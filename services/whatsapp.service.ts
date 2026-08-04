@@ -19,7 +19,7 @@ class WhatsappService {
   updateAccessToken(id: string, accessToken: string) { return api<WhatsappAccount>(`/whatsapp/admin/accounts/${id}/access-token`, { method: 'PATCH', body: JSON.stringify({ accessToken }) }); }
   updateStatus(id: string, status: 'ACTIVE' | 'INACTIVE') { return api<WhatsappAccount>(`/whatsapp/accounts/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }); }
   setDefault(id: string) { return api<WhatsappAccount>(`/whatsapp/accounts/${id}/default`, { method: 'PATCH' }); }
-  testAccount(id: string) { return api.post<WhatsappAccount>(`/whatsapp/accounts/${id}/test-connection`, {}); }
+  testAccount(id: string) { return api.post<WhatsappAccount>(`/whatsapp/accounts/${id}/test`, {}); }
   syncAccount(id: string) { return api.post<WhatsappAccount>(`/whatsapp/accounts/${id}/sync`, {}); }
   async deleteAccount(id: string) { await api.delete<{ success: boolean }>(`/whatsapp/accounts/${id}`); }
   restoreAccount(id: string) { return api<WhatsappAccount>(`/whatsapp/accounts/${id}/restore`, { method: 'PATCH' }); }
