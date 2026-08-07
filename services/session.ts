@@ -3,7 +3,14 @@ import { UserRole } from "@/types/user";
 const ACCESS_TOKEN_KEY = "impulse.auth.accessToken";
 const REFRESH_TOKEN_KEY = "impulse.auth.refreshToken";
 const USER_KEY = "impulse.auth.user";
-const LEGACY_KEYS = ["token", "accessToken", "refreshToken", "user", "authToken", "authUser"];
+const LEGACY_KEYS = [
+  "token",
+  "accessToken",
+  "refreshToken",
+  "user",
+  "authToken",
+  "authUser",
+];
 
 export interface SessionUser {
   id: string;
@@ -32,7 +39,8 @@ export function getSession(): Session | null {
 
   try {
     const user = JSON.parse(storedUser) as Partial<SessionUser>;
-    if (!user.id || !user.name || !user.email || !user.role) throw new Error("Invalid stored user");
+    if (!user.id || !user.name || !user.email || !user.role)
+      throw new Error("Invalid stored user");
     return { accessToken, refreshToken, user: user as SessionUser };
   } catch {
     clearSession();

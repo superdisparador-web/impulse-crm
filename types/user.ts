@@ -1,4 +1,5 @@
-export type UserRole = "ADMIN" | "CORRETOR" | "GLOBAL_ADMIN" | "ORG_ADMIN" | "MANAGER" | "BROKER";
+export type UserRole =
+  "ADMIN" | "CORRETOR" | "GLOBAL_ADMIN" | "ORG_ADMIN" | "MANAGER" | "BROKER";
 
 export interface UserOrganization {
   id: string;
@@ -45,7 +46,14 @@ export interface UserListResponse {
   };
 }
 
-export interface UserMetrics { total: number; active: number; inactive: number; administrators: number; managers: number; brokers: number; }
+export interface UserMetrics {
+  total: number;
+  active: number;
+  inactive: number;
+  administrators: number;
+  managers: number;
+  brokers: number;
+}
 
 export interface ListUsersParams {
   page?: number;

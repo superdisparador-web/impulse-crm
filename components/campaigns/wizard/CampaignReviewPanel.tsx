@@ -1,7 +1,210 @@
 import { AlertTriangle, CheckCircle2, Info } from "lucide-react";
-import { CampaignListSummary, DestinationConfiguration, VariableMapping } from "@/services/campaigns.service";
+import {
+  CampaignListSummary,
+  DestinationConfiguration,
+  VariableMapping,
+} from "@/services/campaigns.service";
 import { WhatsappTemplate } from "@/types/templates";
 import CampaignMessagePreview from "./CampaignMessagePreview";
-function Block({title,children}:{title:string;children:React.ReactNode}){return <section className="rounded-2xl border border-slate-200 bg-white p-4"><h3 className="mb-3 font-semibold text-slate-900">{title}</h3>{children}</section>}
-function Rows({items}:{items:[string,string][]}){return <dl className="space-y-2 text-sm">{items.map(([k,v])=><div className="flex justify-between gap-4" key={k}><dt className="text-slate-500">{k}</dt><dd className="text-right font-medium text-slate-800">{v||"—"}</dd></div>)}</dl>}
-export default function CampaignReviewPanel({campaign,accountName,audienceMode,summary,template,mappings,destination,sendMode,scheduledAt,timezone,issues,row,phone,name,mediaName,onSendTest,reviewed,onReviewed}:{campaign:{name:string;description:string;category:string};accountName:string;audienceMode:string;summary?:CampaignListSummary;template?:WhatsappTemplate;mappings:VariableMapping[];destination:DestinationConfiguration;sendMode:string;scheduledAt:string;timezone:string;issues:{severity:string;message:string}[];row:Record<string,unknown>;phone:string;name:string;mediaName:string;onSendTest:()=>void;reviewed:boolean;onReviewed:(value:boolean)=>void}){const checks=[['Conta conectada',!!accountName],['Token válido',!!accountName],['Template aprovado',template?.status==='APPROVED'],['Template ativo',!!template?.isActive],['Público válido',!!summary?.valid],['Opt-out respeitado',true],['Variáveis preenchidas',template?.variables.every(v=>{const m=mappings.find(x=>x.component===v.component&&x.position===v.position&&x.buttonIndex===v.buttonIndex);return !!m&&(m.sourceType!=='FIXED'||!!m.fixedValue?.trim())})??false],['Destino configurado',!!destination.mode],['Agendamento válido',sendMode==='NOW'||!!scheduledAt],['Sem erro bloqueante',!issues.some(x=>x.severity==='ERROR')]] as [string,boolean][];return <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(380px,.9fr)]"><div className="space-y-4"><Block title="Campanha"><Rows items={[["Nome",campaign.name],["Categoria",campaign.category],["Descrição",campaign.description],["Conta oficial",accountName]]}/></Block><Block title="Público"><Rows items={[["Origem",audienceMode],["Total",String(summary?.total||0)],["Válidos",String(summary?.valid||0)],["Inválidos",String(summary?.invalid||0)],["Duplicados",String(summary?.duplicate||0)],["Opt-outs","Aplicados na validação operacional"],["Excluídos",String((summary?.invalid||0)+(summary?.duplicate||0))]]}/></Block><Block title="Template"><Rows items={[["Nome",template?.displayName||""],["Idioma",template?.language||""],["Categoria",template?.category||""],["Status",template?.status||""],["Qualidade",template?.qualityScore||"Desconhecida"],["Variáveis",String(template?.variables.length||0)]]}/></Block><Block title="Destino e agendamento"><Rows items={[["Regra",destination.mode],["Velocidade",`${destination.speed||0}/min`],["Envio",sendMode==='NOW'?"Imediato":"Agendado"],["Data e hora",scheduledAt||"Ao confirmar"],["Fuso",timezone]]}/></Block>{issues.length>0&&<Block title="Alertas e bloqueios">{issues.map((issue,index)=><p className={`mb-2 flex gap-2 rounded-xl p-3 text-sm ${issue.severity==='ERROR'?"bg-red-50 text-red-800":"bg-amber-50 text-amber-800"}`} key={index}>{issue.severity==='ERROR'?<AlertTriangle size={17}/>:<Info size={17}/>} {issue.message}</p>)}</Block>}<Block title="Checklist de validação"><ul className="grid gap-2 sm:grid-cols-2">{checks.map(([label,ok])=><li className={`flex items-center gap-2 rounded-xl p-2 text-sm ${ok?"bg-emerald-50 text-emerald-800":"bg-red-50 text-red-800"}`} key={label}>{ok?<CheckCircle2 size={17}/>:<AlertTriangle size={17}/>} {label}</li>)}</ul></Block><label className="flex items-start gap-3 rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900"><input className="mt-1" type="checkbox" checked={reviewed} onChange={event=>onReviewed(event.target.checked)}/><span><strong>Revisão consciente</strong><span className="block">Revisei os dados e confirmo que o público possui autorização adequada para comunicação.</span></span></label></div><div className="xl:sticky xl:top-4 xl:self-start"><CampaignMessagePreview large template={template} mappings={mappings} row={row} phone={phone} name={name} mediaName={mediaName} accountName={accountName} onSendTest={onSendTest}/></div></div>}
+function Block({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="rounded-2xl border border-slate-200 bg-white p-4">
+      <h3 className="mb-3 font-semibold text-slate-900">{title}</h3>
+      {children}
+    </section>
+  );
+}
+function Rows({ items }: { items: [string, string][] }) {
+  return (
+    <dl className="space-y-2 text-sm">
+      {items.map(([k, v]) => (
+        <div className="flex justify-between gap-4" key={k}>
+          <dt className="text-slate-500">{k}</dt>
+          <dd className="text-right font-medium text-slate-800">{v || "—"}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+export default function CampaignReviewPanel({
+  campaign,
+  accountName,
+  audienceMode,
+  summary,
+  template,
+  mappings,
+  destination,
+  sendMode,
+  scheduledAt,
+  timezone,
+  issues,
+  row,
+  phone,
+  name,
+  mediaName,
+  onSendTest,
+  reviewed,
+  onReviewed,
+}: {
+  campaign: { name: string; description: string; category: string };
+  accountName: string;
+  audienceMode: string;
+  summary?: CampaignListSummary;
+  template?: WhatsappTemplate;
+  mappings: VariableMapping[];
+  destination: DestinationConfiguration;
+  sendMode: string;
+  scheduledAt: string;
+  timezone: string;
+  issues: { severity: string; message: string }[];
+  row: Record<string, unknown>;
+  phone: string;
+  name: string;
+  mediaName: string;
+  onSendTest: () => void;
+  reviewed: boolean;
+  onReviewed: (value: boolean) => void;
+}) {
+  const checks = [
+    ["Conta conectada", !!accountName],
+    ["Token válido", !!accountName],
+    ["Template aprovado", template?.status === "APPROVED"],
+    ["Template ativo", !!template?.isActive],
+    ["Público válido", !!summary?.valid],
+    ["Opt-out respeitado", true],
+    [
+      "Variáveis preenchidas",
+      template?.variables.every((v) => {
+        const m = mappings.find(
+          (x) =>
+            x.component === v.component &&
+            x.position === v.position &&
+            x.buttonIndex === v.buttonIndex,
+        );
+        return !!m && (m.sourceType !== "FIXED" || !!m.fixedValue?.trim());
+      }) ?? false,
+    ],
+    ["Destino configurado", !!destination.mode],
+    ["Agendamento válido", sendMode === "NOW" || !!scheduledAt],
+    ["Sem erro bloqueante", !issues.some((x) => x.severity === "ERROR")],
+  ] as [string, boolean][];
+  return (
+    <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(380px,.9fr)]">
+      <div className="space-y-4">
+        <Block title="Campanha">
+          <Rows
+            items={[
+              ["Nome", campaign.name],
+              ["Categoria", campaign.category],
+              ["Descrição", campaign.description],
+              ["Conta oficial", accountName],
+            ]}
+          />
+        </Block>
+        <Block title="Público">
+          <Rows
+            items={[
+              ["Origem", audienceMode],
+              ["Total", String(summary?.total || 0)],
+              ["Válidos", String(summary?.valid || 0)],
+              ["Inválidos", String(summary?.invalid || 0)],
+              ["Duplicados", String(summary?.duplicate || 0)],
+              ["Opt-outs", "Aplicados na validação operacional"],
+              [
+                "Excluídos",
+                String((summary?.invalid || 0) + (summary?.duplicate || 0)),
+              ],
+            ]}
+          />
+        </Block>
+        <Block title="Template">
+          <Rows
+            items={[
+              ["Nome", template?.displayName || ""],
+              ["Idioma", template?.language || ""],
+              ["Categoria", template?.category || ""],
+              ["Status", template?.status || ""],
+              ["Qualidade", template?.qualityScore || "Desconhecida"],
+              ["Variáveis", String(template?.variables.length || 0)],
+            ]}
+          />
+        </Block>
+        <Block title="Destino e agendamento">
+          <Rows
+            items={[
+              ["Regra", destination.mode],
+              ["Velocidade", `${destination.speed || 0}/min`],
+              ["Envio", sendMode === "NOW" ? "Imediato" : "Agendado"],
+              ["Data e hora", scheduledAt || "Ao confirmar"],
+              ["Fuso", timezone],
+            ]}
+          />
+        </Block>
+        {issues.length > 0 && (
+          <Block title="Alertas e bloqueios">
+            {issues.map((issue, index) => (
+              <p
+                className={`mb-2 flex gap-2 rounded-xl p-3 text-sm ${issue.severity === "ERROR" ? "bg-red-50 text-red-800" : "bg-amber-50 text-amber-800"}`}
+                key={index}
+              >
+                {issue.severity === "ERROR" ? (
+                  <AlertTriangle size={17} />
+                ) : (
+                  <Info size={17} />
+                )}{" "}
+                {issue.message}
+              </p>
+            ))}
+          </Block>
+        )}
+        <Block title="Checklist de validação">
+          <ul className="grid gap-2 sm:grid-cols-2">
+            {checks.map(([label, ok]) => (
+              <li
+                className={`flex items-center gap-2 rounded-xl p-2 text-sm ${ok ? "bg-emerald-50 text-emerald-800" : "bg-red-50 text-red-800"}`}
+                key={label}
+              >
+                {ok ? <CheckCircle2 size={17} /> : <AlertTriangle size={17} />}{" "}
+                {label}
+              </li>
+            ))}
+          </ul>
+        </Block>
+        <label className="flex items-start gap-3 rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">
+          <input
+            className="mt-1"
+            type="checkbox"
+            checked={reviewed}
+            onChange={(event) => onReviewed(event.target.checked)}
+          />
+          <span>
+            <strong>Revisão consciente</strong>
+            <span className="block">
+              Revisei os dados e confirmo que o público possui autorização
+              adequada para comunicação.
+            </span>
+          </span>
+        </label>
+      </div>
+      <div className="xl:sticky xl:top-4 xl:self-start">
+        <CampaignMessagePreview
+          large
+          template={template}
+          mappings={mappings}
+          row={row}
+          phone={phone}
+          name={name}
+          mediaName={mediaName}
+          accountName={accountName}
+          onSendTest={onSendTest}
+        />
+      </div>
+    </div>
+  );
+}

@@ -25,11 +25,7 @@ export default function PageHeader({
         )}
       </div>
 
-      {action && (
-        <div>
-          {action}
-        </div>
-      )}
+      {action && <div>{action}</div>}
     </div>
   );
 }

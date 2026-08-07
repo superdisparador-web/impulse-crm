@@ -18,21 +18,17 @@ export default function StatCard({
   className = "",
 }: StatCardProps) {
   return (
-    <div className={`rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-lg ${className}`}>
+    <div
+      className={`rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-lg ${className}`}
+    >
       <div className="flex items-center justify-between">
-        <div className="rounded-xl bg-blue-50 p-3 text-blue-600">
-          {icon}
-        </div>
+        <div className="rounded-xl bg-blue-50 p-3 text-blue-600">{icon}</div>
       </div>
 
       <div className="mt-5">
-        <p className="text-sm text-slate-500">
-          {title}
-        </p>
+        <p className="text-sm text-slate-500">{title}</p>
 
-        <h2 className="mt-2 text-3xl font-bold text-slate-900">
-          {value}
-        </h2>
+        <h2 className="mt-2 text-3xl font-bold text-slate-900">{value}</h2>
 
         {subtitle && (
           <p className={`mt-2 text-sm font-medium ${subtitleClassName}`}>

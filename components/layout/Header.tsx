@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  Bell,
-  ChevronDown,
-  LogOut,
-  Search,
-  UserCircle2,
-} from "lucide-react";
+import { Bell, ChevronDown, LogOut, Search, UserCircle2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { getCurrentUser, logout } from "@/services/auth";
 
@@ -54,10 +48,7 @@ export default function Header() {
           aria-label="Abrir menu do usuário"
           className="flex items-center gap-3 rounded-xl border border-transparent px-2 py-1.5 text-left transition hover:border-slate-200 hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-blue-100"
         >
-          <UserCircle2
-            className="shrink-0 text-slate-700"
-            size={34}
-          />
+          <UserCircle2 className="shrink-0 text-slate-700" size={34} />
 
           <div className="hidden min-w-0 sm:block">
             <p className="truncate text-sm font-semibold text-slate-900">

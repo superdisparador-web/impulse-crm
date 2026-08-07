@@ -20,11 +20,7 @@ function show(value?: string | null) {
   return value?.trim() || "—";
 }
 
-export default function LeadAvatar({
-  name,
-  email,
-  onClick,
-}: LeadAvatarProps) {
+export default function LeadAvatar({ name, email, onClick }: LeadAvatarProps) {
   return (
     <div className="flex min-w-[260px] items-center gap-3">
       <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-sm font-bold text-white shadow-sm">
@@ -40,9 +36,7 @@ export default function LeadAvatar({
           {show(name)}
         </button>
 
-        <p className="truncate text-xs text-slate-500">
-          {show(email)}
-        </p>
+        <p className="truncate text-xs text-slate-500">{show(email)}</p>
       </div>
     </div>
   );

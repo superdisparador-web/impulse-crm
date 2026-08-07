@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  Archive,
-  Eye,
-  KanbanSquare,
-  MoreVertical,
-  Pencil,
-} from "lucide-react";
+import { Archive, Eye, KanbanSquare, MoreVertical, Pencil } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 interface ActionMenuProps {
@@ -29,10 +23,7 @@ export default function ActionMenu({
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (
-        menuRef.current &&
-        !menuRef.current.contains(event.target as Node)
-      ) {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
         setOpen(false);
       }
     }
@@ -47,10 +38,7 @@ export default function ActionMenu({
     document.addEventListener("keydown", handleEscape);
 
     return () => {
-      document.removeEventListener(
-        "mousedown",
-        handleClickOutside
-      );
+      document.removeEventListener("mousedown", handleClickOutside);
       document.removeEventListener("keydown", handleEscape);
     };
   }, []);

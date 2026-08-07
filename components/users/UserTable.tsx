@@ -43,7 +43,7 @@ const date = (value?: string | null, withTime = false) =>
         "pt-BR",
         withTime
           ? { dateStyle: "short", timeStyle: "short" }
-          : { dateStyle: "short" }
+          : { dateStyle: "short" },
       ).format(new Date(value))
     : "Nunca";
 
@@ -99,7 +99,7 @@ function SortHeading({
 
 function UserAvatar({ user }: { user: User }) {
   const [source, setSource] = useState(
-    user.avatarUrl || "/branding/impulse-helmet.png"
+    user.avatarUrl || "/branding/impulse-helmet.png",
   );
 
   return (
@@ -144,7 +144,7 @@ export default function UserTable(props: Props) {
     return [...props.users].sort(
       (left, right) =>
         value(left).localeCompare(value(right), "pt-BR", { numeric: true }) *
-        (direction === "asc" ? 1 : -1)
+        (direction === "asc" ? 1 : -1),
     );
   }, [direction, props.users, sort]);
 
@@ -196,9 +196,15 @@ export default function UserTable(props: Props) {
             <TableRow>
               <TableCell colSpan={10}>
                 <div className="m-4 rounded-xl border border-red-200 bg-red-50 p-8 text-center text-red-700">
-                  <p className="font-semibold">Não foi possível carregar os usuários</p>
+                  <p className="font-semibold">
+                    Não foi possível carregar os usuários
+                  </p>
                   <p className="mt-1 text-sm">{props.error}</p>
-                  <Button className="mt-4" variant="secondary" onClick={props.onRetry}>
+                  <Button
+                    className="mt-4"
+                    variant="secondary"
+                    onClick={props.onRetry}
+                  >
                     Tentar novamente
                   </Button>
                 </div>
@@ -231,7 +237,9 @@ export default function UserTable(props: Props) {
             !props.error &&
             rows.map((user) => (
               <TableRow key={user.id}>
-                <TableCell><UserAvatar user={user} /></TableCell>
+                <TableCell>
+                  <UserAvatar user={user} />
+                </TableCell>
                 <TableCell>
                   <button
                     className="font-semibold text-slate-900 transition hover:text-blue-700 hover:underline"
@@ -239,15 +247,21 @@ export default function UserTable(props: Props) {
                   >
                     {user.name}
                   </button>
-                  <p className="mt-0.5 text-xs text-slate-400">ID {user.id.slice(0, 8)}</p>
+                  <p className="mt-0.5 text-xs text-slate-400">
+                    ID {user.id.slice(0, 8)}
+                  </p>
                 </TableCell>
                 <TableCell>{user.title || roleLabels[user.role]}</TableCell>
                 <TableCell className="text-slate-600">{user.email}</TableCell>
                 <TableCell>{user.phone || "—"}</TableCell>
-                <TableCell>{user.organization?.name || "Escopo global"}</TableCell>
+                <TableCell>
+                  {user.organization?.name || "Escopo global"}
+                </TableCell>
                 <TableCell>
                   <Badge variant={user.active ? "success" : "neutral"}>
-                    <span className={`mr-1.5 h-1.5 w-1.5 rounded-full ${user.active ? "bg-emerald-500" : "bg-slate-400"}`} />
+                    <span
+                      className={`mr-1.5 h-1.5 w-1.5 rounded-full ${user.active ? "bg-emerald-500" : "bg-slate-400"}`}
+                    />
                     {user.active ? "Ativo" : "Inativo"}
                   </Badge>
                 </TableCell>
@@ -264,7 +278,9 @@ export default function UserTable(props: Props) {
                       aria-haspopup="menu"
                       aria-expanded={openMenu === user.id}
                       aria-label={`Ações de ${user.name}`}
-                      onClick={() => setOpenMenu(openMenu === user.id ? null : user.id)}
+                      onClick={() =>
+                        setOpenMenu(openMenu === user.id ? null : user.id)
+                      }
                     >
                       <MoreHorizontal size={18} />
                     </Button>
@@ -274,20 +290,49 @@ export default function UserTable(props: Props) {
                         className="absolute right-0 z-30 mt-1 w-56 rounded-xl border border-slate-200 bg-white p-1.5 text-left shadow-xl"
                       >
                         {[
-                          { Icon: Eye, label: "Visualizar", action: props.onView },
-                          { Icon: Pencil, label: "Editar", action: props.onEdit },
-                          { Icon: KeyRound, label: "Resetar senha", action: props.onResetPassword },
-                          { Icon: Power, label: user.active ? "Desativar" : "Ativar", action: props.onStatus },
-                          { Icon: Archive, label: "Arquivar", action: props.onArchive },
-                          { Icon: Trash2, label: "Excluir", action: props.onDelete, danger: true },
+                          {
+                            Icon: Eye,
+                            label: "Visualizar",
+                            action: props.onView,
+                          },
+                          {
+                            Icon: Pencil,
+                            label: "Editar",
+                            action: props.onEdit,
+                          },
+                          {
+                            Icon: KeyRound,
+                            label: "Resetar senha",
+                            action: props.onResetPassword,
+                          },
+                          {
+                            Icon: Power,
+                            label: user.active ? "Desativar" : "Ativar",
+                            action: props.onStatus,
+                          },
+                          {
+                            Icon: Archive,
+                            label: "Arquivar",
+                            action: props.onArchive,
+                          },
+                          {
+                            Icon: Trash2,
+                            label: "Excluir",
+                            action: props.onDelete,
+                            danger: true,
+                          },
                         ].map(({ Icon, label, action, danger }) => (
                           <button
                             role="menuitem"
                             key={label}
-                            onClick={() => { action(user); setOpenMenu(null); }}
+                            onClick={() => {
+                              action(user);
+                              setOpenMenu(null);
+                            }}
                             className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm transition hover:bg-slate-50 ${danger ? "text-red-600" : "text-slate-700"}`}
                           >
-                            <Icon size={16} />{label}
+                            <Icon size={16} />
+                            {label}
                           </button>
                         ))}
                         <button
@@ -296,7 +341,8 @@ export default function UserTable(props: Props) {
                           title="Em breve"
                           className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-400"
                         >
-                          <CopyPlus size={16} />Duplicar usuário (em breve)
+                          <CopyPlus size={16} />
+                          Duplicar usuário (em breve)
                         </button>
                       </div>
                     )}

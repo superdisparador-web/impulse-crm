@@ -1,22 +1,13 @@
 "use client";
 
-import {
-  ButtonHTMLAttributes,
-  ReactNode,
-} from "react";
+import { ButtonHTMLAttributes, ReactNode } from "react";
 
 type Variant =
-  | "primary"
-  | "secondary"
-  | "outline"
-  | "ghost"
-  | "danger"
-  | "success";
+  "primary" | "secondary" | "outline" | "ghost" | "danger" | "success";
 
 type Size = "sm" | "md" | "lg";
 
-interface ButtonProps
-  extends ButtonHTMLAttributes<HTMLButtonElement> {
+interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   children: ReactNode;
   variant?: Variant;
   size?: Size;

@@ -44,7 +44,10 @@ export function generateTemporaryPassword() {
   const characters =
     "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%";
   const random = crypto.getRandomValues(new Uint32Array(14));
-  return Array.from(random, (value) => characters[value % characters.length]).join("");
+  return Array.from(
+    random,
+    (value) => characters[value % characters.length],
+  ).join("");
 }
 
 export function getPasswordStrength(password = "") {
@@ -115,12 +118,12 @@ export default function UserForm({
 
   const strength = useMemo(
     () => getPasswordStrength(form.password),
-    [form.password]
+    [form.password],
   );
 
   const field = <Key extends keyof UserFormData>(
     key: Key,
-    value: UserFormData[Key]
+    value: UserFormData[Key],
   ) => setForm((current) => ({ ...current, [key]: value }));
 
   function generatePassword() {
@@ -179,87 +182,244 @@ export default function UserForm({
   return (
     <form onSubmit={submit} className="space-y-5">
       {error && (
-        <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+        <p
+          role="alert"
+          className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700"
+        >
           {error}
         </p>
       )}
 
-      <Card padding="sm" className="hover:border-slate-200/80 hover:shadow-none">
-        <SectionTitle icon={UserRound} title="Dados pessoais" description="Informações usadas para identificar e contatar o usuário." />
+      <Card
+        padding="sm"
+        className="hover:border-slate-200/80 hover:shadow-none"
+      >
+        <SectionTitle
+          icon={UserRound}
+          title="Dados pessoais"
+          description="Informações usadas para identificar e contatar o usuário."
+        />
         <div className="grid gap-4 sm:grid-cols-2">
-          <Input label="Nome" value={firstName} onChange={(event) => setFirstName(event.target.value)} required />
-          <Input label="Sobrenome" value={lastName} onChange={(event) => setLastName(event.target.value)} required />
-          <Input label="E-mail" type="email" value={form.email} onChange={(event) => field("email", event.target.value)} required />
-          <Input label="Telefone" value={form.phone} onChange={(event) => field("phone", event.target.value)} placeholder="(11) 99999-9999" />
+          <Input
+            label="Nome"
+            value={firstName}
+            onChange={(event) => setFirstName(event.target.value)}
+            required
+          />
+          <Input
+            label="Sobrenome"
+            value={lastName}
+            onChange={(event) => setLastName(event.target.value)}
+            required
+          />
+          <Input
+            label="E-mail"
+            type="email"
+            value={form.email}
+            onChange={(event) => field("email", event.target.value)}
+            required
+          />
+          <Input
+            label="Telefone"
+            value={form.phone}
+            onChange={(event) => field("phone", event.target.value)}
+            placeholder="(11) 99999-9999"
+          />
           <div className="sm:col-span-2">
-            <Input label="Cargo" value={form.title} onChange={(event) => field("title", event.target.value)} placeholder="Ex.: Coordenador comercial" />
+            <Input
+              label="Cargo"
+              value={form.title}
+              onChange={(event) => field("title", event.target.value)}
+              placeholder="Ex.: Coordenador comercial"
+            />
           </div>
         </div>
       </Card>
 
       {!user && (
-        <Card padding="sm" className="hover:border-slate-200/80 hover:shadow-none">
-          <SectionTitle icon={KeyRound} title="Acesso" description="Defina uma credencial temporária segura para o primeiro acesso." />
+        <Card
+          padding="sm"
+          className="hover:border-slate-200/80 hover:shadow-none"
+        >
+          <SectionTitle
+            icon={KeyRound}
+            title="Acesso"
+            description="Defina uma credencial temporária segura para o primeiro acesso."
+          />
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="relative">
-              <Input label="Senha" type={showPassword ? "text" : "password"} value={form.password} onChange={(event) => field("password", event.target.value)} minLength={8} required />
-              <button type="button" aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"} className="absolute right-3 top-10 rounded-lg p-1 text-slate-500 hover:bg-slate-100" onClick={() => setShowPassword((current) => !current)}>
+              <Input
+                label="Senha"
+                type={showPassword ? "text" : "password"}
+                value={form.password}
+                onChange={(event) => field("password", event.target.value)}
+                minLength={8}
+                required
+              />
+              <button
+                type="button"
+                aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+                className="absolute right-3 top-10 rounded-lg p-1 text-slate-500 hover:bg-slate-100"
+                onClick={() => setShowPassword((current) => !current)}
+              >
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
             </div>
-            <Input label="Confirmar senha" type={showPassword ? "text" : "password"} value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} required />
+            <Input
+              label="Confirmar senha"
+              type={showPassword ? "text" : "password"}
+              value={confirmPassword}
+              onChange={(event) => setConfirmPassword(event.target.value)}
+              required
+            />
             <div className="sm:col-span-2">
-              <div className="flex gap-1" aria-label={`Força da senha: ${strength.label}`}>
+              <div
+                className="flex gap-1"
+                aria-label={`Força da senha: ${strength.label}`}
+              >
                 {[1, 2, 3, 4].map((level) => (
-                  <span key={level} className={`h-1.5 flex-1 rounded-full ${level <= strength.level ? strength.color : "bg-slate-200"}`} />
+                  <span
+                    key={level}
+                    className={`h-1.5 flex-1 rounded-full ${level <= strength.level ? strength.color : "bg-slate-200"}`}
+                  />
                 ))}
               </div>
               <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
-                <span>Força: <strong className="text-slate-700">{strength.label}</strong></span>
+                <span>
+                  Força:{" "}
+                  <strong className="text-slate-700">{strength.label}</strong>
+                </span>
                 <span>Use 8+ caracteres, maiúscula, número e símbolo.</span>
               </div>
               <div className="mt-3 flex flex-wrap gap-2">
-                <Button size="sm" variant="secondary" onClick={generatePassword}><KeyRound size={15} />Gerar senha</Button>
-                <Button size="sm" variant="secondary" onClick={() => void copyPassword()} disabled={!form.password}><Clipboard size={15} />{copied ? "Copiada" : "Copiar"}</Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={generatePassword}
+                >
+                  <KeyRound size={15} />
+                  Gerar senha
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => void copyPassword()}
+                  disabled={!form.password}
+                >
+                  <Clipboard size={15} />
+                  {copied ? "Copiada" : "Copiar"}
+                </Button>
               </div>
             </div>
           </div>
         </Card>
       )}
 
-      <Card padding="sm" className="hover:border-slate-200/80 hover:shadow-none">
-        <SectionTitle icon={Building2} title="Organização" description="Determine o escopo, a função e o estado do acesso." />
+      <Card
+        padding="sm"
+        className="hover:border-slate-200/80 hover:shadow-none"
+      >
+        <SectionTitle
+          icon={Building2}
+          title="Organização"
+          description="Determine o escopo, a função e o estado do acesso."
+        />
         <div className="grid gap-4 sm:grid-cols-2">
-          <Select label="Função" value={form.role} onChange={(event) => field("role", event.target.value as UserRole)} options={allowedRoles.map((role) => ({ value: role, label: roleLabels[role] }))} />
-          <Select label="Status" value={String(form.active)} onChange={(event) => field("active", event.target.value === "true")} options={[{ value: "true", label: "Ativo" }, { value: "false", label: "Inativo" }]} />
+          <Select
+            label="Função"
+            value={form.role}
+            onChange={(event) => field("role", event.target.value as UserRole)}
+            options={allowedRoles.map((role) => ({
+              value: role,
+              label: roleLabels[role],
+            }))}
+          />
+          <Select
+            label="Status"
+            value={String(form.active)}
+            onChange={(event) => field("active", event.target.value === "true")}
+            options={[
+              { value: "true", label: "Ativo" },
+              { value: "false", label: "Inativo" },
+            ]}
+          />
           {canAssignOrganizations ? (
             <div className="sm:col-span-2">
-              <Select label="Organização" value={form.organizationId} onChange={(event) => field("organizationId", event.target.value)} options={[{ value: "", label: "Escopo global / selecione" }, ...organizations.map((organization) => ({ value: organization.id, label: organization.name }))]} />
+              <Select
+                label="Organização"
+                value={form.organizationId}
+                onChange={(event) =>
+                  field("organizationId", event.target.value)
+                }
+                options={[
+                  { value: "", label: "Escopo global / selecione" },
+                  ...organizations.map((organization) => ({
+                    value: organization.id,
+                    label: organization.name,
+                  })),
+                ]}
+              />
             </div>
           ) : (
-            <p className="sm:col-span-2 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">A organização será definida automaticamente conforme o seu escopo.</p>
+            <p className="sm:col-span-2 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+              A organização será definida automaticamente conforme o seu escopo.
+            </p>
           )}
         </div>
       </Card>
 
-      <Card padding="sm" className="hover:border-slate-200/80 hover:shadow-none">
-        <SectionTitle icon={ShieldCheck} title="Permissões" description="O acesso inicial será herdado da função selecionada." />
+      <Card
+        padding="sm"
+        className="hover:border-slate-200/80 hover:shadow-none"
+      >
+        <SectionTitle
+          icon={ShieldCheck}
+          title="Permissões"
+          description="O acesso inicial será herdado da função selecionada."
+        />
         <div className="flex items-center justify-between rounded-xl bg-slate-50 p-4">
-          <div><p className="text-sm font-semibold text-slate-800">Perfil de {roleLabels[form.role]}</p><p className="mt-1 text-xs text-slate-500">As permissões detalhadas podem ser consultadas no painel do usuário.</p></div>
-          <Badge variant="primary"><Check size={12} className="mr-1" />Herdado</Badge>
+          <div>
+            <p className="text-sm font-semibold text-slate-800">
+              Perfil de {roleLabels[form.role]}
+            </p>
+            <p className="mt-1 text-xs text-slate-500">
+              As permissões detalhadas podem ser consultadas no painel do
+              usuário.
+            </p>
+          </div>
+          <Badge variant="primary">
+            <Check size={12} className="mr-1" />
+            Herdado
+          </Badge>
         </div>
         {!user && (
           <label className="mt-3 flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 bg-white p-4">
-            <input type="checkbox" checked={sendInvite} onChange={(event) => setSendInvite(event.target.checked)} className="h-4 w-4 accent-blue-600" />
+            <input
+              type="checkbox"
+              checked={sendInvite}
+              onChange={(event) => setSendInvite(event.target.checked)}
+              className="h-4 w-4 accent-blue-600"
+            />
             <Mail size={18} className="text-blue-600" />
-            <span><strong className="block text-sm text-slate-800">Enviar convite</strong><span className="text-xs text-slate-500">Preparar instruções de acesso para envio por e-mail.</span></span>
+            <span>
+              <strong className="block text-sm text-slate-800">
+                Enviar convite
+              </strong>
+              <span className="text-xs text-slate-500">
+                Preparar instruções de acesso para envio por e-mail.
+              </span>
+            </span>
           </label>
         )}
       </Card>
 
       <div className="sticky bottom-0 flex justify-end gap-3 border-t border-slate-200 bg-white/95 pt-5 backdrop-blur">
-        <Button variant="secondary" onClick={onCancel}>Cancelar</Button>
-        <Button type="submit" loading={saving}>{user ? "Salvar alterações" : "Criar usuário"}</Button>
+        <Button variant="secondary" onClick={onCancel}>
+          Cancelar
+        </Button>
+        <Button type="submit" loading={saving}>
+          {user ? "Salvar alterações" : "Criar usuário"}
+        </Button>
       </div>
     </form>
   );

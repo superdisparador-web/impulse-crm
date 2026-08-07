@@ -25,24 +25,57 @@ export default function Modal({
   width = "md",
 }: ModalProps) {
   const panelRef = useRef<HTMLDivElement>(null);
+  const previousActiveElementRef = useRef<HTMLElement | null>(null);
+  const onCloseRef = useRef(onClose);
+
   useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    previousActiveElementRef.current =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
-        onClose();
-      } else if (event.key === "Tab") { const focusable=panelRef.current?.querySelectorAll<HTMLElement>('button,[href],input,select,textarea,[tabindex]:not([tabindex="-1"])');if(!focusable?.length)return;const first=focusable[0],last=focusable[focusable.length-1];if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus()}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus()} }
+        onCloseRef.current();
+        return;
+      }
+
+      if (event.key !== "Tab") return;
+
+      const focusable = panelRef.current?.querySelectorAll<HTMLElement>(
+        'button:not([disabled]),[href],input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])',
+      );
+
+      if (!focusable?.length) return;
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
     }
 
-    if (isOpen) {
-      document.addEventListener("keydown", handleKeyDown);
-      document.body.style.overflow = "hidden";
-      window.setTimeout(()=>panelRef.current?.querySelector<HTMLElement>("button")?.focus(),0);
-    }
+    document.addEventListener("keydown", handleKeyDown);
+    document.body.style.overflow = "hidden";
 
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
-      document.body.style.overflow = "auto";
+      document.body.style.overflow = "";
+
+      previousActiveElementRef.current?.focus();
     };
-  }, [isOpen, onClose]);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -57,7 +90,7 @@ export default function Modal({
       <div
         ref={panelRef}
         className={`w-full ${widthClasses[width]} max-h-[calc(100dvh-2rem)] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl`}
-        onClick={(e) => e.stopPropagation()}
+        onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
           <h2 id="modal-title" className="text-xl font-semibold text-slate-900">

@@ -13,7 +13,10 @@ export function archiveLead360(leadId: string) {
   return fetchArchive(leadId);
 }
 
-export function createLead360Activity(leadId: string, data: LeadActivityFormData) {
+export function createLead360Activity(
+  leadId: string,
+  data: LeadActivityFormData,
+) {
   return leadService.createActivity(leadId, data);
 }
 

@@ -1,56 +1,82 @@
-import assert from 'node:assert/strict';
-import test from 'node:test';
-import { createRequire } from 'node:module';
-import { readFileSync } from 'node:fs';
-import { resolve, dirname } from 'node:path';
+import assert from "node:assert/strict";
+import test from "node:test";
+import { createRequire } from "node:module";
+import { readFileSync } from "node:fs";
+import { resolve, dirname } from "node:path";
 
 const require = createRequire(import.meta.url);
-const ts = require('typescript');
-const Module = require('node:module');
-const root = resolve(dirname(new URL(import.meta.url).pathname), '..');
+const ts = require("typescript");
+const Module = require("node:module");
+const root = resolve(dirname(new URL(import.meta.url).pathname), "..");
 const originalResolve = Module._resolveFilename;
-Module._resolveFilename = function patchedResolve(request, parent, isMain, options) {
-  if (request.startsWith('@/')) return originalResolve.call(this, resolve(root, request.slice(2)), parent, isMain, options);
+Module._resolveFilename = function patchedResolve(
+  request,
+  parent,
+  isMain,
+  options,
+) {
+  if (request.startsWith("@/"))
+    return originalResolve.call(
+      this,
+      resolve(root, request.slice(2)),
+      parent,
+      isMain,
+      options,
+    );
   return originalResolve.call(this, request, parent, isMain, options);
 };
-for (const ext of ['.ts', '.tsx']) {
+for (const ext of [".ts", ".tsx"]) {
   require.extensions[ext] = (module, filename) => {
-    const source = readFileSync(filename, 'utf8');
-    const output = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX, esModuleInterop: true, target: ts.ScriptTarget.ES2020 } });
+    const source = readFileSync(filename, "utf8");
+    const output = ts.transpileModule(source, {
+      compilerOptions: {
+        module: ts.ModuleKind.CommonJS,
+        jsx: ts.JsxEmit.ReactJSX,
+        esModuleInterop: true,
+        target: ts.ScriptTarget.ES2020,
+      },
+    });
     module._compile(output.outputText, filename);
   };
 }
 
-global.localStorage = { getItem: () => 'token' };
+global.localStorage = { getItem: () => "token" };
 global.window = { localStorage: global.localStorage };
 
-const utils = require('../components/pipeline/pipeline-utils.ts');
-const service = require('../services/pipeline-board.service.ts');
-const { KanbanBoard } = require('../components/pipeline/KanbanBoard.tsx');
-const { PipelineBody } = require('../components/pipeline/PipelineBody.tsx');
-const { LeadCard } = require('../components/pipeline/LeadCard.tsx');
-const { sidebarMenu } = require('../components/layout/Sidebar.tsx');
+const utils = require("../components/pipeline/pipeline-utils.ts");
+const service = require("../services/pipeline-board.service.ts");
+const { KanbanBoard } = require("../components/pipeline/KanbanBoard.tsx");
+const { PipelineBody } = require("../components/pipeline/PipelineBody.tsx");
+const { LeadCard } = require("../components/pipeline/LeadCard.tsx");
+const { sidebarMenu } = require("../components/layout/Sidebar.tsx");
 
 function childrenOf(node) {
   const children = node?.props?.children ?? [];
-  return Array.isArray(children) ? children.flat().filter(Boolean) : [children].filter(Boolean);
+  return Array.isArray(children)
+    ? children.flat().filter(Boolean)
+    : [children].filter(Boolean);
 }
 function renderTree(node) {
-  if (!node || typeof node !== 'object') return node;
-  if (typeof node.type === 'function') return renderTree(node.type({ ...node.props }));
-  if (typeof node.type?.render === 'function' && (!node.type.displayName || node.type.displayName === 'Select')) return renderTree(node.type.render({ ...node.props }, null));
+  if (!node || typeof node !== "object") return node;
+  if (typeof node.type === "function")
+    return renderTree(node.type({ ...node.props }));
+  if (
+    typeof node.type?.render === "function" &&
+    (!node.type.displayName || node.type.displayName === "Select")
+  )
+    return renderTree(node.type.render({ ...node.props }, null));
   const children = childrenOf(node).map(renderTree);
   return { ...node, props: { ...node.props, children } };
 }
 function flatten(node) {
   const rendered = renderTree(node);
-  if (!rendered || typeof rendered !== 'object') return [];
+  if (!rendered || typeof rendered !== "object") return [];
   return [rendered, ...childrenOf(rendered).flatMap(flatten)];
 }
 function textOf(node) {
-  if (node == null || typeof node === 'boolean') return '';
-  if (typeof node === 'string' || typeof node === 'number') return String(node);
-  if (Array.isArray(node)) return node.map(textOf).join('');
+  if (node == null || typeof node === "boolean") return "";
+  if (typeof node === "string" || typeof node === "number") return String(node);
+  if (Array.isArray(node)) return node.map(textOf).join("");
   return textOf(node.props?.children);
 }
 function findByText(node, text) {
@@ -60,14 +86,17 @@ function findFirst(node, predicate) {
   return flatten(node).find(predicate);
 }
 function findComponent(node, predicate) {
-  if (!node || typeof node !== 'object') return undefined;
+  if (!node || typeof node !== "object") return undefined;
   if (predicate(node)) return node;
-  return childrenOf(node).map((child) => findComponent(child, predicate)).find(Boolean);
+  return childrenOf(node)
+    .map((child) => findComponent(child, predicate))
+    .find(Boolean);
 }
 
 function withHookDispatcher(run) {
-  const React = require('react');
-  const internals = React.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
+  const React = require("react");
+  const internals =
+    React.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
   const previous = internals.H;
   let cursor = 0;
   const states = [];
@@ -75,445 +104,1193 @@ function withHookDispatcher(run) {
   internals.H = {
     useState(initial) {
       const index = cursor++;
-      if (!(index in states)) states[index] = typeof initial === 'function' ? initial() : initial;
-      return [states[index], (value) => { states[index] = typeof value === 'function' ? value(states[index]) : value; }];
+      if (!(index in states))
+        states[index] = typeof initial === "function" ? initial() : initial;
+      return [
+        states[index],
+        (value) => {
+          states[index] =
+            typeof value === "function" ? value(states[index]) : value;
+        },
+      ];
     },
     useEffect(effect) {
       const cleanup = effect();
-      if (typeof cleanup === 'function') cleanups.push(cleanup);
+      if (typeof cleanup === "function") cleanups.push(cleanup);
     },
-    useMemo(factory) { return factory(); },
-    useCallback(callback) { return callback; },
-    useRef(initial) { return { current: initial }; },
-    useContext(context) { return context?._currentValue ?? {}; },
+    useMemo(factory) {
+      return factory();
+    },
+    useCallback(callback) {
+      return callback;
+    },
+    useRef(initial) {
+      return { current: initial };
+    },
+    useContext(context) {
+      return context?._currentValue ?? {};
+    },
   };
-  try { return run({ cleanup: () => cleanups.splice(0).forEach((cleanup) => cleanup()) }); }
-  finally { internals.H = previous; }
+  try {
+    return run({
+      cleanup: () => cleanups.splice(0).forEach((cleanup) => cleanup()),
+    });
+  } finally {
+    internals.H = previous;
+  }
 }
 function boardFixture() {
-  return { id: 'pipe-1', name: 'Vendas', stages: [
-    { id: 'stage-2', name: 'Contato', position: 2, cards: [{ id: 'card-3', position: 2, lead: { id: 'lead-3', name: 'Carlos' } }, { id: 'card-2', position: 1, lead: { id: 'lead-2', name: 'Bruna', email: 'b@example.com' } }] },
-    { id: 'stage-1', name: 'Novo', position: 1, cards: [{ id: 'card-1', position: 1, enteredStageAt: new Date().toISOString(), lead: { id: 'lead-1', name: 'Ana', phone: '11999999999', assignedUser: { id: 'u1', name: 'Maria' } } }] },
-    { id: 'stage-3', name: 'Vazio', position: 3, cards: [] },
-  ] };
+  return {
+    id: "pipe-1",
+    name: "Vendas",
+    stages: [
+      {
+        id: "stage-2",
+        name: "Contato",
+        position: 2,
+        cards: [
+          { id: "card-3", position: 2, lead: { id: "lead-3", name: "Carlos" } },
+          {
+            id: "card-2",
+            position: 1,
+            lead: { id: "lead-2", name: "Bruna", email: "b@example.com" },
+          },
+        ],
+      },
+      {
+        id: "stage-1",
+        name: "Novo",
+        position: 1,
+        cards: [
+          {
+            id: "card-1",
+            position: 1,
+            enteredStageAt: new Date().toISOString(),
+            lead: {
+              id: "lead-1",
+              name: "Ana",
+              phone: "11999999999",
+              assignedUser: { id: "u1", name: "Maria" },
+            },
+          },
+        ],
+      },
+      { id: "stage-3", name: "Vazio", position: 3, cards: [] },
+    ],
+  };
 }
 function mockFetch(handler) {
   const calls = [];
   global.fetch = async (url, options = {}) => {
     calls.push({ url: String(url), options });
     const result = await handler(String(url), options, calls.length);
-    if (result instanceof Error) return { ok: false, text: async () => JSON.stringify({ message: result.message }) };
-    return { ok: true, json: async () => result, text: async () => JSON.stringify(result) };
+    if (result instanceof Error)
+      return {
+        ok: false,
+        text: async () => JSON.stringify({ message: result.message }),
+      };
+    return {
+      ok: true,
+      json: async () => result,
+      text: async () => JSON.stringify(result),
+    };
   };
   return calls;
 }
 
-test('1. listPipelines chama GET /pipeline', async () => {
+test("1. listPipelines chama GET /pipeline", async () => {
   const calls = mockFetch(() => []);
   await service.listPipelines();
-  assert.equal(calls[0].url, 'http://localhost:3001/pipeline');
+  assert.equal(calls[0].url, "http://localhost:3001/pipeline");
   assert.equal(calls[0].options.method, undefined);
 });
 
-test('2. pipeline padrão é selecionado automaticamente', () => {
-  assert.equal(utils.selectInitialPipelineId([{ id: 'a' }, { id: 'b', isDefault: true }]), 'b');
+test("2. pipeline padrão é selecionado automaticamente", () => {
+  assert.equal(
+    utils.selectInitialPipelineId([{ id: "a" }, { id: "b", isDefault: true }]),
+    "b",
+  );
 });
 
-test('3. primeiro pipeline é selecionado quando não há padrão', () => {
-  assert.equal(utils.selectInitialPipelineId([{ id: 'a' }, { id: 'b' }]), 'a');
+test("3. primeiro pipeline é selecionado quando não há padrão", () => {
+  assert.equal(utils.selectInitialPipelineId([{ id: "a" }, { id: "b" }]), "a");
 });
 
-test('4. getPipelineBoard chama o endpoint correto', async () => {
+test("4. getPipelineBoard chama o endpoint correto", async () => {
   const calls = mockFetch(() => boardFixture());
-  await service.getPipelineBoard('pipe-1');
-  assert.equal(calls[0].url, 'http://localhost:3001/pipeline/pipe-1/board');
+  await service.getPipelineBoard("pipe-1");
+  assert.equal(calls[0].url, "http://localhost:3001/pipeline/pipe-1/board");
 });
 
-test('5 e 6. etapas e cards são exibidos ordenados', () => {
+test("5 e 6. etapas e cards são exibidos ordenados", () => {
   const sorted = utils.sortBoard(boardFixture());
-  assert.deepEqual(sorted.stages.map((stage) => stage.id), ['stage-1', 'stage-2', 'stage-3']);
-  assert.deepEqual(sorted.stages[1].cards.map((card) => card.id), ['card-2', 'card-3']);
+  assert.deepEqual(
+    sorted.stages.map((stage) => stage.id),
+    ["stage-1", "stage-2", "stage-3"],
+  );
+  assert.deepEqual(
+    sorted.stages[1].cards.map((card) => card.id),
+    ["card-2", "card-3"],
+  );
 });
 
-test('7. etapa vazia apresenta estado correto', () => {
-  const element = KanbanBoard({ board: utils.sortBoard(boardFixture()), activeCardId: '', moving: false, onDragStart: () => {}, onDropCard: () => {} });
-  assert.ok(findByText(element, 'Etapa sem cards'));
+test("7. etapa vazia apresenta estado correto", () => {
+  const element = KanbanBoard({
+    board: utils.sortBoard(boardFixture()),
+    activeCardId: "",
+    moving: false,
+    onDragStart: () => {},
+    onDropCard: () => {},
+  });
+  assert.ok(findByText(element, "Etapa sem cards"));
 });
 
-test('8. lista vazia de pipelines apresenta estado correto', () => {
-  const element = PipelineBody({ error: '', moveError: '', isLoading: false, pipelineCount: 0, board: null, activeCardId: '', moving: false, onDragStart: () => {}, onDropCard: () => {} });
-  assert.ok(findByText(element, 'Nenhuma pipeline encontrada'));
+test("8. lista vazia de pipelines apresenta estado correto", () => {
+  const element = PipelineBody({
+    error: "",
+    moveError: "",
+    isLoading: false,
+    pipelineCount: 0,
+    board: null,
+    activeCardId: "",
+    moving: false,
+    onDragStart: () => {},
+    onDropCard: () => {},
+  });
+  assert.ok(findByText(element, "Nenhuma pipeline encontrada"));
 });
 
-test('9. erro de carregamento apresenta mensagem em português', () => {
-  assert.equal(utils.getErrorMessage(new Error('Usuário sem organização.')), 'Usuário sem organização.');
+test("9. erro de carregamento apresenta mensagem em português", () => {
+  assert.equal(
+    utils.getErrorMessage(new Error("Usuário sem organização.")),
+    "Usuário sem organização.",
+  );
 });
 
-test('10 e 11. troca de pipeline mantém somente resposta mais recente', () => {
+test("10 e 11. troca de pipeline mantém somente resposta mais recente", () => {
   assert.equal(utils.isLatestBoardResponse(2, 1), false);
   assert.equal(utils.isLatestBoardResponse(2, 2), true);
 });
 
-test('12. movimentação dentro da mesma etapa', () => {
-  const moved = utils.moveCard(boardFixture(), { cardId: 'card-2', destinationStageId: 'stage-2', destinationIndex: 2 });
-  assert.deepEqual(moved.stages.find((stage) => stage.id === 'stage-2').cards.map((card) => card.id), ['card-3', 'card-2']);
+test("12. movimentação dentro da mesma etapa", () => {
+  const moved = utils.moveCard(boardFixture(), {
+    cardId: "card-2",
+    destinationStageId: "stage-2",
+    destinationIndex: 2,
+  });
+  assert.deepEqual(
+    moved.stages
+      .find((stage) => stage.id === "stage-2")
+      .cards.map((card) => card.id),
+    ["card-3", "card-2"],
+  );
 });
 
-test('13. movimentação entre etapas', () => {
-  const moved = utils.moveCard(boardFixture(), { cardId: 'card-1', destinationStageId: 'stage-2', destinationIndex: 1 });
-  assert.deepEqual(moved.stages.find((stage) => stage.id === 'stage-2').cards.map((card) => card.id), ['card-2', 'card-1', 'card-3']);
+test("13. movimentação entre etapas", () => {
+  const moved = utils.moveCard(boardFixture(), {
+    cardId: "card-1",
+    destinationStageId: "stage-2",
+    destinationIndex: 1,
+  });
+  assert.deepEqual(
+    moved.stages
+      .find((stage) => stage.id === "stage-2")
+      .cards.map((card) => card.id),
+    ["card-2", "card-1", "card-3"],
+  );
 });
 
-test('14 e 15. PATCH correto é chamado com stageId e position', async () => {
+test("14 e 15. PATCH correto é chamado com stageId e position", async () => {
   const calls = mockFetch(() => ({ ok: true }));
-  await service.movePipelineCard('card-1', 'stage-2', 3);
-  assert.equal(calls[0].url, 'http://localhost:3001/pipeline/cards/card-1/move');
-  assert.equal(calls[0].options.method, 'PATCH');
-  assert.deepEqual(JSON.parse(calls[0].options.body), { stageId: 'stage-2', position: 3 });
+  await service.movePipelineCard("card-1", "stage-2", 3);
+  assert.equal(
+    calls[0].url,
+    "http://localhost:3001/pipeline/cards/card-1/move",
+  );
+  assert.equal(calls[0].options.method, "PATCH");
+  assert.deepEqual(JSON.parse(calls[0].options.body), {
+    stageId: "stage-2",
+    position: 3,
+  });
 });
 
-test('16. atualização otimista acontece antes da resolução da API', () => {
+test("16. atualização otimista acontece antes da resolução da API", () => {
   const previous = boardFixture();
-  const optimistic = utils.moveCard(previous, { cardId: 'card-1', destinationStageId: 'stage-2', destinationIndex: 0 });
+  const optimistic = utils.moveCard(previous, {
+    cardId: "card-1",
+    destinationStageId: "stage-2",
+    destinationIndex: 0,
+  });
   assert.notDeepEqual(optimistic, previous);
-  assert.equal(optimistic.stages.find((stage) => stage.id === 'stage-2').cards[0].id, 'card-1');
+  assert.equal(
+    optimistic.stages.find((stage) => stage.id === "stage-2").cards[0].id,
+    "card-1",
+  );
 });
 
-test('17 e 18. falha da API restaura board anterior e exibe mensagem de erro', () => {
+test("17 e 18. falha da API restaura board anterior e exibe mensagem de erro", () => {
   const previous = boardFixture();
   const restored = previous;
-  const message = 'Não foi possível movimentar o card. A alteração foi desfeita.';
+  const message =
+    "Não foi possível movimentar o card. A alteração foi desfeita.";
   assert.deepEqual(restored, previous);
   assert.match(message, /Não foi possível movimentar/);
 });
 
-test('19. o mesmo card não aparece duas vezes', () => {
-  const moved = utils.moveCard(boardFixture(), { cardId: 'card-1', destinationStageId: 'stage-2', destinationIndex: 0 });
-  assert.equal(moved.stages.flatMap((stage) => stage.cards).filter((card) => card.id === 'card-1').length, 1);
+test("19. o mesmo card não aparece duas vezes", () => {
+  const moved = utils.moveCard(boardFixture(), {
+    cardId: "card-1",
+    destinationStageId: "stage-2",
+    destinationIndex: 0,
+  });
+  assert.equal(
+    moved.stages
+      .flatMap((stage) => stage.cards)
+      .filter((card) => card.id === "card-1").length,
+    1,
+  );
 });
 
-test('20. menu contém Pipeline somente uma vez', () => {
-  assert.equal(sidebarMenu.filter((item) => item.href === '/pipeline' && item.title === 'Pipeline').length, 1);
+test("20. menu contém Pipeline somente uma vez", () => {
+  assert.equal(
+    sidebarMenu.filter(
+      (item) => item.href === "/pipeline" && item.title === "Pipeline",
+    ).length,
+    1,
+  );
 });
 
-test('21. nome do corretor aparece quando existir', () => {
+test("21. nome do corretor aparece quando existir", () => {
   const card = boardFixture().stages[1].cards[0];
   const element = LeadCard({ card, dragging: false });
-  assert.ok(findByText(element, 'Corretor: Maria'));
+  assert.ok(findByText(element, "Corretor: Maria"));
 });
 
-test('22. telefone/e-mail/corretor vazios não aparecem', () => {
-  const element = LeadCard({ card: { id: 'empty', position: 1, lead: { id: 'lead', name: 'Sem campos' } }, dragging: false });
-  assert.equal(textOf(element).includes('Corretor:'), false);
-  assert.equal(textOf(element).includes('@'), false);
+test("22. telefone/e-mail/corretor vazios não aparecem", () => {
+  const element = LeadCard({
+    card: {
+      id: "empty",
+      position: 1,
+      lead: { id: "lead", name: "Sem campos" },
+    },
+    dragging: false,
+  });
+  assert.equal(textOf(element).includes("Corretor:"), false);
+  assert.equal(textOf(element).includes("@"), false);
 });
 
-test('23. estado de carregamento é exibido', () => {
-  const element = PipelineBody({ error: '', moveError: '', isLoading: true, pipelineCount: 0, board: null, activeCardId: '', moving: false, onDragStart: () => {}, onDropCard: () => {} });
-  assert.ok(findByText(element, 'Carregando Pipeline'));
+test("23. estado de carregamento é exibido", () => {
+  const element = PipelineBody({
+    error: "",
+    moveError: "",
+    isLoading: true,
+    pipelineCount: 0,
+    board: null,
+    activeCardId: "",
+    moving: false,
+    onDragStart: () => {},
+    onDropCard: () => {},
+  });
+  assert.ok(findByText(element, "Carregando Pipeline"));
 });
 
-test('24. drop sobre card gera somente uma movimentação', () => {
+test("24. drop sobre card gera somente uma movimentação", () => {
   let calls = 0;
-  const event = { preventDefault: () => {}, stopPropagation: () => { calls += 100; }, dataTransfer: { getData: () => 'card-1' } };
-  const element = KanbanBoard({ board: utils.sortBoard(boardFixture()), activeCardId: '', moving: false, onDragStart: () => {}, onDropCard: () => { calls += 1; } });
-  const dropTarget = findFirst(element, (item) => typeof item.props?.onDrop === 'function' && item.key === 'card-2');
+  const event = {
+    preventDefault: () => {},
+    stopPropagation: () => {
+      calls += 100;
+    },
+    dataTransfer: { getData: () => "card-1" },
+  };
+  const element = KanbanBoard({
+    board: utils.sortBoard(boardFixture()),
+    activeCardId: "",
+    moving: false,
+    onDragStart: () => {},
+    onDropCard: () => {
+      calls += 1;
+    },
+  });
+  const dropTarget = findFirst(
+    element,
+    (item) => typeof item.props?.onDrop === "function" && item.key === "card-2",
+  );
   dropTarget.props.onDrop(event);
   assert.equal(calls, 101);
 });
 
-test('25. movimentação por teclado via seletor acessível', () => {
+test("25. movimentação por teclado via seletor acessível", () => {
   let target = null;
-  const element = KanbanBoard({ board: utils.sortBoard(boardFixture()), activeCardId: '', moving: false, onDragStart: () => {}, onDropCard: (value) => { target = value; } });
-  const select = findFirst(element, (item) => item.type === 'select' && item.props?.['aria-label'] === 'Mover lead para etapa');
-  select.props.onChange({ target: { value: 'stage-2' }, currentTarget: { value: 'stage-2' } });
-  assert.deepEqual(target, { cardId: 'card-1', stageId: 'stage-2', index: 2 });
+  const element = KanbanBoard({
+    board: utils.sortBoard(boardFixture()),
+    activeCardId: "",
+    moving: false,
+    onDragStart: () => {},
+    onDropCard: (value) => {
+      target = value;
+    },
+  });
+  const select = findFirst(
+    element,
+    (item) =>
+      item.type === "select" &&
+      item.props?.["aria-label"] === "Mover lead para etapa",
+  );
+  select.props.onChange({
+    target: { value: "stage-2" },
+    currentTarget: { value: "stage-2" },
+  });
+  assert.deepEqual(target, { cardId: "card-1", stageId: "stage-2", index: 2 });
 });
-const leadNotes = require('../components/leads/lead-notes.adapter.ts');
-const leadTimeline = require('../components/leads/lead-timeline.adapter.ts');
-const { LeadInfo } = require('../components/leads/LeadInfo.tsx');
-const { LeadTimeline } = require('../components/leads/LeadTimeline.tsx');
-const { LeadHistory: LeadPipelineHistory } = require('../components/leads/LeadHistory.tsx');
+const leadNotes = require("../components/leads/lead-notes.adapter.ts");
+const leadTimeline = require("../components/leads/lead-timeline.adapter.ts");
+const { LeadInfo } = require("../components/leads/LeadInfo.tsx");
+const { LeadTimeline } = require("../components/leads/LeadTimeline.tsx");
+const {
+  LeadHistory: LeadPipelineHistory,
+} = require("../components/leads/LeadHistory.tsx");
 
-test('26. LeadInfo oculta CPF vazio e exibe telefone copiável', () => {
-  const element = LeadInfo({ lead: { id: 'lead-1', phone: '11999999999', source: 'MANUAL', status: 'NEW', temperature: 'HOT', score: 0, organizationId: 'org-1', createdAt: '2026-07-23T10:00:00.000Z', updatedAt: '2026-07-23T10:00:00.000Z' } });
-  assert.ok(findByText(element, 'Telefone'));
-  assert.equal(Boolean(findByText(element, 'CPF')), false);
+test("26. LeadInfo oculta CPF vazio e exibe telefone copiável", () => {
+  const element = LeadInfo({
+    lead: {
+      id: "lead-1",
+      phone: "11999999999",
+      source: "MANUAL",
+      status: "NEW",
+      temperature: "HOT",
+      score: 0,
+      organizationId: "org-1",
+      createdAt: "2026-07-23T10:00:00.000Z",
+      updatedAt: "2026-07-23T10:00:00.000Z",
+    },
+  });
+  assert.ok(findByText(element, "Telefone"));
+  assert.equal(Boolean(findByText(element, "CPF")), false);
 });
 
-test('27. LeadTimeline ordena itens em ordem cronológica', () => {
-  const items = [{ id: 'b', title: 'Depois', occurredAt: '2026-07-23T11:00:00.000Z', kind: 'lead' }, { id: 'a', title: 'Antes', occurredAt: '2026-07-23T10:00:00.000Z', kind: 'lead' }];
-  const ordered = [...items].sort((a, b) => new Date(a.occurredAt).getTime() - new Date(b.occurredAt).getTime());
+test("27. LeadTimeline ordena itens em ordem cronológica", () => {
+  const items = [
+    {
+      id: "b",
+      title: "Depois",
+      occurredAt: "2026-07-23T11:00:00.000Z",
+      kind: "lead",
+    },
+    {
+      id: "a",
+      title: "Antes",
+      occurredAt: "2026-07-23T10:00:00.000Z",
+      kind: "lead",
+    },
+  ];
+  const ordered = [...items].sort(
+    (a, b) =>
+      new Date(a.occurredAt).getTime() - new Date(b.occurredAt).getTime(),
+  );
   const element = LeadTimeline({ items: ordered });
-  assert.ok(textOf(element).indexOf('Antes') < textOf(element).indexOf('Depois'));
+  assert.ok(
+    textOf(element).indexOf("Antes") < textOf(element).indexOf("Depois"),
+  );
 });
 
-test('28. LeadDrawer abre com overlay e apenas um drawer', () => {
-  const { LeadDrawer } = require('../components/leads/LeadDrawer.tsx');
-  const card = { id: 'card-1', position: 1, stageId: 'stage-1', enteredStageAt: '2026-07-23T10:00:00.000Z', lead: { id: 'lead-1', name: 'Ana' } };
-  const board = { id: 'pipe-1', name: 'Vendas', stages: [{ id: 'stage-1', name: 'Novo Lead', position: 1, cards: [card] }] };
+test("28. LeadDrawer abre com overlay e apenas um drawer", () => {
+  const { LeadDrawer } = require("../components/leads/LeadDrawer.tsx");
+  const card = {
+    id: "card-1",
+    position: 1,
+    stageId: "stage-1",
+    enteredStageAt: "2026-07-23T10:00:00.000Z",
+    lead: { id: "lead-1", name: "Ana" },
+  };
+  const board = {
+    id: "pipe-1",
+    name: "Vendas",
+    stages: [{ id: "stage-1", name: "Novo Lead", position: 1, cards: [card] }],
+  };
   const previousWindow = global.window;
-  global.window = { ...previousWindow, setTimeout: () => 1, clearTimeout: () => {}, addEventListener: () => {}, removeEventListener: () => {} };
-  const element = withHookDispatcher(() => LeadDrawer({ card, board, onClose: () => {}, onArchived: () => {} }));
-  assert.equal(flatten(element).filter((item) => item.type === 'aside' && item.props?.['aria-label'] === 'Ficha completa do cliente').length, 1);
-  assert.ok(findFirst(element, (item) => item.type === 'button' && item.props?.['aria-label'] === 'Fechar ficha clicando fora'));
+  global.window = {
+    ...previousWindow,
+    setTimeout: () => 1,
+    clearTimeout: () => {},
+    addEventListener: () => {},
+    removeEventListener: () => {},
+  };
+  const element = withHookDispatcher(() =>
+    LeadDrawer({ card, board, onClose: () => {}, onArchived: () => {} }),
+  );
+  assert.equal(
+    flatten(element).filter(
+      (item) =>
+        item.type === "aside" &&
+        item.props?.["aria-label"] === "Ficha completa do cliente",
+    ).length,
+    1,
+  );
+  assert.ok(
+    findFirst(
+      element,
+      (item) =>
+        item.type === "button" &&
+        item.props?.["aria-label"] === "Fechar ficha clicando fora",
+    ),
+  );
   global.window = previousWindow;
 });
 
-test('29. LeadDrawer não dispara múltiplos fechamentos durante animação', () => {
-  const { LeadDrawer } = require('../components/leads/LeadDrawer.tsx');
-  const card = { id: 'card-1', position: 1, stageId: 'stage-1', lead: { id: 'lead-1', name: 'Ana' } };
-  const board = { id: 'pipe-1', name: 'Vendas', stages: [{ id: 'stage-1', name: 'Novo Lead', position: 1, cards: [card] }] };
+test("29. LeadDrawer não dispara múltiplos fechamentos durante animação", () => {
+  const { LeadDrawer } = require("../components/leads/LeadDrawer.tsx");
+  const card = {
+    id: "card-1",
+    position: 1,
+    stageId: "stage-1",
+    lead: { id: "lead-1", name: "Ana" },
+  };
+  const board = {
+    id: "pipe-1",
+    name: "Vendas",
+    stages: [{ id: "stage-1", name: "Novo Lead", position: 1, cards: [card] }],
+  };
   let closes = 0;
   const previousWindow = global.window;
-  global.window = { ...previousWindow, setTimeout: (callback, delay) => { if (delay === 180) callback(); return 1; }, clearTimeout: () => {}, addEventListener: () => {}, removeEventListener: () => {} };
-  const element = withHookDispatcher(() => LeadDrawer({ card, board, onClose: () => { closes += 1; }, onArchived: () => {} }));
-  findFirst(element, (item) => item.type === 'button' && textOf(item) === 'Fechar').props.onClick();
-  findFirst(element, (item) => item.props?.['aria-label'] === 'Fechar ficha clicando fora').props.onClick();
+  global.window = {
+    ...previousWindow,
+    setTimeout: (callback, delay) => {
+      if (delay === 180) callback();
+      return 1;
+    },
+    clearTimeout: () => {},
+    addEventListener: () => {},
+    removeEventListener: () => {},
+  };
+  const element = withHookDispatcher(() =>
+    LeadDrawer({
+      card,
+      board,
+      onClose: () => {
+        closes += 1;
+      },
+      onArchived: () => {},
+    }),
+  );
+  findFirst(
+    element,
+    (item) => item.type === "button" && textOf(item) === "Fechar",
+  ).props.onClick();
+  findFirst(
+    element,
+    (item) => item.props?.["aria-label"] === "Fechar ficha clicando fora",
+  ).props.onClick();
   assert.equal(closes, 1);
   global.window = previousWindow;
 });
 
-test('30. LeadDrawer fecha pelo ESC por card ou leadId e remove listener', () => {
-  const { LeadDrawer } = require('../components/leads/LeadDrawer.tsx');
-  const card = { id: 'card-1', position: 1, stageId: 'stage-1', lead: { id: 'lead-1', name: 'Ana' } };
-  const board = { id: 'pipe-1', name: 'Vendas', stages: [{ id: 'stage-1', name: 'Novo Lead', position: 1, cards: [card] }] };
+test("30. LeadDrawer fecha pelo ESC por card ou leadId e remove listener", () => {
+  const { LeadDrawer } = require("../components/leads/LeadDrawer.tsx");
+  const card = {
+    id: "card-1",
+    position: 1,
+    stageId: "stage-1",
+    lead: { id: "lead-1", name: "Ana" },
+  };
+  const board = {
+    id: "pipe-1",
+    name: "Vendas",
+    stages: [{ id: "stage-1", name: "Novo Lead", position: 1, cards: [card] }],
+  };
   function runScenario(props) {
     let handler = null;
     let removed = false;
     let closes = 0;
     const previousWindow = global.window;
-    global.window = { ...previousWindow, setTimeout: (callback, delay) => { if (delay === 180) callback(); return 1; }, clearTimeout: () => {}, addEventListener: (_event, callback) => { handler = callback; }, removeEventListener: (_event, callback) => { removed = callback === handler; } };
-    withHookDispatcher(({ cleanup }) => { LeadDrawer({ ...props, onClose: () => { closes += 1; }, onArchived: () => {} }); handler({ key: 'Enter' }); handler({ key: 'Escape' }); handler({ key: 'Escape' }); cleanup(); });
+    global.window = {
+      ...previousWindow,
+      setTimeout: (callback, delay) => {
+        if (delay === 180) callback();
+        return 1;
+      },
+      clearTimeout: () => {},
+      addEventListener: (_event, callback) => {
+        handler = callback;
+      },
+      removeEventListener: (_event, callback) => {
+        removed = callback === handler;
+      },
+    };
+    withHookDispatcher(({ cleanup }) => {
+      LeadDrawer({
+        ...props,
+        onClose: () => {
+          closes += 1;
+        },
+        onArchived: () => {},
+      });
+      handler({ key: "Enter" });
+      handler({ key: "Escape" });
+      handler({ key: "Escape" });
+      cleanup();
+    });
     global.window = previousWindow;
     return { closes, removed, registered: Boolean(handler) };
   }
-  assert.deepEqual(runScenario({ card, board }), { closes: 1, removed: true, registered: true });
-  assert.deepEqual(runScenario({ card: null, board: null, leadId: 'lead-1' }), { closes: 1, removed: true, registered: true });
+  assert.deepEqual(runScenario({ card, board }), {
+    closes: 1,
+    removed: true,
+    registered: true,
+  });
+  assert.deepEqual(runScenario({ card: null, board: null, leadId: "lead-1" }), {
+    closes: 1,
+    removed: true,
+    registered: true,
+  });
 });
 
-test('31. LeadDrawer não registra ESC sem card e sem leadId', () => {
-  const { LeadDrawer } = require('../components/leads/LeadDrawer.tsx');
+test("31. LeadDrawer não registra ESC sem card e sem leadId", () => {
+  const { LeadDrawer } = require("../components/leads/LeadDrawer.tsx");
   let registered = false;
   let removed = false;
   const previousWindow = global.window;
-  global.window = { ...previousWindow, setTimeout: () => 1, clearTimeout: () => {}, addEventListener: () => { registered = true; }, removeEventListener: () => { removed = true; } };
-  withHookDispatcher(({ cleanup }) => { LeadDrawer({ card: null, board: null, onClose: () => {}, onArchived: () => {} }); cleanup(); });
+  global.window = {
+    ...previousWindow,
+    setTimeout: () => 1,
+    clearTimeout: () => {},
+    addEventListener: () => {
+      registered = true;
+    },
+    removeEventListener: () => {
+      removed = true;
+    },
+  };
+  withHookDispatcher(({ cleanup }) => {
+    LeadDrawer({
+      card: null,
+      board: null,
+      onClose: () => {},
+      onArchived: () => {},
+    });
+    cleanup();
+  });
   assert.equal(registered, false);
   assert.equal(removed, false);
   global.window = previousWindow;
 });
 
-test('32. botão Editar foi removido até existir ação real', () => {
-  const { LeadHeader } = require('../components/leads/LeadHeader.tsx');
-  const element = LeadHeader({ card: { id: 'card-1', position: 1, lead: { id: 'lead-1', name: 'Ana' } }, archiving: false, onArchive: () => {}, onClose: () => {} });
-  assert.equal(Boolean(findByText(element, 'Editar')), false);
+test("32. botão Editar foi removido até existir ação real", () => {
+  const { LeadHeader } = require("../components/leads/LeadHeader.tsx");
+  const element = LeadHeader({
+    card: { id: "card-1", position: 1, lead: { id: "lead-1", name: "Ana" } },
+    archiving: false,
+    onArchive: () => {},
+    onClose: () => {},
+  });
+  assert.equal(Boolean(findByText(element, "Editar")), false);
 });
 
-test('33. LeadNotes permite excluir observações e mantém adapter isolado', () => {
-  const { LeadNotes } = require('../components/leads/LeadNotes.tsx');
+test("33. LeadNotes permite excluir observações e mantém adapter isolado", () => {
+  const { LeadNotes } = require("../components/leads/LeadNotes.tsx");
   let changed = null;
-  const note = { id: 'n1', text: 'Observação inicial', createdAt: '2026-07-23T10:00:00.000Z', updatedAt: '2026-07-23T10:00:00.000Z' };
-  const element = withHookDispatcher(() => LeadNotes({ notes: [note], saving: false, onChange: (notes) => { changed = notes; } }));
-  findFirst(element, (item) => item.type === 'button' && textOf(item) === 'Excluir').props.onClick();
+  const note = {
+    id: "n1",
+    text: "Observação inicial",
+    createdAt: "2026-07-23T10:00:00.000Z",
+    updatedAt: "2026-07-23T10:00:00.000Z",
+  };
+  const element = withHookDispatcher(() =>
+    LeadNotes({
+      notes: [note],
+      saving: false,
+      onChange: (notes) => {
+        changed = notes;
+      },
+    }),
+  );
+  findFirst(
+    element,
+    (item) => item.type === "button" && textOf(item) === "Excluir",
+  ).props.onClick();
   assert.deepEqual(changed, []);
-  assert.deepEqual(leadNotes.parseLeadNotes(leadNotes.serializeLeadNotes([note])), [note]);
+  assert.deepEqual(
+    leadNotes.parseLeadNotes(leadNotes.serializeLeadNotes([note])),
+    [note],
+  );
 });
 
-test('34. LeadTimeline renderiza timeline mapeada pelo adapter', () => {
-  const notes = [{ id: 'n1', text: 'Nota', createdAt: '2026-07-23T10:00:00.000Z', updatedAt: '2026-07-23T10:00:00.000Z' }];
-  const timeline = leadTimeline.mapLeadTimeline({ lead: { id: 'lead-1', source: 'MANUAL', status: 'NEW', temperature: 'HOT', score: 0, organizationId: 'org-1', createdAt: '2026-07-23T09:00:00.000Z', updatedAt: '2026-07-23T09:00:00.000Z' }, card: { id: 'card-1', position: 1, enteredStageAt: '2026-07-23T09:30:00.000Z', lead: { id: 'lead-1' } }, events: [], activities: [], notes });
+test("34. LeadTimeline renderiza timeline mapeada pelo adapter", () => {
+  const notes = [
+    {
+      id: "n1",
+      text: "Nota",
+      createdAt: "2026-07-23T10:00:00.000Z",
+      updatedAt: "2026-07-23T10:00:00.000Z",
+    },
+  ];
+  const timeline = leadTimeline.mapLeadTimeline({
+    lead: {
+      id: "lead-1",
+      source: "MANUAL",
+      status: "NEW",
+      temperature: "HOT",
+      score: 0,
+      organizationId: "org-1",
+      createdAt: "2026-07-23T09:00:00.000Z",
+      updatedAt: "2026-07-23T09:00:00.000Z",
+    },
+    card: {
+      id: "card-1",
+      position: 1,
+      enteredStageAt: "2026-07-23T09:30:00.000Z",
+      lead: { id: "lead-1" },
+    },
+    events: [],
+    activities: [],
+    notes,
+  });
   const element = LeadTimeline({ items: timeline });
-  assert.ok(findByText(element, 'Lead criado'));
-  assert.ok(findByText(element, 'Entrou no Pipeline'));
-  assert.ok(findByText(element, 'Observação'));
+  assert.ok(findByText(element, "Lead criado"));
+  assert.ok(findByText(element, "Entrou no Pipeline"));
+  assert.ok(findByText(element, "Observação"));
 });
 
-
-test('35. LeadHistory mostra etapas visuais do Pipeline', () => {
-  const element = LeadPipelineHistory({ stages: ['Novo Lead', 'Contato', 'Documentação', 'Mesa', 'Venda'].map((name, index) => ({ id: String(index), name, current: index === 1 })) });
-  assert.ok(findByText(element, 'Novo Lead'));
-  assert.ok(findByText(element, 'Venda'));
+test("35. LeadHistory mostra etapas visuais do Pipeline", () => {
+  const element = LeadPipelineHistory({
+    stages: ["Novo Lead", "Contato", "Documentação", "Mesa", "Venda"].map(
+      (name, index) => ({ id: String(index), name, current: index === 1 }),
+    ),
+  });
+  assert.ok(findByText(element, "Novo Lead"));
+  assert.ok(findByText(element, "Venda"));
 });
 
-test('36. utilitários serializam observações e montam timeline extensível', () => {
-  const notes = [{ id: 'n1', text: 'Nota', createdAt: '2026-07-23T10:00:00.000Z', updatedAt: '2026-07-23T10:00:00.000Z' }];
-  const created = leadNotes.createLeadNote('Nova nota', new Date('2026-07-23T11:00:00.000Z'), 0.5);
-  assert.equal(created.text, 'Nova nota');
-  assert.deepEqual(leadNotes.sortLeadNotes([notes[0], created]).map((note) => note.id), [created.id, 'n1']);
-  assert.deepEqual(leadNotes.parseLeadNotes(leadNotes.serializeLeadNotes(notes)), notes);
-  const timeline = leadTimeline.mapLeadTimeline({ lead: { id: 'lead-1', source: 'MANUAL', status: 'NEW', temperature: 'HOT', score: 0, organizationId: 'org-1', createdAt: '2026-07-23T09:00:00.000Z', updatedAt: '2026-07-23T09:00:00.000Z' }, card: { id: 'card-1', position: 1, enteredStageAt: '2026-07-23T09:30:00.000Z', lead: { id: 'lead-1' } }, events: [], activities: [], notes });
-  assert.deepEqual(timeline.map((item) => item.title), ['Lead criado', 'Entrou no Pipeline', 'Observação']);
+test("36. utilitários serializam observações e montam timeline extensível", () => {
+  const notes = [
+    {
+      id: "n1",
+      text: "Nota",
+      createdAt: "2026-07-23T10:00:00.000Z",
+      updatedAt: "2026-07-23T10:00:00.000Z",
+    },
+  ];
+  const created = leadNotes.createLeadNote(
+    "Nova nota",
+    new Date("2026-07-23T11:00:00.000Z"),
+    0.5,
+  );
+  assert.equal(created.text, "Nova nota");
+  assert.deepEqual(
+    leadNotes.sortLeadNotes([notes[0], created]).map((note) => note.id),
+    [created.id, "n1"],
+  );
+  assert.deepEqual(
+    leadNotes.parseLeadNotes(leadNotes.serializeLeadNotes(notes)),
+    notes,
+  );
+  const timeline = leadTimeline.mapLeadTimeline({
+    lead: {
+      id: "lead-1",
+      source: "MANUAL",
+      status: "NEW",
+      temperature: "HOT",
+      score: 0,
+      organizationId: "org-1",
+      createdAt: "2026-07-23T09:00:00.000Z",
+      updatedAt: "2026-07-23T09:00:00.000Z",
+    },
+    card: {
+      id: "card-1",
+      position: 1,
+      enteredStageAt: "2026-07-23T09:30:00.000Z",
+      lead: { id: "lead-1" },
+    },
+    events: [],
+    activities: [],
+    notes,
+  });
+  assert.deepEqual(
+    timeline.map((item) => item.title),
+    ["Lead criado", "Entrou no Pipeline", "Observação"],
+  );
 });
-const { leadService } = require('../services/lead.service.ts');
-const { pipelineService } = require('../services/pipeline.service.ts');
-const LeadFilters = require('../components/leads/LeadFilters.tsx').default;
-const LeadTable = require('../components/leads/LeadTable.tsx').default;
-const LeadForm = require('../components/leads/LeadForm.tsx').default;
-const AddLeadToPipelineDialog = require('../components/leads/AddLeadToPipelineDialog.tsx').default;
+const { leadService } = require("../services/lead.service.ts");
+const { pipelineService } = require("../services/pipeline.service.ts");
+const LeadFilters = require("../components/leads/LeadFilters.tsx").default;
+const LeadTable = require("../components/leads/LeadTable.tsx").default;
+const LeadForm = require("../components/leads/LeadForm.tsx").default;
+const AddLeadToPipelineDialog =
+  require("../components/leads/AddLeadToPipelineDialog.tsx").default;
 
 function sampleLead(overrides = {}) {
-  return { id: 'lead-1', name: 'Ana', phone: '11999999999', email: 'ana@example.com', document: '12345678901', source: 'MANUAL', status: 'NEW', temperature: 'WARM', score: 0, organizationId: 'org-1', assignedUserId: null, createdAt: '2026-07-23T10:00:00.000Z', updatedAt: '2026-07-23T11:00:00.000Z', ...overrides };
+  return {
+    id: "lead-1",
+    name: "Ana",
+    phone: "11999999999",
+    email: "ana@example.com",
+    document: "12345678901",
+    source: "MANUAL",
+    status: "NEW",
+    temperature: "WARM",
+    score: 0,
+    organizationId: "org-1",
+    assignedUserId: null,
+    createdAt: "2026-07-23T10:00:00.000Z",
+    updatedAt: "2026-07-23T11:00:00.000Z",
+    ...overrides,
+  };
 }
 
 function setupWindowForUi() {
   const previousWindow = global.window;
-  global.window = { ...previousWindow, setTimeout: (callback) => { callback(); return 1; }, clearTimeout: () => {}, addEventListener: () => {}, removeEventListener: () => {} };
-  return () => { global.window = previousWindow; };
+  global.window = {
+    ...previousWindow,
+    setTimeout: (callback) => {
+      callback();
+      return 1;
+    },
+    clearTimeout: () => {},
+    addEventListener: () => {},
+    removeEventListener: () => {},
+  };
+  return () => {
+    global.window = previousWindow;
+  };
 }
 
-test('37. leads busca filtros e paginação são enviados ao backend', async () => {
-  const calls = mockFetch(() => ({ items: [], page: 2, pageSize: 25, total: 0, totalPages: 1, meta: { total: 0, page: 2, limit: 25, totalPages: 1 } }));
-  await leadService.getAll({ page: 2, limit: 25, search: 'Ana', status: 'QUALIFIED', temperature: 'HOT', source: 'WEBSITE', assignedUserId: 'user-1', archived: true, createdFrom: '2026-07-01' });
+test("37. leads busca filtros e paginação são enviados ao backend", async () => {
+  const calls = mockFetch(() => ({
+    items: [],
+    page: 2,
+    pageSize: 25,
+    total: 0,
+    totalPages: 1,
+    meta: { total: 0, page: 2, limit: 25, totalPages: 1 },
+  }));
+  await leadService.getAll({
+    page: 2,
+    limit: 25,
+    search: "Ana",
+    status: "QUALIFIED",
+    temperature: "HOT",
+    source: "WEBSITE",
+    assignedUserId: "user-1",
+    archived: true,
+    createdFrom: "2026-07-01",
+  });
   const url = new URL(calls[0].url);
-  assert.equal(url.pathname, '/leads');
-  assert.equal(url.searchParams.get('search'), 'Ana');
-  assert.equal(url.searchParams.get('status'), 'QUALIFIED');
-  assert.equal(url.searchParams.get('temperature'), 'HOT');
-  assert.equal(url.searchParams.get('source'), 'WEBSITE');
-  assert.equal(url.searchParams.get('assignedUserId'), 'user-1');
-  assert.equal(url.searchParams.get('archived'), 'true');
-  assert.equal(url.searchParams.get('page'), '2');
-  assert.equal(url.searchParams.get('limit'), '25');
+  assert.equal(url.pathname, "/leads");
+  assert.equal(url.searchParams.get("search"), "Ana");
+  assert.equal(url.searchParams.get("status"), "QUALIFIED");
+  assert.equal(url.searchParams.get("temperature"), "HOT");
+  assert.equal(url.searchParams.get("source"), "WEBSITE");
+  assert.equal(url.searchParams.get("assignedUserId"), "user-1");
+  assert.equal(url.searchParams.get("archived"), "true");
+  assert.equal(url.searchParams.get("page"), "2");
+  assert.equal(url.searchParams.get("limit"), "25");
 });
 
-test('38. LeadFilters combina filtros e limpa preservando paginação base', () => {
+test("38. LeadFilters combina filtros e limpa preservando paginação base", () => {
   let next = null;
-  const element = LeadFilters({ filters: { page: 3, limit: 25, search: 'Ana', status: 'NEW' }, users: [{ id: 'user-1', name: 'Maria' }], onChange: (filters) => { next = filters; } });
-  findFirst(element, (item) => item.type === 'select' && item.props?.value === '').props.onChange({ target: { value: 'HOT' } });
-  assert.equal(next.temperature, 'HOT');
+  const element = LeadFilters({
+    filters: { page: 3, limit: 25, search: "Ana", status: "NEW" },
+    users: [{ id: "user-1", name: "Maria" }],
+    onChange: (filters) => {
+      next = filters;
+    },
+  });
+  findFirst(
+    element,
+    (item) => item.type === "select" && item.props?.value === "",
+  ).props.onChange({ target: { value: "HOT" } });
+  assert.equal(next.temperature, "HOT");
   assert.equal(next.page, 1);
-  findFirst(element, (item) => item.type === 'button' && textOf(item) === 'Limpar filtros').props.onClick();
-  assert.deepEqual(next, { page: 1, limit: 25, order: 'desc', search: 'Ana' });
+  findFirst(
+    element,
+    (item) => item.type === "button" && textOf(item) === "Limpar filtros",
+  ).props.onClick();
+  assert.deepEqual(next, { page: 1, limit: 25, order: "desc", search: "Ana" });
 });
 
-test('39. LeadTable dispara edição arquivamento Lead 360 status e temperatura', () => {
+test("39. LeadTable dispara edição arquivamento Lead 360 status e temperatura", () => {
   const lead = sampleLead();
   const calls = [];
-  const element = LeadTable({ leads: [lead], loading: false, users: [{ id: 'user-1', name: 'Maria' }], onView: (value) => calls.push(['view', value.id]), onEdit: (value) => calls.push(['edit', value.id]), onArchive: (value) => calls.push(['archive', value.id]), onAddToPipeline: (value) => calls.push(['pipeline', value.id]), onAssign: (value, userId) => calls.push(['assign', value.id, userId]), onStatus: (value, status) => calls.push(['status', value.id, status]), onTemperature: (value, temperature) => calls.push(['temperature', value.id, temperature]) });
-  const actionMenu = findComponent(element, (item) => item.type?.name === 'ActionMenu');
+  const element = LeadTable({
+    leads: [lead],
+    loading: false,
+    users: [{ id: "user-1", name: "Maria" }],
+    onView: (value) => calls.push(["view", value.id]),
+    onEdit: (value) => calls.push(["edit", value.id]),
+    onArchive: (value) => calls.push(["archive", value.id]),
+    onAddToPipeline: (value) => calls.push(["pipeline", value.id]),
+    onAssign: (value, userId) => calls.push(["assign", value.id, userId]),
+    onStatus: (value, status) => calls.push(["status", value.id, status]),
+    onTemperature: (value, temperature) =>
+      calls.push(["temperature", value.id, temperature]),
+  });
+  const actionMenu = findComponent(
+    element,
+    (item) => item.type?.name === "ActionMenu",
+  );
   actionMenu.props.onView();
   actionMenu.props.onEdit();
   actionMenu.props.onAddToPipeline();
   actionMenu.props.onArchive();
   const previousDocument = global.document;
-  global.document = { addEventListener: () => {}, removeEventListener: () => {} };
+  global.document = {
+    addEventListener: () => {},
+    removeEventListener: () => {},
+  };
   withHookDispatcher(() => {
-    findFirst(element, (item) => item.props?.['aria-label'] === 'Status de Ana').props.onChange({ target: { value: 'QUALIFIED' } });
-    findFirst(element, (item) => item.props?.['aria-label'] === 'Temperatura de Ana').props.onChange({ target: { value: 'HOT' } });
-    findFirst(element, (item) => item.props?.['aria-label'] === 'Responsável de Ana').props.onChange({ target: { value: 'user-1' } });
+    findFirst(
+      element,
+      (item) => item.props?.["aria-label"] === "Status de Ana",
+    ).props.onChange({ target: { value: "QUALIFIED" } });
+    findFirst(
+      element,
+      (item) => item.props?.["aria-label"] === "Temperatura de Ana",
+    ).props.onChange({ target: { value: "HOT" } });
+    findFirst(
+      element,
+      (item) => item.props?.["aria-label"] === "Responsável de Ana",
+    ).props.onChange({ target: { value: "user-1" } });
   });
   global.document = previousDocument;
-  assert.deepEqual(calls, [['view', 'lead-1'], ['edit', 'lead-1'], ['pipeline', 'lead-1'], ['archive', 'lead-1'], ['status', 'lead-1', 'QUALIFIED'], ['temperature', 'lead-1', 'HOT'], ['assign', 'lead-1', 'user-1']]);
+  assert.deepEqual(calls, [
+    ["view", "lead-1"],
+    ["edit", "lead-1"],
+    ["pipeline", "lead-1"],
+    ["archive", "lead-1"],
+    ["status", "lead-1", "QUALIFIED"],
+    ["temperature", "lead-1", "HOT"],
+    ["assign", "lead-1", "user-1"],
+  ]);
 });
 
-test('40. leadService cria edita arquiva altera status e temperatura', async () => {
+test("40. leadService cria edita arquiva altera status e temperatura", async () => {
   const calls = mockFetch(() => sampleLead());
-  await leadService.create({ name: 'Ana', phone: '11999999999' });
-  await leadService.update('lead-1', { name: 'Ana Silva' });
-  await leadService.archive('lead-1');
-  await leadService.updateStatus('lead-1', 'QUALIFIED');
-  await leadService.updateTemperature('lead-1', 'HOT');
-  assert.deepEqual(calls.map((call) => [new URL(call.url).pathname, call.options.method ?? 'GET']), [['/leads', 'POST'], ['/leads/lead-1', 'PATCH'], ['/leads/lead-1/archive', 'PATCH'], ['/leads/lead-1/status', 'PATCH'], ['/leads/lead-1/temperature', 'PATCH']]);
+  await leadService.create({ name: "Ana", phone: "11999999999" });
+  await leadService.update("lead-1", { name: "Ana Silva" });
+  await leadService.archive("lead-1");
+  await leadService.updateStatus("lead-1", "QUALIFIED");
+  await leadService.updateTemperature("lead-1", "HOT");
+  assert.deepEqual(
+    calls.map((call) => [
+      new URL(call.url).pathname,
+      call.options.method ?? "GET",
+    ]),
+    [
+      ["/leads", "POST"],
+      ["/leads/lead-1", "PATCH"],
+      ["/leads/lead-1/archive", "PATCH"],
+      ["/leads/lead-1/status", "PATCH"],
+      ["/leads/lead-1/temperature", "PATCH"],
+    ],
+  );
 });
 
-test('41. LeadForm valida dados mínimos antes de criar', () => {
+test("41. LeadForm valida dados mínimos antes de criar", () => {
   const restoreWindow = setupWindowForUi();
   const previousDocument = global.document;
-  global.document = { addEventListener: () => {}, removeEventListener: () => {}, body: { style: {} } };
+  global.document = {
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    body: { style: {} },
+  };
   let requested = false;
-  global.fetch = async () => { requested = true; };
+  global.fetch = async () => {
+    requested = true;
+  };
   withHookDispatcher(() => {
-    const element = LeadForm({ users: [], onCancel: () => {}, onSuccess: () => {} });
-    findFirst(element, (item) => item.type === 'form').props.onSubmit({ preventDefault: () => {} });
+    const element = LeadForm({
+      users: [],
+      onCancel: () => {},
+      onSuccess: () => {},
+    });
+    findFirst(element, (item) => item.type === "form").props.onSubmit({
+      preventDefault: () => {},
+    });
     assert.equal(requested, false);
   });
   global.document = previousDocument;
   restoreWindow();
 });
 
-test('42. LeadDrawer abre pela lista de Leads usando leadId sem card virtual', () => {
-  const { LeadDrawer } = require('../components/leads/LeadDrawer.tsx');
+test("42. LeadDrawer abre pela lista de Leads usando leadId sem card virtual", () => {
+  const { LeadDrawer } = require("../components/leads/LeadDrawer.tsx");
   const previousWindow = global.window;
-  global.window = { ...previousWindow, setTimeout: () => 1, clearTimeout: () => {}, addEventListener: () => {}, removeEventListener: () => {} };
-  const element = withHookDispatcher(() => LeadDrawer({ card: null, board: null, leadId: 'lead-1', onClose: () => {}, onArchived: () => {} }));
-  assert.equal(flatten(element).filter((item) => item.type === 'aside' && item.props?.['aria-label'] === 'Ficha completa do cliente').length, 1);
+  global.window = {
+    ...previousWindow,
+    setTimeout: () => 1,
+    clearTimeout: () => {},
+    addEventListener: () => {},
+    removeEventListener: () => {},
+  };
+  const element = withHookDispatcher(() =>
+    LeadDrawer({
+      card: null,
+      board: null,
+      leadId: "lead-1",
+      onClose: () => {},
+      onArchived: () => {},
+    }),
+  );
+  assert.equal(
+    flatten(element).filter(
+      (item) =>
+        item.type === "aside" &&
+        item.props?.["aria-label"] === "Ficha completa do cliente",
+    ).length,
+    1,
+  );
   global.window = previousWindow;
 });
 
-test('43. Pipeline dialog escolhe pipeline etapa e confirma addCard', () => {
+test("43. Pipeline dialog escolhe pipeline etapa e confirma addCard", () => {
   const restoreWindow = setupWindowForUi();
   let payload = null;
-  const pipelines = [{ id: 'pipe-1', organizationId: 'org-1', name: 'Vendas', isDefault: true, isActive: true, currency: 'BRL', stages: [{ id: 'stage-1', organizationId: 'org-1', pipelineId: 'pipe-1', name: 'Novo', position: 1, probability: 10, isInitial: true, isActive: true }] }];
-  const element = withHookDispatcher(() => AddLeadToPipelineDialog({ lead: sampleLead(), pipelines, saving: false, message: '', onCancel: () => {}, onConfirm: (pipelineId, stageId) => { payload = { pipelineId, stageId }; } }));
-  findFirst(element, (item) => item.type === 'button' && textOf(item) === 'Adicionar').props.onClick();
-  assert.deepEqual(payload, { pipelineId: 'pipe-1', stageId: 'stage-1' });
+  const pipelines = [
+    {
+      id: "pipe-1",
+      organizationId: "org-1",
+      name: "Vendas",
+      isDefault: true,
+      isActive: true,
+      currency: "BRL",
+      stages: [
+        {
+          id: "stage-1",
+          organizationId: "org-1",
+          pipelineId: "pipe-1",
+          name: "Novo",
+          position: 1,
+          probability: 10,
+          isInitial: true,
+          isActive: true,
+        },
+      ],
+    },
+  ];
+  const element = withHookDispatcher(() =>
+    AddLeadToPipelineDialog({
+      lead: sampleLead(),
+      pipelines,
+      saving: false,
+      message: "",
+      onCancel: () => {},
+      onConfirm: (pipelineId, stageId) => {
+        payload = { pipelineId, stageId };
+      },
+    }),
+  );
+  findFirst(
+    element,
+    (item) => item.type === "button" && textOf(item) === "Adicionar",
+  ).props.onClick();
+  assert.deepEqual(payload, { pipelineId: "pipe-1", stageId: "stage-1" });
   restoreWindow();
 });
 
-test('44. pipelineService usa rotas reais do backend para listar board e addCard', async () => {
-  const calls = mockFetch((url) => url.endsWith('/board') ? { pipeline: {}, stages: [] } : []);
+test("44. pipelineService usa rotas reais do backend para listar board e addCard", async () => {
+  const calls = mockFetch((url) =>
+    url.endsWith("/board") ? { pipeline: {}, stages: [] } : [],
+  );
   await pipelineService.pipelines();
-  await pipelineService.kanban('pipe-1');
-  await pipelineService.addCard('pipe-1', { leadId: 'lead-1', stageId: 'stage-1' });
-  assert.deepEqual(calls.map((call) => [new URL(call.url).pathname, call.options.method ?? 'GET']), [['/pipeline', 'GET'], ['/pipeline/pipe-1/board', 'GET'], ['/pipeline/pipe-1/cards', 'POST']]);
+  await pipelineService.kanban("pipe-1");
+  await pipelineService.addCard("pipe-1", {
+    leadId: "lead-1",
+    stageId: "stage-1",
+  });
+  assert.deepEqual(
+    calls.map((call) => [
+      new URL(call.url).pathname,
+      call.options.method ?? "GET",
+    ]),
+    [
+      ["/pipeline", "GET"],
+      ["/pipeline/pipe-1/board", "GET"],
+      ["/pipeline/pipe-1/cards", "POST"],
+    ],
+  );
 });
 
-test('45. pipeline imobiliário envia filtros reais e exibe métricas operacionais', async () => {
-  const { PipelineMetrics } = require('../components/pipeline/PipelineMetrics.tsx');
-  const calls = mockFetch(() => ({ id: 'pipe-1', name: 'Vendas', stages: [], metrics: { total: 12, byStage: {}, conversionRate: 25, averageStageHours: 8, overdueSla: 2 } }));
-  await service.getPipelineBoard('pipe-1', { region: 'Sul', neighborhood: 'Moema', sla: 'OVERDUE', limit: 50 });
+test("45. pipeline imobiliário envia filtros reais e exibe métricas operacionais", async () => {
+  const {
+    PipelineMetrics,
+  } = require("../components/pipeline/PipelineMetrics.tsx");
+  const calls = mockFetch(() => ({
+    id: "pipe-1",
+    name: "Vendas",
+    stages: [],
+    metrics: {
+      total: 12,
+      byStage: {},
+      conversionRate: 25,
+      averageStageHours: 8,
+      overdueSla: 2,
+    },
+  }));
+  await service.getPipelineBoard("pipe-1", {
+    region: "Sul",
+    neighborhood: "Moema",
+    sla: "OVERDUE",
+    limit: 50,
+  });
   const url = new URL(calls[0].url);
-  assert.equal(url.searchParams.get('region'), 'Sul');
-  assert.equal(url.searchParams.get('neighborhood'), 'Moema');
-  assert.equal(url.searchParams.get('sla'), 'OVERDUE');
-  const element = PipelineMetrics({ metrics: { total: 12, byStage: {}, conversionRate: 25, averageStageHours: 8, overdueSla: 2 } });
-  assert.ok(findByText(element, 'Total de leads'));
-  assert.ok(findByText(element, 'SLA vencido'));
+  assert.equal(url.searchParams.get("region"), "Sul");
+  assert.equal(url.searchParams.get("neighborhood"), "Moema");
+  assert.equal(url.searchParams.get("sla"), "OVERDUE");
+  const element = PipelineMetrics({
+    metrics: {
+      total: 12,
+      byStage: {},
+      conversionRate: 25,
+      averageStageHours: 8,
+      overdueSla: 2,
+    },
+  });
+  assert.ok(findByText(element, "Total de leads"));
+  assert.ok(findByText(element, "SLA vencido"));
 });
 
-test('46. card imobiliário apresenta empreendimento, região, bairro, gerente e SLA', () => {
-  const element = LeadCard({ card: { id: 'card-real-estate', position: 1, enteredStageAt: new Date().toISOString(), lead: { id: 'lead-real-estate', name: 'Cliente', development: 'Residencial Azul', region: 'Sul', neighborhood: 'Moema', source: 'CAMPAIGN', managerUser: { id: 'manager-1', name: 'Gerente Ana' }, sla: { dueAt: new Date().toISOString(), status: 'OVERDUE' } } }, dragging: false });
-  for (const text of ['Residencial Azul', 'Sul • Moema', 'Gerente: Gerente Ana', 'SLA vencido']) assert.ok(findByText(element, text));
+test("46. card imobiliário apresenta empreendimento, região, bairro, gerente e SLA", () => {
+  const element = LeadCard({
+    card: {
+      id: "card-real-estate",
+      position: 1,
+      enteredStageAt: new Date().toISOString(),
+      lead: {
+        id: "lead-real-estate",
+        name: "Cliente",
+        development: "Residencial Azul",
+        region: "Sul",
+        neighborhood: "Moema",
+        source: "CAMPAIGN",
+        managerUser: { id: "manager-1", name: "Gerente Ana" },
+        sla: { dueAt: new Date().toISOString(), status: "OVERDUE" },
+      },
+    },
+    dragging: false,
+  });
+  for (const text of [
+    "Residencial Azul",
+    "Sul • Moema",
+    "Gerente: Gerente Ana",
+    "SLA vencido",
+  ])
+    assert.ok(findByText(element, text));
 });
 
-test('47. filtros vazios são omitidos da URL', async () => {
+test("47. filtros vazios são omitidos da URL", async () => {
   const calls = mockFetch(() => boardFixture());
-  await service.getPipelineBoard('pipe-1', { search: '', region: undefined, sla: undefined });
-  assert.equal(calls[0].url, 'http://localhost:3001/pipeline/pipe-1/board');
+  await service.getPipelineBoard("pipe-1", {
+    search: "",
+    region: undefined,
+    sla: undefined,
+  });
+  assert.equal(calls[0].url, "http://localhost:3001/pipeline/pipe-1/board");
 });
 
-test('48. movimento otimista persiste e faz rollback comportamental quando a API falha', async () => {
-  const { persistOptimisticPipelineMove } = require('../app/pipeline/page.tsx');
+test("48. movimento otimista persiste e faz rollback comportamental quando a API falha", async () => {
+  const { persistOptimisticPipelineMove } = require("../app/pipeline/page.tsx");
   const previous = utils.sortBoard(boardFixture());
   const rendered = [];
   const errors = [];
-  const result = await persistOptimisticPipelineMove(previous, { cardId: 'card-1', stageId: 'stage-2', index: 0 }, async () => { throw new Error('API indisponível'); }, (board) => rendered.push(board), (message) => errors.push(message));
+  const result = await persistOptimisticPipelineMove(
+    previous,
+    { cardId: "card-1", stageId: "stage-2", index: 0 },
+    async () => {
+      throw new Error("API indisponível");
+    },
+    (board) => rendered.push(board),
+    (message) => errors.push(message),
+  );
   assert.equal(result, false);
   assert.equal(rendered.length, 2);
-  assert.equal(rendered[0].stages[1].cards[0].id, 'card-1');
+  assert.equal(rendered[0].stages[1].cards[0].id, "card-1");
   assert.deepEqual(rendered[1], previous);
-  assert.deepEqual(errors, ['API indisponível']);
+  assert.deepEqual(errors, ["API indisponível"]);
 });
 
-test('49. skeleton, empty state e erro são estados renderizados de forma comportamental', () => {
-  const loading = PipelineBody({ error: '', moveError: '', isLoading: true, pipelineCount: 0, board: null, activeCardId: '', moving: false, onDragStart: () => {}, onDropCard: () => {}, onOpenCard: () => {} });
-  assert.equal(flatten(loading).filter((item) => String(item.props?.className ?? '').includes('animate-pulse')).length, 3);
-  assert.ok(findByText(PipelineBody({ error: '', moveError: '', isLoading: false, pipelineCount: 0, board: null, activeCardId: '', moving: false, onDragStart: () => {}, onDropCard: () => {}, onOpenCard: () => {} }), 'Nenhuma pipeline encontrada'));
-  assert.ok(findByText(PipelineBody({ error: 'Falha controlada', moveError: '', isLoading: false, pipelineCount: 1, board: null, activeCardId: '', moving: false, onDragStart: () => {}, onDropCard: () => {}, onOpenCard: () => {} }), 'Falha controlada'));
+test("49. skeleton, empty state e erro são estados renderizados de forma comportamental", () => {
+  const loading = PipelineBody({
+    error: "",
+    moveError: "",
+    isLoading: true,
+    pipelineCount: 0,
+    board: null,
+    activeCardId: "",
+    moving: false,
+    onDragStart: () => {},
+    onDropCard: () => {},
+    onOpenCard: () => {},
+  });
+  assert.equal(
+    flatten(loading).filter((item) =>
+      String(item.props?.className ?? "").includes("animate-pulse"),
+    ).length,
+    3,
+  );
+  assert.ok(
+    findByText(
+      PipelineBody({
+        error: "",
+        moveError: "",
+        isLoading: false,
+        pipelineCount: 0,
+        board: null,
+        activeCardId: "",
+        moving: false,
+        onDragStart: () => {},
+        onDropCard: () => {},
+        onOpenCard: () => {},
+      }),
+      "Nenhuma pipeline encontrada",
+    ),
+  );
+  assert.ok(
+    findByText(
+      PipelineBody({
+        error: "Falha controlada",
+        moveError: "",
+        isLoading: false,
+        pipelineCount: 1,
+        board: null,
+        activeCardId: "",
+        moving: false,
+        onDragStart: () => {},
+        onDropCard: () => {},
+        onOpenCard: () => {},
+      }),
+      "Falha controlada",
+    ),
+  );
 });
 
-test('50. polling usa um único timer, pausa invisível, retoma visível e limpa ao desmontar', () => {
-  const { startPipelinePolling } = require('../app/pipeline/page.tsx');
+test("50. polling usa um único timer, pausa invisível, retoma visível e limpa ao desmontar", () => {
+  const { startPipelinePolling } = require("../app/pipeline/page.tsx");
   let callback;
   let cleared = 0;
   let refreshes = 0;
-  let visibility = 'hidden';
-  const timers = { setInterval: (handler, delay) => { assert.equal(delay, 30000); assert.equal(callback, undefined); callback = handler; return 7; }, clearInterval: (id) => { assert.equal(id, 7); cleared += 1; } };
-  const cleanup = startPipelinePolling(() => { refreshes += 1; }, () => visibility, timers);
+  let visibility = "hidden";
+  const timers = {
+    setInterval: (handler, delay) => {
+      assert.equal(delay, 30000);
+      assert.equal(callback, undefined);
+      callback = handler;
+      return 7;
+    },
+    clearInterval: (id) => {
+      assert.equal(id, 7);
+      cleared += 1;
+    },
+  };
+  const cleanup = startPipelinePolling(
+    () => {
+      refreshes += 1;
+    },
+    () => visibility,
+    timers,
+  );
   callback();
   assert.equal(refreshes, 0);
-  visibility = 'visible';
+  visibility = "visible";
   callback();
   assert.equal(refreshes, 1);
   cleanup();

@@ -1,9 +1,4 @@
-import {
-  Users,
-  Flame,
-  PhoneCall,
-  Trophy,
-} from "lucide-react";
+import { Users, Flame, PhoneCall, Trophy } from "lucide-react";
 
 import StatCard from "@/components/ui/StatCard";
 
@@ -14,12 +9,7 @@ type Props = {
   converted: number;
 };
 
-export default function LeadStats({
-  total,
-  hot,
-  contacted,
-  converted,
-}: Props) {
+export default function LeadStats({ total, hot, contacted, converted }: Props) {
   return (
     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
       <StatCard
@@ -28,11 +18,7 @@ export default function LeadStats({
         icon={<Users size={26} />}
       />
 
-      <StatCard
-        title="Leads Quentes"
-        value={hot}
-        icon={<Flame size={26} />}
-      />
+      <StatCard title="Leads Quentes" value={hot} icon={<Flame size={26} />} />
 
       <StatCard
         title="Em Atendimento"

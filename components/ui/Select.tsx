@@ -7,24 +7,14 @@ interface Option {
   value: string;
 }
 
-interface SelectProps
-  extends SelectHTMLAttributes<HTMLSelectElement> {
+interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
   label?: string;
   error?: string;
   options: Option[];
 }
 
 const Select = forwardRef<HTMLSelectElement, SelectProps>(
-  (
-    {
-      label,
-      error,
-      options,
-      className = "",
-      ...props
-    },
-    ref
-  ) => {
+  ({ label, error, options, className = "", ...props }, ref) => {
     return (
       <div className="w-full">
         {label && (
@@ -57,23 +47,16 @@ const Select = forwardRef<HTMLSelectElement, SelectProps>(
           `}
         >
           {options.map((option) => (
-            <option
-              key={option.value}
-              value={option.value}
-            >
+            <option key={option.value} value={option.value}>
               {option.label}
             </option>
           ))}
         </select>
 
-        {error && (
-          <p className="mt-2 text-sm text-red-600">
-            {error}
-          </p>
-        )}
+        {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
       </div>
     );
-  }
+  },
 );
 
 Select.displayName = "Select";

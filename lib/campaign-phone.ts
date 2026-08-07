@@ -1,8 +1,68 @@
 export type PhoneValidation = { e164?: string; reason?: string };
-const brazilianDdds=new Set([11,12,13,14,15,16,17,18,19,21,22,24,27,28,31,32,33,34,35,37,38,41,42,43,44,45,46,47,48,49,51,53,54,55,61,62,63,64,65,66,67,68,69,71,73,74,75,77,79,81,82,83,84,85,86,87,88,89,91,92,93,94,95,96,97,98,99]);
+const brazilianDdds = new Set([
+  11, 12, 13, 14, 15, 16, 17, 18, 19, 21, 22, 24, 27, 28, 31, 32, 33, 34, 35,
+  37, 38, 41, 42, 43, 44, 45, 46, 47, 48, 49, 51, 53, 54, 55, 61, 62, 63, 64,
+  65, 66, 67, 68, 69, 71, 73, 74, 75, 77, 79, 81, 82, 83, 84, 85, 86, 87, 88,
+  89, 91, 92, 93, 94, 95, 96, 97, 98, 99,
+]);
 /** Validates format only; this does not assert WhatsApp availability. */
-export function normalizeCampaignPhone(value:string,defaultCountryCode="55"):PhoneValidation{const raw=value.trim();if(!raw)return{reason:"Informe o telefone."};if(/[a-z]/i.test(raw)||/[^\d\s()+.\-]/.test(raw))return{reason:"Use apenas números e caracteres de formatação."};let digits=raw.replace(/\D/g,"").replace(/^00/,"");const country=defaultCountryCode.replace(/\D/g,"");if(!/^\d{1,3}$/.test(country)||country==="0")return{reason:"Código do país inválido."};if(country==="55"&&!digits.startsWith("55")&&(digits.length===10||digits.length===11))digits=`55${digits}`;else if(!raw.startsWith("+")&&!digits.startsWith(country)&&country!=="55")digits=`${country}${digits}`;if(digits.length<8||digits.length>15)return{reason:"Tamanho de telefone inválido."};if(digits.startsWith("55")){if(![12,13].includes(digits.length))return{reason:"Tamanho de telefone brasileiro inválido."};if(!brazilianDdds.has(Number(digits.slice(2,4))))return{reason:"DDD brasileiro inválido."};}return{e164:`+${digits}`}}
-export type BulkPhoneRecord={name?:string;phone:string};
+export function normalizeCampaignPhone(
+  value: string,
+  defaultCountryCode = "55",
+): PhoneValidation {
+  const raw = value.trim();
+  if (!raw) return { reason: "Informe o telefone." };
+  if (/[a-z]/i.test(raw) || /[^\d\s()+.\-]/.test(raw))
+    return { reason: "Use apenas números e caracteres de formatação." };
+  let digits = raw.replace(/\D/g, "").replace(/^00/, "");
+  const country = defaultCountryCode.replace(/\D/g, "");
+  if (!/^\d{1,3}$/.test(country) || country === "0")
+    return { reason: "Código do país inválido." };
+  if (
+    country === "55" &&
+    !digits.startsWith("55") &&
+    (digits.length === 10 || digits.length === 11)
+  )
+    digits = `55${digits}`;
+  else if (
+    !raw.startsWith("+") &&
+    !digits.startsWith(country) &&
+    country !== "55"
+  )
+    digits = `${country}${digits}`;
+  if (digits.length < 8 || digits.length > 15)
+    return { reason: "Tamanho de telefone inválido." };
+  if (digits.startsWith("55")) {
+    if (![12, 13].includes(digits.length))
+      return { reason: "Tamanho de telefone brasileiro inválido." };
+    if (!brazilianDdds.has(Number(digits.slice(2, 4))))
+      return { reason: "DDD brasileiro inválido." };
+  }
+  return { e164: `+${digits}` };
+}
+export type BulkPhoneRecord = { name?: string; phone: string };
 /** Accepts one phone per line, optionally preceded by a name separated by tab, comma or semicolon. */
-export function parseBulkPhoneRecords(value:string):BulkPhoneRecord[]{return value.split(/\r?\n/).flatMap(line=>{const columns=line.trim().split(/[\t;,]/).map(item=>item.trim()).filter(Boolean);if(!columns.length)return[];if(columns.length===1)return[{phone:columns[0]}];const phoneIndex=columns.findIndex(column=>/[\d+]/.test(column));if(phoneIndex<0)return[{phone:line.trim()}];return[{name:columns.filter((_,index)=>index!==phoneIndex).join(" ")||undefined,phone:columns[phoneIndex]}]})}
-export function splitBulkPhones(value:string){return parseBulkPhoneRecords(value).map(item=>item.phone)}
+export function parseBulkPhoneRecords(value: string): BulkPhoneRecord[] {
+  return value.split(/\r?\n/).flatMap((line) => {
+    const columns = line
+      .trim()
+      .split(/[\t;,]/)
+      .map((item) => item.trim())
+      .filter(Boolean);
+    if (!columns.length) return [];
+    if (columns.length === 1) return [{ phone: columns[0] }];
+    const phoneIndex = columns.findIndex((column) => /[\d+]/.test(column));
+    if (phoneIndex < 0) return [{ phone: line.trim() }];
+    return [
+      {
+        name:
+          columns.filter((_, index) => index !== phoneIndex).join(" ") ||
+          undefined,
+        phone: columns[phoneIndex],
+      },
+    ];
+  });
+}
+export function splitBulkPhones(value: string) {
+  return parseBulkPhoneRecords(value).map((item) => item.phone);
+}

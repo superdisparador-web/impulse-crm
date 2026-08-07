@@ -1,9 +1,9 @@
-import { api } from './api';
-import { DashboardResponse } from '@/types/dashboard';
+import { api } from "./api";
+import { DashboardResponse } from "@/types/dashboard";
 
 class DashboardService {
   getDashboard() {
-    return api.get<DashboardResponse>('/dashboard');
+    return api.get<DashboardResponse>("/dashboard");
   }
 }
 

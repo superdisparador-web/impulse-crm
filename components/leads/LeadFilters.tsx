@@ -18,9 +18,7 @@ import {
 } from "./lead-labels";
 
 const statuses = Object.keys(leadStatusLabels) as LeadStatus[];
-const temperatures = Object.keys(
-  leadTemperatureLabels,
-) as LeadTemperature[];
+const temperatures = Object.keys(leadTemperatureLabels) as LeadTemperature[];
 const sources = Object.keys(leadSourceLabels) as LeadSource[];
 
 type Props = {
@@ -29,15 +27,8 @@ type Props = {
   onChange: (filters: LeadListParams) => void;
 };
 
-export default function LeadFilters({
-  filters,
-  users,
-  onChange,
-}: Props) {
-  function setFilter(
-    key: keyof LeadListParams,
-    value: string | boolean,
-  ) {
+export default function LeadFilters({ filters, users, onChange }: Props) {
+  function setFilter(key: keyof LeadListParams, value: string | boolean) {
     onChange({
       ...filters,
       page: 1,
@@ -56,11 +47,11 @@ export default function LeadFilters({
 
   const hasActiveFilters = Boolean(
     filters.status ||
-      filters.temperature ||
-      filters.source ||
-      filters.assignedUserId ||
-      filters.createdFrom ||
-      filters.archived,
+    filters.temperature ||
+    filters.source ||
+    filters.assignedUserId ||
+    filters.createdFrom ||
+    filters.archived,
   );
 
   return (
@@ -75,13 +66,9 @@ export default function LeadFilters({
           </div>
 
           <div>
-            <h2 className="font-semibold text-slate-900">
-              Filtros
-            </h2>
+            <h2 className="font-semibold text-slate-900">Filtros</h2>
 
-            <p className="text-sm text-slate-500">
-              Refine a lista de leads
-            </p>
+            <p className="text-sm text-slate-500">Refine a lista de leads</p>
           </div>
         </div>
 
@@ -96,9 +83,7 @@ export default function LeadFilters({
         <Select
           label="Status"
           value={filters.status ?? ""}
-          onChange={(event) =>
-            setFilter("status", event.target.value)
-          }
+          onChange={(event) => setFilter("status", event.target.value)}
           options={[
             { label: "Todos os status", value: "" },
             ...statuses.map((status) => ({
@@ -111,9 +96,7 @@ export default function LeadFilters({
         <Select
           label="Temperatura"
           value={filters.temperature ?? ""}
-          onChange={(event) =>
-            setFilter("temperature", event.target.value)
-          }
+          onChange={(event) => setFilter("temperature", event.target.value)}
           options={[
             { label: "Todas as temperaturas", value: "" },
             ...temperatures.map((temperature) => ({
@@ -126,9 +109,7 @@ export default function LeadFilters({
         <Select
           label="Origem"
           value={filters.source ?? ""}
-          onChange={(event) =>
-            setFilter("source", event.target.value)
-          }
+          onChange={(event) => setFilter("source", event.target.value)}
           options={[
             { label: "Todas as origens", value: "" },
             ...sources.map((source) => ({
@@ -141,9 +122,7 @@ export default function LeadFilters({
         <Select
           label="Responsável"
           value={filters.assignedUserId ?? ""}
-          onChange={(event) =>
-            setFilter("assignedUserId", event.target.value)
-          }
+          onChange={(event) => setFilter("assignedUserId", event.target.value)}
           options={[
             { label: "Todos os responsáveis", value: "" },
             ...users.map((user) => ({
@@ -170,9 +149,7 @@ export default function LeadFilters({
               id="lead-created-from"
               type="date"
               value={filters.createdFrom ?? ""}
-              onChange={(event) =>
-                setFilter("createdFrom", event.target.value)
-              }
+              onChange={(event) => setFilter("createdFrom", event.target.value)}
               className="
                 min-h-11
                 w-full
@@ -200,10 +177,7 @@ export default function LeadFilters({
           label="Exibição"
           value={filters.archived === true ? "true" : "false"}
           onChange={(event) =>
-            setFilter(
-              "archived",
-              event.target.value === "true",
-            )
+            setFilter("archived", event.target.value === "true")
           }
           options={[
             { label: "Leads ativos", value: "false" },

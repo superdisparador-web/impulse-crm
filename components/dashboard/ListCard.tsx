@@ -21,9 +21,7 @@ export default function ListCard({
       </h2>
 
       {hasItems ? (
-        <div className="divide-y divide-slate-100">
-          {children}
-        </div>
+        <div className="divide-y divide-slate-100">{children}</div>
       ) : (
         <div className="mt-4">
           <EmptyState message={emptyMessage} />

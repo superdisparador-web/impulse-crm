@@ -40,8 +40,7 @@ export default function LeadsPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [pipelines, setPipelines] = useState<Pipeline[]>([]);
 
-  const [filters, setFilters] =
-    useState<LeadListParams>(defaultFilters);
+  const [filters, setFilters] = useState<LeadListParams>(defaultFilters);
 
   const [searchInput, setSearchInput] = useState("");
 
@@ -56,43 +55,31 @@ export default function LeadsPage() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
-  const [formLead, setFormLead] =
-    useState<Lead | null | undefined>();
+  const [formLead, setFormLead] = useState<Lead | null | undefined>();
 
-  const [drawerLeadId, setDrawerLeadId] =
-    useState<string | null>(null);
+  const [drawerLeadId, setDrawerLeadId] = useState<string | null>(null);
 
-  const [archiveLead, setArchiveLead] =
-    useState<Lead | null>(null);
+  const [archiveLead, setArchiveLead] = useState<Lead | null>(null);
 
-  const [pipelineLead, setPipelineLead] =
-    useState<Lead | null>(null);
+  const [pipelineLead, setPipelineLead] = useState<Lead | null>(null);
 
-  const [pipelineMessage, setPipelineMessage] =
-    useState("");
+  const [pipelineMessage, setPipelineMessage] = useState("");
 
-  const [busyLeadId, setBusyLeadId] =
-    useState<string>();
+  const [busyLeadId, setBusyLeadId] = useState<string>();
 
   const requestRef = useRef(0);
 
   const totalLeads = meta.total;
 
-  const hotLeads = leads.filter(
-    (lead) => lead.temperature === "HOT"
-  ).length;
+  const hotLeads = leads.filter((lead) => lead.temperature === "HOT").length;
 
   const contactedLeads = leads.filter(
-    (lead) =>
-      lead.status === "CONTACT_PENDING" ||
-      lead.status === "IN_CONTACT"
+    (lead) => lead.status === "CONTACT_PENDING" || lead.status === "IN_CONTACT",
   ).length;
 
   const convertedLeads = leads.filter(
-    (lead) =>
-      lead.status === "CONVERTED"
+    (lead) => lead.status === "CONVERTED",
   ).length;
-
 
   const load = useCallback(
     async (nextFilters = filters) => {
@@ -103,15 +90,14 @@ export default function LeadsPage() {
       setError("");
 
       try {
-        const [leadData, userData, pipelineData] =
-          await Promise.all([
-            leadService.getAll(nextFilters),
-            userService.getAll({
-              limit: 100,
-              active: true,
-            }),
-            pipelineService.pipelines(),
-          ]);
+        const [leadData, userData, pipelineData] = await Promise.all([
+          leadService.getAll(nextFilters),
+          userService.getAll({
+            limit: 100,
+            active: true,
+          }),
+          pipelineService.pipelines(),
+        ]);
 
         if (requestId !== requestRef.current) {
           return;
@@ -125,7 +111,7 @@ export default function LeadsPage() {
             page: leadData.page,
             limit: leadData.pageSize,
             totalPages: leadData.totalPages,
-          }
+          },
         );
 
         setUsers(userData.items);
@@ -133,9 +119,7 @@ export default function LeadsPage() {
       } catch (err) {
         if (requestId === requestRef.current) {
           setError(
-            err instanceof Error
-              ? err.message
-              : "Erro ao carregar leads."
+            err instanceof Error ? err.message : "Erro ao carregar leads.",
           );
         }
       } finally {
@@ -144,7 +128,7 @@ export default function LeadsPage() {
         }
       }
     },
-    [filters]
+    [filters],
   );
 
   useEffect(() => {
@@ -187,7 +171,7 @@ export default function LeadsPage() {
   async function mutateLead(
     lead: Lead,
     operation: () => Promise<Lead>,
-    success: string
+    success: string,
   ) {
     setBusyLeadId(lead.id);
 
@@ -195,18 +179,12 @@ export default function LeadsPage() {
       const updated = await operation();
 
       setLeads((current) =>
-        current.map((item) =>
-          item.id === updated.id ? updated : item
-        )
+        current.map((item) => (item.id === updated.id ? updated : item)),
       );
 
       notify(success);
     } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Erro ao atualizar lead."
-      );
+      setError(err instanceof Error ? err.message : "Erro ao atualizar lead.");
     } finally {
       setBusyLeadId(undefined);
     }
@@ -223,32 +201,23 @@ export default function LeadsPage() {
       await leadService.archive(archiveLead.id);
 
       setLeads((current) =>
-        current.filter(
-          (item) => item.id !== archiveLead.id
-        )
+        current.filter((item) => item.id !== archiveLead.id),
       );
 
       setDrawerLeadId((current) =>
-        current === archiveLead.id ? null : current
+        current === archiveLead.id ? null : current,
       );
 
       setArchiveLead(null);
       notify("Lead arquivado com sucesso.");
     } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Erro ao arquivar lead."
-      );
+      setError(err instanceof Error ? err.message : "Erro ao arquivar lead.");
     } finally {
       setBusyLeadId(undefined);
     }
   }
 
-  async function addToPipeline(
-    pipelineId: string,
-    stageId: string
-  ) {
+  async function addToPipeline(pipelineId: string, stageId: string) {
     if (!pipelineLead) {
       return;
     }
@@ -266,15 +235,12 @@ export default function LeadsPage() {
       notify("Lead adicionado ao Pipeline.");
     } catch (err) {
       const text =
-        err instanceof Error
-          ? err.message
-          : "Erro ao adicionar ao Pipeline.";
+        err instanceof Error ? err.message : "Erro ao adicionar ao Pipeline.";
 
       setPipelineMessage(
-        text.includes("pipeline") ||
-          text.includes("Pipeline")
+        text.includes("pipeline") || text.includes("Pipeline")
           ? text
-          : "Lead já está neste Pipeline ou a etapa não está disponível."
+          : "Lead já está neste Pipeline ou a etapa não está disponível.",
       );
     } finally {
       setBusyLeadId(undefined);
@@ -287,10 +253,7 @@ export default function LeadsPage() {
         title="Leads"
         description="Gerencie captação, classificação, atribuição e o histórico completo dos seus leads."
         action={
-          <Button
-            type="button"
-            onClick={() => setFormLead(null)}
-          >
+          <Button type="button" onClick={() => setFormLead(null)}>
             Novo Lead
           </Button>
         }
@@ -322,27 +285,21 @@ export default function LeadsPage() {
       )}
 
       <Card>
-  <SearchBar
-    value={searchInput}
-    placeholder="Busque por nome, telefone, e-mail ou CPF..."
-    onChange={setSearchInput}
-  />
-</Card>
+        <SearchBar
+          value={searchInput}
+          placeholder="Busque por nome, telefone, e-mail ou CPF..."
+          onChange={setSearchInput}
+        />
+      </Card>
 
-      <LeadFilters
-        filters={filters}
-        users={users}
-        onChange={setFilters}
-      />
+      <LeadFilters filters={filters} users={users} onChange={setFilters} />
 
       <LeadTable
         leads={leads}
         loading={loading}
         users={users}
         busyLeadId={busyLeadId}
-        onView={(lead) =>
-          setDrawerLeadId(lead.id)
-        }
+        onView={(lead) => setDrawerLeadId(lead.id)}
         onEdit={setFormLead}
         onArchive={setArchiveLead}
         onAddToPipeline={(lead) => {
@@ -352,37 +309,22 @@ export default function LeadsPage() {
         onAssign={(lead, assignedUserId) =>
           void mutateLead(
             lead,
-            () =>
-              leadService.assign(
-                lead.id,
-                assignedUserId
-              ),
-            "Responsável atualizado."
+            () => leadService.assign(lead.id, assignedUserId),
+            "Responsável atualizado.",
           )
         }
         onStatus={(lead, value: LeadStatus) =>
           void mutateLead(
             lead,
-            () =>
-              leadService.updateStatus(
-                lead.id,
-                value
-              ),
-            "Status atualizado."
+            () => leadService.updateStatus(lead.id, value),
+            "Status atualizado.",
           )
         }
-        onTemperature={(
-          lead,
-          value: LeadTemperature
-        ) =>
+        onTemperature={(lead, value: LeadTemperature) =>
           void mutateLead(
             lead,
-            () =>
-              leadService.updateTemperature(
-                lead.id,
-                value
-              ),
-            "Temperatura atualizada."
+            () => leadService.updateTemperature(lead.id, value),
+            "Temperatura atualizada.",
           )
         }
       />
@@ -390,8 +332,7 @@ export default function LeadsPage() {
       <Card padding="sm">
         <div className="flex flex-col gap-4 text-sm text-slate-500 md:flex-row md:items-center md:justify-between">
           <span>
-            {meta.total} lead(s) • página {meta.page} de{" "}
-            {meta.totalPages || 1}
+            {meta.total} lead(s) • página {meta.page} de {meta.totalPages || 1}
           </span>
 
           <label className="flex items-center gap-2">
@@ -424,10 +365,7 @@ export default function LeadsPage() {
               onClick={() =>
                 setFilters({
                   ...filters,
-                  page: Math.max(
-                    1,
-                    (filters.page ?? 1) - 1
-                  ),
+                  page: Math.max(1, (filters.page ?? 1) - 1),
                 })
               }
             >
@@ -437,16 +375,11 @@ export default function LeadsPage() {
             <Button
               type="button"
               variant="secondary"
-              disabled={
-                meta.page >= meta.totalPages
-              }
+              disabled={meta.page >= meta.totalPages}
               onClick={() =>
                 setFilters({
                   ...filters,
-                  page: Math.min(
-                    meta.totalPages,
-                    (filters.page ?? 1) + 1
-                  ),
+                  page: Math.min(meta.totalPages, (filters.page ?? 1) + 1),
                 })
               }
             >
@@ -461,25 +394,17 @@ export default function LeadsPage() {
           key={formLead?.id ?? "new"}
           lead={formLead}
           users={users}
-          onCancel={() =>
-            setFormLead(undefined)
-          }
+          onCancel={() => setFormLead(undefined)}
           onSuccess={(saved) => {
             setFormLead(undefined);
 
             setLeads((current) =>
               formLead?.id
-                ? current.map((item) =>
-                    item.id === saved.id
-                      ? saved
-                      : item
-                  )
-                : [saved, ...current]
+                ? current.map((item) => (item.id === saved.id ? saved : item))
+                : [saved, ...current],
             );
 
-            void refresh(
-              "Lead salvo com sucesso."
-            );
+            void refresh("Lead salvo com sucesso.");
           }}
         />
       )}
@@ -487,15 +412,9 @@ export default function LeadsPage() {
       {archiveLead && (
         <ArchiveLeadDialog
           lead={archiveLead}
-          saving={
-            busyLeadId === archiveLead.id
-          }
-          onCancel={() =>
-            setArchiveLead(null)
-          }
-          onConfirm={() =>
-            void confirmArchive()
-          }
+          saving={busyLeadId === archiveLead.id}
+          onCancel={() => setArchiveLead(null)}
+          onConfirm={() => void confirmArchive()}
         />
       )}
 
@@ -503,18 +422,11 @@ export default function LeadsPage() {
         <AddLeadToPipelineDialog
           lead={pipelineLead}
           pipelines={pipelines}
-          saving={
-            busyLeadId === pipelineLead.id
-          }
+          saving={busyLeadId === pipelineLead.id}
           message={pipelineMessage}
-          onCancel={() =>
-            setPipelineLead(null)
-          }
+          onCancel={() => setPipelineLead(null)}
           onConfirm={(pipelineId, stageId) =>
-            void addToPipeline(
-              pipelineId,
-              stageId
-            )
+            void addToPipeline(pipelineId, stageId)
           }
         />
       )}
@@ -523,17 +435,9 @@ export default function LeadsPage() {
         card={null}
         board={null}
         leadId={drawerLeadId}
-        onClose={() =>
-          setDrawerLeadId(null)
-        }
-        onArchived={() =>
-          void refresh(
-            "Lead arquivado com sucesso."
-          )
-        }
-        onEdit={(lead) =>
-          setFormLead(lead)
-        }
+        onClose={() => setDrawerLeadId(null)}
+        onArchived={() => void refresh("Lead arquivado com sucesso.")}
+        onEdit={(lead) => setFormLead(lead)}
       />
     </main>
   );

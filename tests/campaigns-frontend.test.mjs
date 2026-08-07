@@ -1,3 +1,22 @@
-import assert from 'node:assert/strict';import test from 'node:test';import { canCancelCampaign, primaryCampaignAction, shouldPollCampaign } from '../app/campaigns/campaign-operational-ui.mjs';
-test('campaign operational actions are constrained by backend lifecycle',()=>{assert.equal(primaryCampaignAction('DRAFT'),'validate');assert.equal(primaryCampaignAction('READY'),'start');assert.equal(primaryCampaignAction('RUNNING'),'pause');assert.equal(primaryCampaignAction('PAUSED'),'resume');assert.equal(primaryCampaignAction('COMPLETED'),null);assert.equal(canCancelCampaign('SCHEDULED'),true);assert.equal(canCancelCampaign('CANCELED'),false);});
-test('campaign polling stops for hidden tabs and final states',()=>{assert.equal(shouldPollCampaign('RUNNING',false),true);assert.equal(shouldPollCampaign('RUNNING',true),false);assert.equal(shouldPollCampaign('COMPLETED',false),false);assert.equal(shouldPollCampaign('CANCELED',false),false);});
+import assert from "node:assert/strict";
+import test from "node:test";
+import {
+  canCancelCampaign,
+  primaryCampaignAction,
+  shouldPollCampaign,
+} from "../app/campaigns/campaign-operational-ui.mjs";
+test("campaign operational actions are constrained by backend lifecycle", () => {
+  assert.equal(primaryCampaignAction("DRAFT"), "validate");
+  assert.equal(primaryCampaignAction("READY"), "start");
+  assert.equal(primaryCampaignAction("RUNNING"), "pause");
+  assert.equal(primaryCampaignAction("PAUSED"), "resume");
+  assert.equal(primaryCampaignAction("COMPLETED"), null);
+  assert.equal(canCancelCampaign("SCHEDULED"), true);
+  assert.equal(canCancelCampaign("CANCELED"), false);
+});
+test("campaign polling stops for hidden tabs and final states", () => {
+  assert.equal(shouldPollCampaign("RUNNING", false), true);
+  assert.equal(shouldPollCampaign("RUNNING", true), false);
+  assert.equal(shouldPollCampaign("COMPLETED", false), false);
+  assert.equal(shouldPollCampaign("CANCELED", false), false);
+});

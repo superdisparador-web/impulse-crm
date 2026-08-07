@@ -6,28 +6,281 @@ import { DestinationConfiguration } from "@/services/campaigns.service";
 import { User } from "@/types/user";
 
 const modes = [
-  { value: "FIXED_URL", label: "URL fixa", detail: "Direcione todos os contatos para um endereço.", icon: Link2 },
-  { value: "AGENT_FIXED", label: "Corretor fixo", detail: "Centralize os contatos em uma pessoa.", icon: UserRound },
-  { value: "ROUND_ROBIN", label: "Roleta", detail: "Distribua contatos entre a equipe.", icon: Shuffle },
+  {
+    value: "FIXED_URL",
+    label: "URL fixa",
+    detail: "Direcione todos os contatos para um endereço.",
+    icon: Link2,
+  },
+  {
+    value: "AGENT_FIXED",
+    label: "Corretor fixo",
+    detail: "Centralize os contatos em uma pessoa.",
+    icon: UserRound,
+  },
+  {
+    value: "ROUND_ROBIN",
+    label: "Roleta",
+    detail: "Distribua contatos entre a equipe.",
+    icon: Shuffle,
+  },
 ] as const;
 
-export default function CampaignDestinationEditor({ value, onChange, brokers }: { value: DestinationConfiguration; onChange: (value: DestinationConfiguration) => void; brokers: User[] }) {
+export default function CampaignDestinationEditor({
+  value,
+  onChange,
+  brokers,
+}: {
+  value: DestinationConfiguration;
+  onChange: (value: DestinationConfiguration) => void;
+  brokers: User[];
+}) {
   function toggle(id: string) {
     const agents = value.agents || [];
-    const found = agents.find(agent => agent.userId === id);
-    onChange({ ...value, agents: found ? agents.filter(agent => agent.userId !== id) : [...agents, { userId: id, position: agents.length, weight: 1, active: true }] });
+    const found = agents.find((agent) => agent.userId === id);
+    onChange({
+      ...value,
+      agents: found
+        ? agents.filter((agent) => agent.userId !== id)
+        : [
+            ...agents,
+            { userId: id, position: agents.length, weight: 1, active: true },
+          ],
+    });
   }
-  return <fieldset className="mx-auto max-w-5xl space-y-6"><legend className="sr-only">Destino e distribuição</legend>
-    <header className="flex items-start gap-3"><span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-blue-50 text-blue-700"><UsersRound size={20} /></span><div><h2 className="text-xl font-bold tracking-tight text-slate-950">Destino e distribuição</h2><p className="mt-1 text-sm leading-6 text-slate-600">Configure como os contatos serão encaminhados depois de interagir com a campanha.</p></div></header>
-    <div className="grid gap-3 sm:grid-cols-3">{modes.map(mode => { const selected = value.mode === mode.value; const Icon = mode.icon; return <button key={mode.value} type="button" aria-pressed={selected} onClick={() => onChange({ ...value, mode: mode.value })} className={`relative rounded-2xl border p-4 text-left outline-none transition-all duration-200 focus-visible:ring-4 focus-visible:ring-blue-100 ${selected ? "border-blue-500 bg-blue-50/80 shadow-[0_12px_30px_-22px_rgba(37,99,235,.55)]" : "border-slate-200 bg-white hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-sm"}`}><span className={`mb-3 grid h-9 w-9 place-items-center rounded-xl ${selected ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-500"}`}><Icon size={17} /></span><strong className="block text-sm text-slate-900">{mode.label}</strong><span className="mt-1 block text-xs leading-5 text-slate-600">{mode.detail}</span>{selected && <Check className="absolute right-4 top-4 text-blue-600" size={17} />}</button> })}</div>
-    <CampaignSurface className="grid gap-5 md:grid-cols-3">
-      <Select label="Fila" value={value.queue || "oficial"} onChange={event => onChange({ ...value, queue: event.target.value })} options={[{ value: "oficial", label: "WhatsApp oficial" }, { value: "prioritaria", label: "Prioritária" }]} />
-      <Input label="Velocidade por minuto" type="number" min={1} max={1000} value={value.speed || 60} onChange={event => onChange({ ...value, speed: Number(event.target.value) })} />
-      <Input label="Envios simultâneos" type="number" min={1} max={100} value={value.concurrency || 5} onChange={event => onChange({ ...value, concurrency: Number(event.target.value) })} />
-      <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3 text-sm font-medium text-slate-700 md:col-span-3"><input className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" type="checkbox" checked={Boolean(value.automaticDistribution)} onChange={event => onChange({ ...value, automaticDistribution: event.target.checked })} /><span>Distribuição automática ativa</span></label>
-      {value.mode === "FIXED_URL" && <div className="md:col-span-3"><Input label="URL de destino" type="url" pattern="https://.*" value={value.fixedUrl || ""} onChange={event => onChange({ ...value, fixedUrl: event.target.value })} placeholder="https://..." /></div>}
-      {value.mode === "AGENT_FIXED" && <div className="md:col-span-3"><Select label="Corretor responsável" value={value.agentId || ""} onChange={event => onChange({ ...value, agentId: event.target.value })} options={[{ value: "", label: "Selecione um corretor" }, ...brokers.map(broker => ({ value: broker.id, label: broker.name }))]} /></div>}
-      {value.mode === "ROUND_ROBIN" && <div className="space-y-3 md:col-span-3"><div className="flex items-center justify-between"><div><h3 className="text-sm font-semibold text-slate-900">Equipe da roleta</h3><p className="text-xs text-slate-500">Selecione participantes e ajuste o peso de distribuição.</p></div><span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">{value.agents?.length || 0} selecionados</span></div><div className="divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-200">{brokers.map(broker => { const agent = value.agents?.find(item => item.userId === broker.id); return <div className="grid min-h-14 grid-cols-[auto_minmax(0,1fr)] items-center gap-3 bg-white px-4 py-3 transition-colors hover:bg-slate-50 sm:grid-cols-[auto_minmax(0,1fr)_100px_auto]" key={broker.id}><input aria-label={`Selecionar ${broker.name}`} className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" type="checkbox" checked={Boolean(agent)} onChange={() => toggle(broker.id)} /><span className="truncate text-sm font-medium text-slate-800">{broker.name}</span>{agent && <input aria-label={`Peso de ${broker.name}`} className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100" type="number" min={1} max={100} value={agent.weight} onChange={event => onChange({ ...value, agents: value.agents?.map(item => item.userId === broker.id ? { ...item, weight: Number(event.target.value) } : item) })} />}{agent && <label className="flex items-center gap-2 text-xs text-slate-600"><input aria-label={`Ativar ${broker.name}`} className="h-4 w-4 rounded border-slate-300 text-blue-600" type="checkbox" checked={agent.active} onChange={event => onChange({ ...value, agents: value.agents?.map(item => item.userId === broker.id ? { ...item, active: event.target.checked } : item) })} />Ativo</label>}</div> })}{brokers.length === 0 && <p className="p-6 text-center text-sm text-slate-500">Nenhum corretor disponível para distribuição.</p>}</div><div className="max-w-xs"><Input label="Índice inicial" type="number" min={0} value={value.initialIndex || 0} onChange={event => onChange({ ...value, initialIndex: Number(event.target.value) })} /></div></div>}
-    </CampaignSurface>
-  </fieldset>;
+  return (
+    <fieldset className="mx-auto max-w-5xl space-y-6">
+      <legend className="sr-only">Destino e distribuição</legend>
+      <header className="flex items-start gap-3">
+        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-blue-50 text-blue-700">
+          <UsersRound size={20} />
+        </span>
+        <div>
+          <h2 className="text-xl font-bold tracking-tight text-slate-950">
+            Destino e distribuição
+          </h2>
+          <p className="mt-1 text-sm leading-6 text-slate-600">
+            Configure como os contatos serão encaminhados depois de interagir
+            com a campanha.
+          </p>
+        </div>
+      </header>
+      <div className="grid gap-3 sm:grid-cols-3">
+        {modes.map((mode) => {
+          const selected = value.mode === mode.value;
+          const Icon = mode.icon;
+          return (
+            <button
+              key={mode.value}
+              type="button"
+              aria-pressed={selected}
+              onClick={() => onChange({ ...value, mode: mode.value })}
+              className={`relative rounded-2xl border p-4 text-left outline-none transition-all duration-200 focus-visible:ring-4 focus-visible:ring-blue-100 ${selected ? "border-blue-500 bg-blue-50/80 shadow-[0_12px_30px_-22px_rgba(37,99,235,.55)]" : "border-slate-200 bg-white hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-sm"}`}
+            >
+              <span
+                className={`mb-3 grid h-9 w-9 place-items-center rounded-xl ${selected ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-500"}`}
+              >
+                <Icon size={17} />
+              </span>
+              <strong className="block text-sm text-slate-900">
+                {mode.label}
+              </strong>
+              <span className="mt-1 block text-xs leading-5 text-slate-600">
+                {mode.detail}
+              </span>
+              {selected && (
+                <Check
+                  className="absolute right-4 top-4 text-blue-600"
+                  size={17}
+                />
+              )}
+            </button>
+          );
+        })}
+      </div>
+      <CampaignSurface className="grid gap-5 md:grid-cols-3">
+        <Select
+          label="Fila"
+          value={value.queue || "oficial"}
+          onChange={(event) =>
+            onChange({ ...value, queue: event.target.value })
+          }
+          options={[
+            { value: "oficial", label: "WhatsApp oficial" },
+            { value: "prioritaria", label: "Prioritária" },
+          ]}
+        />
+        <Input
+          label="Velocidade por minuto"
+          type="number"
+          min={1}
+          max={1000}
+          value={value.speed || 60}
+          onChange={(event) =>
+            onChange({ ...value, speed: Number(event.target.value) })
+          }
+        />
+        <Input
+          label="Envios simultâneos"
+          type="number"
+          min={1}
+          max={100}
+          value={value.concurrency || 5}
+          onChange={(event) =>
+            onChange({ ...value, concurrency: Number(event.target.value) })
+          }
+        />
+        <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3 text-sm font-medium text-slate-700 md:col-span-3">
+          <input
+            className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+            type="checkbox"
+            checked={Boolean(value.automaticDistribution)}
+            onChange={(event) =>
+              onChange({
+                ...value,
+                automaticDistribution: event.target.checked,
+              })
+            }
+          />
+          <span>Distribuição automática ativa</span>
+        </label>
+        {value.mode === "FIXED_URL" && (
+          <div className="md:col-span-3">
+            <Input
+              label="URL de destino"
+              type="url"
+              pattern="https://.*"
+              value={value.fixedUrl || ""}
+              onChange={(event) =>
+                onChange({ ...value, fixedUrl: event.target.value })
+              }
+              placeholder="https://..."
+            />
+          </div>
+        )}
+        {value.mode === "AGENT_FIXED" && (
+          <div className="md:col-span-3">
+            <Select
+              label="Corretor responsável"
+              value={value.agentId || ""}
+              onChange={(event) =>
+                onChange({ ...value, agentId: event.target.value })
+              }
+              options={[
+                { value: "", label: "Selecione um corretor" },
+                ...brokers.map((broker) => ({
+                  value: broker.id,
+                  label: broker.name,
+                })),
+              ]}
+            />
+          </div>
+        )}
+        {value.mode === "ROUND_ROBIN" && (
+          <div className="space-y-3 md:col-span-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-semibold text-slate-900">
+                  Equipe da roleta
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Selecione participantes e ajuste o peso de distribuição.
+                </p>
+              </div>
+              <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">
+                {value.agents?.length || 0} selecionados
+              </span>
+            </div>
+            <div className="divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-200">
+              {brokers.map((broker) => {
+                const agent = value.agents?.find(
+                  (item) => item.userId === broker.id,
+                );
+                return (
+                  <div
+                    className="grid min-h-14 grid-cols-[auto_minmax(0,1fr)] items-center gap-3 bg-white px-4 py-3 transition-colors hover:bg-slate-50 sm:grid-cols-[auto_minmax(0,1fr)_100px_auto]"
+                    key={broker.id}
+                  >
+                    <input
+                      aria-label={`Selecionar ${broker.name}`}
+                      className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                      type="checkbox"
+                      checked={Boolean(agent)}
+                      onChange={() => toggle(broker.id)}
+                    />
+                    <span className="truncate text-sm font-medium text-slate-800">
+                      {broker.name}
+                    </span>
+                    {agent && (
+                      <input
+                        aria-label={`Peso de ${broker.name}`}
+                        className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                        type="number"
+                        min={1}
+                        max={100}
+                        value={agent.weight}
+                        onChange={(event) =>
+                          onChange({
+                            ...value,
+                            agents: value.agents?.map((item) =>
+                              item.userId === broker.id
+                                ? {
+                                    ...item,
+                                    weight: Number(event.target.value),
+                                  }
+                                : item,
+                            ),
+                          })
+                        }
+                      />
+                    )}
+                    {agent && (
+                      <label className="flex items-center gap-2 text-xs text-slate-600">
+                        <input
+                          aria-label={`Ativar ${broker.name}`}
+                          className="h-4 w-4 rounded border-slate-300 text-blue-600"
+                          type="checkbox"
+                          checked={agent.active}
+                          onChange={(event) =>
+                            onChange({
+                              ...value,
+                              agents: value.agents?.map((item) =>
+                                item.userId === broker.id
+                                  ? { ...item, active: event.target.checked }
+                                  : item,
+                              ),
+                            })
+                          }
+                        />
+                        Ativo
+                      </label>
+                    )}
+                  </div>
+                );
+              })}
+              {brokers.length === 0 && (
+                <p className="p-6 text-center text-sm text-slate-500">
+                  Nenhum corretor disponível para distribuição.
+                </p>
+              )}
+            </div>
+            <div className="max-w-xs">
+              <Input
+                label="Índice inicial"
+                type="number"
+                min={0}
+                value={value.initialIndex || 0}
+                onChange={(event) =>
+                  onChange({
+                    ...value,
+                    initialIndex: Number(event.target.value),
+                  })
+                }
+              />
+            </div>
+          </div>
+        )}
+      </CampaignSurface>
+    </fieldset>
+  );
 }

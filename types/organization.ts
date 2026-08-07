@@ -31,7 +31,7 @@ export interface OrganizationListParams {
   page?: number;
   limit?: number;
   search?: string;
-  active?: boolean | '';
+  active?: boolean | "";
 }
 
 export interface OrganizationListResponse {

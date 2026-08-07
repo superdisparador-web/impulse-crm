@@ -1,4 +1,5 @@
-export type WhatsappAccountStatus = 'PENDING' | 'ACTIVE' | 'INACTIVE' | 'DISCONNECTED' | 'ERROR' | 'SUSPENDED';
+export type WhatsappAccountStatus =
+  "PENDING" | "ACTIVE" | "INACTIVE" | "DISCONNECTED" | "ERROR" | "SUSPENDED";
 
 export interface PaginatedWhatsappAccounts {
   items: WhatsappAccount[];
@@ -12,7 +13,7 @@ export interface WhatsappAccount {
   id: string;
   organizationId: string;
   name: string;
-  provider: 'META_CLOUD' | 'EVOLUTION';
+  provider: "META_CLOUD" | "EVOLUTION";
   wabaId: string;
   phoneNumber: string;
   normalizedPhone: string;
@@ -38,9 +39,11 @@ export interface WhatsappAccount {
   deletedAt?: string | null;
 }
 
-export type WhatsappTemplateStatus = 'DRAFT' | 'PENDING' | 'APPROVED' | 'REJECTED' | 'DISABLED';
-export type WhatsappTemplateCategory = 'MARKETING' | 'UTILITY' | 'AUTHENTICATION';
-export type WhatsappTemplateLanguage = 'pt_BR' | 'en_US' | 'es_ES';
+export type WhatsappTemplateStatus =
+  "DRAFT" | "PENDING" | "APPROVED" | "REJECTED" | "DISABLED";
+export type WhatsappTemplateCategory =
+  "MARKETING" | "UTILITY" | "AUTHENTICATION";
+export type WhatsappTemplateLanguage = "pt_BR" | "en_US" | "es_ES";
 
 export interface WhatsappTemplate {
   id: string;
@@ -80,10 +83,12 @@ export interface ManualWhatsappAccountFormData {
 export interface WhatsappListParams {
   search?: string;
   status?: string;
-  state?: 'active' | 'inactive' | 'archived' | 'all';
+  state?: "active" | "inactive" | "archived" | "all";
   page?: number;
   pageSize?: number;
   whatsappAccountId?: string;
   category?: string;
 }
-export interface SyncWhatsappTemplatesData { accountId: string; }
+export interface SyncWhatsappTemplatesData {
+  accountId: string;
+}

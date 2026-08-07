@@ -8,20 +8,14 @@ function formatNumber(value: number) {
   return new Intl.NumberFormat("pt-BR").format(value);
 }
 
-export default function BarChart({
-  label,
-  value,
-  max,
-}: BarChartProps) {
+export default function BarChart({ label, value, max }: BarChartProps) {
   const percentage =
     value === 0 ? 0 : Math.max(4, (value / Math.max(max, 1)) * 100);
 
   return (
     <div>
       <div className="mb-2 flex items-center justify-between gap-4 text-sm">
-        <span className="truncate text-slate-600">
-          {label}
-        </span>
+        <span className="truncate text-slate-600">{label}</span>
 
         <span className="font-semibold text-slate-900">
           {formatNumber(value)}

@@ -1,5 +1,5 @@
-import CampaignWizard from "@/components/campaigns/wizard/CampaignWizard";
+import CampaignBuilder from "@/components/campaigns/builder/CampaignBuilder";
 
 export default function NewCampaignPage() {
-  return <CampaignWizard />;
+  return <CampaignBuilder />;
 }

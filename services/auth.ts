@@ -35,7 +35,8 @@ export async function login(email: string, password: string) {
 export async function logout() {
   const refreshToken = getRefreshToken();
   try {
-    if (getAccessToken()) await api.post<{ success: boolean }>("/auth/logout", { refreshToken });
+    if (getAccessToken())
+      await api.post<{ success: boolean }>("/auth/logout", { refreshToken });
   } finally {
     endSession();
   }

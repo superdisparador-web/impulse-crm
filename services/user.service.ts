@@ -1,13 +1,20 @@
-import { api } from './api';
-import { ListUsersParams, User, UserFormData, UserListResponse, UserMetrics } from '@/types/user';
+import { api } from "./api";
+import {
+  ListUsersParams,
+  User,
+  UserFormData,
+  UserListResponse,
+  UserMetrics,
+} from "@/types/user";
 
 function toQueryString(params: ListUsersParams) {
   const searchParams = new URLSearchParams();
   Object.entries(params).forEach(([key, value]) => {
-    if (value !== undefined && value !== '') searchParams.set(key, String(value));
+    if (value !== undefined && value !== "")
+      searchParams.set(key, String(value));
   });
   const queryString = searchParams.toString();
-  return queryString ? `?${queryString}` : '';
+  return queryString ? `?${queryString}` : "";
 }
 
 class UserService {
@@ -16,29 +23,40 @@ class UserService {
   }
 
   async getMe(): Promise<User> {
-    return api.get<User>('/users/me');
+    return api.get<User>("/users/me");
   }
 
-  async getMetrics(params: Pick<ListUsersParams, 'organizationId'> = {}): Promise<UserMetrics> {
+  async getMetrics(
+    params: Pick<ListUsersParams, "organizationId"> = {},
+  ): Promise<UserMetrics> {
     return api.get<UserMetrics>(`/users/metrics${toQueryString(params)}`);
   }
 
   async create(data: UserFormData): Promise<User> {
-    return api.post<User>('/users', data);
+    return api.post<User>("/users", data);
   }
 
   async update(id: string, data: UserFormData): Promise<User> {
     const payload: Partial<UserFormData> = { ...data };
     delete payload.password;
-    return api<User>(`/users/${id}`, { method: 'PATCH', body: JSON.stringify(payload) });
+    return api<User>(`/users/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    });
   }
 
   async updateStatus(id: string, active: boolean): Promise<User> {
-    return api<User>(`/users/${id}/status`, { method: 'PATCH', body: JSON.stringify({ active }) });
+    return api<User>(`/users/${id}/status`, {
+      method: "PATCH",
+      body: JSON.stringify({ active }),
+    });
   }
 
   async resetPassword(id: string, password: string): Promise<User> {
-    return api<User>(`/users/${id}/reset-password`, { method: 'PATCH', body: JSON.stringify({ password }) });
+    return api<User>(`/users/${id}/reset-password`, {
+      method: "PATCH",
+      body: JSON.stringify({ password }),
+    });
   }
 
   async delete(id: string): Promise<void> {

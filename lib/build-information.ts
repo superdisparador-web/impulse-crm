@@ -1,3 +1,27 @@
-export type BuildInformation={commit:string;branch:string;buildDate:string;buildId:string;environment:string;nodeVersion:string;frontendVersion:string;backendVersion:string};
+export type BuildInformation = {
+  commit: string;
+  branch: string;
+  buildDate: string;
+  buildId: string;
+  environment: string;
+  nodeVersion: string;
+  frontendVersion: string;
+  backendVersion: string;
+};
 
-export function getBuildInformation():BuildInformation{return{commit:process.env.IMPULSE_COMMIT||"unknown",branch:process.env.IMPULSE_BRANCH||"unknown",buildDate:process.env.IMPULSE_BUILD_DATE||"unknown",buildId:process.env.IMPULSE_BUILD_ID||"unknown",environment:process.env.DEPLOYMENT_ENV||process.env.VERCEL_ENV||process.env.NODE_ENV||"development",nodeVersion:process.version,frontendVersion:process.env.IMPULSE_FRONTEND_VERSION||"unknown",backendVersion:process.env.IMPULSE_BACKEND_VERSION||"unknown"}}
+export function getBuildInformation(): BuildInformation {
+  return {
+    commit: process.env.IMPULSE_COMMIT || "unknown",
+    branch: process.env.IMPULSE_BRANCH || "unknown",
+    buildDate: process.env.IMPULSE_BUILD_DATE || "unknown",
+    buildId: process.env.IMPULSE_BUILD_ID || "unknown",
+    environment:
+      process.env.DEPLOYMENT_ENV ||
+      process.env.VERCEL_ENV ||
+      process.env.NODE_ENV ||
+      "development",
+    nodeVersion: process.version,
+    frontendVersion: process.env.IMPULSE_FRONTEND_VERSION || "unknown",
+    backendVersion: process.env.IMPULSE_BACKEND_VERSION || "unknown",
+  };
+}

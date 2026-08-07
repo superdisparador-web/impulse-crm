@@ -1,5 +1,34 @@
-import assert from 'node:assert/strict';import test from 'node:test';import fs from 'node:fs';
-const read=path=>fs.readFileSync(new URL(`../${path}`,import.meta.url),'utf8');
-test('build captura git, data e BUILD_ID sem valores fixos',()=>{const config=read('next.config.ts'),script=read('scripts/prepare-build-information.mjs'),pkg=read('package.json');assert.match(script,/rev-parse","HEAD/);assert.match(script,/rev-parse","--abbrev-ref","HEAD/);assert.match(script,/new Date\(\)\.toISOString/);assert.match(script,/randomUUID/);assert.match(config,/generateBuildId/);assert.match(pkg,/prepare-build-information/)});
-test('version e health são públicos, não cacheados e expõem diagnóstico contratado',()=>{const version=read('app/api/version/route.ts'),health=read('app/api/health/route.ts'),backend=read('backend/src/system/system.controller.ts');assert.match(version,/getBuildInformation/);assert.match(version,/no-store/);for(const field of ['uptime','memory','cpu','database','version'])assert.match(health,new RegExp(field));assert.match(backend,/SELECT 1/)});
-test('layout mostra versão e registra identidade no console',()=>{const sidebar=read('components/layout/Sidebar.tsx'),logger=read('components/layout/BuildConsole.tsx');for(const label of ['Commit','Branch','Build'])assert.match(sidebar,new RegExp(label));assert.match(logger,/Impulse CRM/);assert.match(logger,/Build ID/)});
+import assert from "node:assert/strict";
+import test from "node:test";
+import fs from "node:fs";
+const read = (path) =>
+  fs.readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
+test("build captura git, data e BUILD_ID sem valores fixos", () => {
+  const config = read("next.config.ts"),
+    script = read("scripts/prepare-build-information.mjs"),
+    pkg = read("package.json");
+  assert.match(script, /rev-parse","HEAD/);
+  assert.match(script, /rev-parse","--abbrev-ref","HEAD/);
+  assert.match(script, /new Date\(\)\.toISOString/);
+  assert.match(script, /randomUUID/);
+  assert.match(config, /generateBuildId/);
+  assert.match(pkg, /prepare-build-information/);
+});
+test("version e health são públicos, não cacheados e expõem diagnóstico contratado", () => {
+  const version = read("app/api/version/route.ts"),
+    health = read("app/api/health/route.ts"),
+    backend = read("backend/src/system/system.controller.ts");
+  assert.match(version, /getBuildInformation/);
+  assert.match(version, /no-store/);
+  for (const field of ["uptime", "memory", "cpu", "database", "version"])
+    assert.match(health, new RegExp(field));
+  assert.match(backend, /SELECT 1/);
+});
+test("layout mostra versão e registra identidade no console", () => {
+  const sidebar = read("components/layout/Sidebar.tsx"),
+    logger = read("components/layout/BuildConsole.tsx");
+  for (const label of ["Commit", "Branch", "Build"])
+    assert.match(sidebar, new RegExp(label));
+  assert.match(logger, /Impulse CRM/);
+  assert.match(logger, /Build ID/);
+});

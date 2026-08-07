@@ -1,6 +1,10 @@
 import "./globals.css";
+
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import BuildConsole from "@/components/layout/BuildConsole";
+
+import { ToastProvider } from "@/components/ui/crm";
+
 import { getBuildInformation } from "@/lib/build-information";
 
 export default function RootLayout({
@@ -8,14 +12,16 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const build=getBuildInformation();
+  const build = getBuildInformation();
+
   return (
     <html lang="pt-BR">
       <body>
-        <BuildConsole build={build}/>
-        <DashboardLayout build={build}>
-          {children}
-        </DashboardLayout>
+        <ToastProvider>
+          <BuildConsole build={build} />
+
+          <DashboardLayout build={build}>{children}</DashboardLayout>
+        </ToastProvider>
       </body>
     </html>
   );

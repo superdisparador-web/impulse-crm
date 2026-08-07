@@ -1,11 +1,111 @@
-export type WhatsappTemplateCategory = 'MARKETING' | 'UTILITY' | 'AUTHENTICATION';
-export type WhatsappTemplateStatus = 'DRAFT' | 'PENDING' | 'APPROVED' | 'REJECTED' | 'DISABLED' | 'PAUSED' | 'IN_APPEAL' | 'PENDING_DELETION' | 'DELETED' | 'LIMIT_EXCEEDED' | 'UNKNOWN';
-export type WhatsappTemplateLanguage = 'pt_BR' | 'en_US' | 'es_ES';
-export type WhatsappTemplateHeaderType = 'NONE' | 'TEXT' | 'IMAGE' | 'VIDEO' | 'DOCUMENT';
-export interface WhatsappTemplateButton { type: 'QUICK_REPLY' | 'URL' | 'PHONE_NUMBER' | 'COPY_CODE' | string; text: string; url?: string; phoneNumber?: string; }
-export interface WhatsappTemplateVariable { position:number; component:'HEADER'|'BODY'|'BUTTON'; type:string; example:unknown|null; required:true; order:number; buttonIndex?:number; }
-export interface WhatsappTemplate { id:string; organizationId:string; whatsappAccountId?:string|null; whatsappAccount?:{id:string;name:string;displayPhoneNumber?:string|null;lastSyncAt?:string|null}|null; name:string; displayName:string; metaName:string; language:WhatsappTemplateLanguage; category:WhatsappTemplateCategory; status:WhatsappTemplateStatus; metaStatus?:string|null; headerType:WhatsappTemplateHeaderType; headerText?:string|null; body:string; footer?:string|null; buttons?: WhatsappTemplateButton[]; components?:unknown[]; variables:WhatsappTemplateVariable[]; availableForSending:boolean; qualityScore?:string|null; rejectionReason?:string|null; parameterFormat?:string|null; previousCategory?:string|null; metaTemplateId?:string|null; isActive:boolean; lastSyncedAt?:string|null; archivedAt?:string|null; createdAt:string; updatedAt:string; deletedAt?:string|null; }
-export interface WhatsappTemplateFormData { whatsappAccountId?:string; name:string; displayName:string; metaName:string; language:WhatsappTemplateLanguage; category:WhatsappTemplateCategory; status?:WhatsappTemplateStatus; headerType:WhatsappTemplateHeaderType; headerText?:string; body:string; footer?:string; buttons:WhatsappTemplateButton[]; metaTemplateId?:string; isActive?:boolean; }
-export interface WhatsappTemplateFilters { whatsappAccountId?:string; search?:string; status?:string; category?:string; language?:string; state?:'active'|'inactive'|'archived'|'all'; page?:number; pageSize?:number; }
-export interface PaginatedWhatsappTemplates { items: WhatsappTemplate[]; page:number; pageSize:number; total:number; totalPages:number; lastSyncedAt:string|null; }
-export interface WhatsappTemplateSyncSummary { totalFound:number; created:number; updated:number; unchanged:number; archived:number; errors:string[]; }
+export type WhatsappTemplateCategory =
+  "MARKETING" | "UTILITY" | "AUTHENTICATION";
+export type WhatsappTemplateStatus =
+  | "DRAFT"
+  | "PENDING"
+  | "APPROVED"
+  | "REJECTED"
+  | "DISABLED"
+  | "PAUSED"
+  | "IN_APPEAL"
+  | "PENDING_DELETION"
+  | "DELETED"
+  | "LIMIT_EXCEEDED"
+  | "UNKNOWN";
+export type WhatsappTemplateLanguage = "pt_BR" | "en_US" | "es_ES";
+export type WhatsappTemplateHeaderType =
+  "NONE" | "TEXT" | "IMAGE" | "VIDEO" | "DOCUMENT";
+export interface WhatsappTemplateButton {
+  type: "QUICK_REPLY" | "URL" | "PHONE_NUMBER" | "COPY_CODE" | string;
+  text: string;
+  url?: string;
+  phoneNumber?: string;
+}
+export interface WhatsappTemplateVariable {
+  position: number;
+  component: "HEADER" | "BODY" | "BUTTON";
+  type: string;
+  example: unknown | null;
+  required: true;
+  order: number;
+  buttonIndex?: number;
+}
+export interface WhatsappTemplate {
+  id: string;
+  organizationId: string;
+  whatsappAccountId?: string | null;
+  whatsappAccount?: {
+    id: string;
+    name: string;
+    displayPhoneNumber?: string | null;
+    lastSyncAt?: string | null;
+  } | null;
+  name: string;
+  displayName: string;
+  metaName: string;
+  language: WhatsappTemplateLanguage;
+  category: WhatsappTemplateCategory;
+  status: WhatsappTemplateStatus;
+  metaStatus?: string | null;
+  headerType: WhatsappTemplateHeaderType;
+  headerText?: string | null;
+  body: string;
+  footer?: string | null;
+  buttons?: WhatsappTemplateButton[];
+  components?: unknown[];
+  variables: WhatsappTemplateVariable[];
+  availableForSending: boolean;
+  qualityScore?: string | null;
+  rejectionReason?: string | null;
+  parameterFormat?: string | null;
+  previousCategory?: string | null;
+  metaTemplateId?: string | null;
+  isActive: boolean;
+  lastSyncedAt?: string | null;
+  archivedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt?: string | null;
+}
+export interface WhatsappTemplateFormData {
+  whatsappAccountId?: string;
+  name: string;
+  displayName: string;
+  metaName: string;
+  language: WhatsappTemplateLanguage;
+  category: WhatsappTemplateCategory;
+  status?: WhatsappTemplateStatus;
+  headerType: WhatsappTemplateHeaderType;
+  headerText?: string;
+  body: string;
+  footer?: string;
+  buttons: WhatsappTemplateButton[];
+  metaTemplateId?: string;
+  isActive?: boolean;
+}
+export interface WhatsappTemplateFilters {
+  whatsappAccountId?: string;
+  search?: string;
+  status?: string;
+  category?: string;
+  language?: string;
+  state?: "active" | "inactive" | "archived" | "all";
+  page?: number;
+  pageSize?: number;
+}
+export interface PaginatedWhatsappTemplates {
+  items: WhatsappTemplate[];
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+  lastSyncedAt: string | null;
+}
+export interface WhatsappTemplateSyncSummary {
+  totalFound: number;
+  created: number;
+  updated: number;
+  unchanged: number;
+  archived: number;
+  errors: string[];
+}

@@ -18,59 +18,43 @@ const alignmentClasses: Record<TableAlignment, string> = {
   right: "text-right",
 };
 
-export interface TableContainerProps
-  extends HTMLAttributes<HTMLDivElement> {
+export interface TableContainerProps extends HTMLAttributes<HTMLDivElement> {
   compact?: boolean;
 }
 
-export const TableContainer = forwardRef<
-  HTMLDivElement,
-  TableContainerProps
->(function TableContainer(
-  {
-    className,
-    compact = false,
-    children,
-    ...props
-  },
-  ref
-) {
-  return (
-    <div
-      ref={ref}
-      className={joinClasses(
-        "w-full overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_1px_3px_rgba(15,23,42,0.04),0_12px_28px_-22px_rgba(15,23,42,0.25)]",
-        compact ? "text-sm" : "",
-        className
-      )}
-      {...props}
-    >
-      <div className="w-full overflow-x-auto">
-        {children}
+export const TableContainer = forwardRef<HTMLDivElement, TableContainerProps>(
+  function TableContainer(
+    { className, compact = false, children, ...props },
+    ref,
+  ) {
+    return (
+      <div
+        ref={ref}
+        className={joinClasses(
+          "w-full overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_1px_3px_rgba(15,23,42,0.04),0_12px_28px_-22px_rgba(15,23,42,0.25)]",
+          compact ? "text-sm" : "",
+          className,
+        )}
+        {...props}
+      >
+        <div className="w-full overflow-x-auto">{children}</div>
       </div>
-    </div>
-  );
-});
+    );
+  },
+);
 
 export type TableProps = TableHTMLAttributes<HTMLTableElement>;
 
-export const Table = forwardRef<
-  HTMLTableElement,
-  TableProps
->(function Table(
-  {
-    className,
-    children,
-    ...props
-  },
-  ref
+export const Table = forwardRef<HTMLTableElement, TableProps>(function Table(
+  { className, children, ...props },
+  ref,
 ) {
   return (
     <table
       ref={ref}
       className={joinClasses(
         "w-full min-w-full border-collapse text-left text-sm",
-        className
+        className,
       )}
       {...props}
     >
@@ -84,20 +68,13 @@ export type TableHeaderProps = HTMLAttributes<HTMLTableSectionElement>;
 export const TableHeader = forwardRef<
   HTMLTableSectionElement,
   TableHeaderProps
->(function TableHeader(
-  {
-    className,
-    children,
-    ...props
-  },
-  ref
-) {
+>(function TableHeader({ className, children, ...props }, ref) {
   return (
     <thead
       ref={ref}
       className={joinClasses(
         "border-b border-slate-200 bg-slate-50/80",
-        className
+        className,
       )}
       {...props}
     >
@@ -108,50 +85,32 @@ export const TableHeader = forwardRef<
 
 export type TableBodyProps = HTMLAttributes<HTMLTableSectionElement>;
 
-export const TableBody = forwardRef<
-  HTMLTableSectionElement,
-  TableBodyProps
->(function TableBody(
-  {
-    className,
-    children,
-    ...props
+export const TableBody = forwardRef<HTMLTableSectionElement, TableBodyProps>(
+  function TableBody({ className, children, ...props }, ref) {
+    return (
+      <tbody
+        ref={ref}
+        className={joinClasses("divide-y divide-slate-100 bg-white", className)}
+        {...props}
+      >
+        {children}
+      </tbody>
+    );
   },
-  ref
-) {
-  return (
-    <tbody
-      ref={ref}
-      className={joinClasses(
-        "divide-y divide-slate-100 bg-white",
-        className
-      )}
-      {...props}
-    >
-      {children}
-    </tbody>
-  );
-});
+);
 
 export type TableFooterProps = HTMLAttributes<HTMLTableSectionElement>;
 
 export const TableFooter = forwardRef<
   HTMLTableSectionElement,
   TableFooterProps
->(function TableFooter(
-  {
-    className,
-    children,
-    ...props
-  },
-  ref
-) {
+>(function TableFooter({ className, children, ...props }, ref) {
   return (
     <tfoot
       ref={ref}
       className={joinClasses(
         "border-t border-slate-200 bg-slate-50 font-medium text-slate-700",
-        className
+        className,
       )}
       {...props}
     >
@@ -160,153 +119,106 @@ export const TableFooter = forwardRef<
   );
 });
 
-export interface TableRowProps
-  extends HTMLAttributes<HTMLTableRowElement> {
+export interface TableRowProps extends HTMLAttributes<HTMLTableRowElement> {
   clickable?: boolean;
   selected?: boolean;
 }
 
-export const TableRow = forwardRef<
-  HTMLTableRowElement,
-  TableRowProps
->(function TableRow(
-  {
-    className,
-    clickable = false,
-    selected = false,
-    children,
-    ...props
+export const TableRow = forwardRef<HTMLTableRowElement, TableRowProps>(
+  function TableRow(
+    { className, clickable = false, selected = false, children, ...props },
+    ref,
+  ) {
+    return (
+      <tr
+        ref={ref}
+        className={joinClasses(
+          "transition-colors duration-150",
+          clickable
+            ? "cursor-pointer hover:bg-slate-50"
+            : "hover:bg-slate-50/70",
+          selected ? "bg-blue-50 hover:bg-blue-50" : "",
+          className,
+        )}
+        {...props}
+      >
+        {children}
+      </tr>
+    );
   },
-  ref
-) {
-  return (
-    <tr
-      ref={ref}
-      className={joinClasses(
-        "transition-colors duration-150",
-        clickable
-          ? "cursor-pointer hover:bg-slate-50"
-          : "hover:bg-slate-50/70",
-        selected ? "bg-blue-50 hover:bg-blue-50" : "",
-        className
-      )}
-      {...props}
-    >
-      {children}
-    </tr>
-  );
-});
+);
 
-export interface TableHeadProps
-  extends Omit<
-    ThHTMLAttributes<HTMLTableCellElement>,
-    "align"
-  > {
+export interface TableHeadProps extends Omit<
+  ThHTMLAttributes<HTMLTableCellElement>,
+  "align"
+> {
   align?: TableAlignment;
 }
 
-export const TableHead = forwardRef<
-  HTMLTableCellElement,
-  TableHeadProps
->(function TableHead(
-  {
-    className,
-    align = "left",
-    children,
-    ...props
+export const TableHead = forwardRef<HTMLTableCellElement, TableHeadProps>(
+  function TableHead({ className, align = "left", children, ...props }, ref) {
+    return (
+      <th
+        ref={ref}
+        className={joinClasses(
+          "whitespace-nowrap px-5 py-4 text-xs font-semibold uppercase tracking-wider text-slate-500",
+          alignmentClasses[align],
+          className,
+        )}
+        {...props}
+      >
+        {children}
+      </th>
+    );
   },
-  ref
-) {
-  return (
-    <th
-      ref={ref}
-      className={joinClasses(
-        "whitespace-nowrap px-5 py-4 text-xs font-semibold uppercase tracking-wider text-slate-500",
-        alignmentClasses[align],
-        className
-      )}
-      {...props}
-    >
-      {children}
-    </th>
-  );
-});
+);
 
 export type TableHeaderCellProps = TableHeadProps;
 
 export const TableHeaderCell = forwardRef<
   HTMLTableCellElement,
   TableHeaderCellProps
->(function TableHeaderCell(
-  {
-    className,
-    ...props
-  },
-  ref
-) {
-  return (
-    <TableHead
-      ref={ref}
-      className={className}
-      {...props}
-    />
-  );
+>(function TableHeaderCell({ className, ...props }, ref) {
+  return <TableHead ref={ref} className={className} {...props} />;
 });
 
-export interface TableCellProps
-  extends Omit<
-    TdHTMLAttributes<HTMLTableCellElement>,
-    "align"
-  > {
+export interface TableCellProps extends Omit<
+  TdHTMLAttributes<HTMLTableCellElement>,
+  "align"
+> {
   align?: TableAlignment;
 }
 
-export const TableCell = forwardRef<
-  HTMLTableCellElement,
-  TableCellProps
->(function TableCell(
-  {
-    className,
-    align = "left",
-    children,
-    ...props
+export const TableCell = forwardRef<HTMLTableCellElement, TableCellProps>(
+  function TableCell({ className, align = "left", children, ...props }, ref) {
+    return (
+      <td
+        ref={ref}
+        className={joinClasses(
+          "px-5 py-4 align-middle text-sm text-slate-700",
+          alignmentClasses[align],
+          className,
+        )}
+        {...props}
+      >
+        {children}
+      </td>
+    );
   },
-  ref
-) {
-  return (
-    <td
-      ref={ref}
-      className={joinClasses(
-        "px-5 py-4 align-middle text-sm text-slate-700",
-        alignmentClasses[align],
-        className
-      )}
-      {...props}
-    >
-      {children}
-    </td>
-  );
-});
+);
 
 export type TableCaptionProps = HTMLAttributes<HTMLTableCaptionElement>;
 
 export const TableCaption = forwardRef<
   HTMLTableCaptionElement,
   TableCaptionProps
->(function TableCaption(
-  {
-    className,
-    children,
-    ...props
-  },
-  ref
-) {
+>(function TableCaption({ className, children, ...props }, ref) {
   return (
     <caption
       ref={ref}
       className={joinClasses(
         "px-5 py-4 text-left text-sm text-slate-500",
-        className
+        className,
       )}
       {...props}
     >
@@ -315,11 +227,10 @@ export const TableCaption = forwardRef<
   );
 });
 
-export interface TableEmptyProps
-  extends Omit<
-    TdHTMLAttributes<HTMLTableCellElement>,
-    "align"
-  > {
+export interface TableEmptyProps extends Omit<
+  TdHTMLAttributes<HTMLTableCellElement>,
+  "align"
+> {
   title?: string;
   description?: string;
   colSpan?: number;
@@ -340,10 +251,7 @@ export function TableEmpty({
       <TableCell
         colSpan={colSpan}
         align={align}
-        className={joinClasses(
-          "px-6 py-14",
-          className
-        )}
+        className={joinClasses("px-6 py-14", className)}
         {...props}
       >
         {children ?? (
@@ -352,9 +260,7 @@ export function TableEmpty({
               —
             </div>
 
-            <p className="mt-4 font-semibold text-slate-800">
-              {title}
-            </p>
+            <p className="mt-4 font-semibold text-slate-800">{title}</p>
 
             <p className="mt-1 text-sm leading-6 text-slate-500">
               {description}
@@ -366,11 +272,10 @@ export function TableEmpty({
   );
 }
 
-export interface TableMessageProps
-  extends Omit<
-    TdHTMLAttributes<HTMLTableCellElement>,
-    "align"
-  > {
+export interface TableMessageProps extends Omit<
+  TdHTMLAttributes<HTMLTableCellElement>,
+  "align"
+> {
   title?: string;
   description?: string;
   colSpan?: number;
@@ -391,10 +296,7 @@ export function TableMessage({
       <TableCell
         colSpan={colSpan}
         align={align}
-        className={joinClasses(
-          "px-6 py-14",
-          className
-        )}
+        className={joinClasses("px-6 py-14", className)}
         {...props}
       >
         {children ?? (
@@ -403,9 +305,7 @@ export function TableMessage({
               —
             </div>
 
-            <p className="mt-4 font-semibold text-slate-800">
-              {title}
-            </p>
+            <p className="mt-4 font-semibold text-slate-800">{title}</p>
 
             <p className="mt-1 text-sm leading-6 text-slate-500">
               {description}

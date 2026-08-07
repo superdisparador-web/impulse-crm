@@ -1,2 +1,31 @@
-import { DragEvent, ReactNode } from 'react';
-export default function CsvAudiencePanel({children,dragging,onDrop,onDragging}:{children:ReactNode;dragging:boolean;onDrop:(file?:File)=>void;onDragging:(value:boolean)=>void}){const drop=(event:DragEvent)=>{event.preventDefault();onDragging(false);onDrop(event.dataTransfer.files[0])};return <section onDragOver={event=>{event.preventDefault();onDragging(true)}} onDragLeave={()=>onDragging(false)} onDrop={drop} className={dragging?'ring-4 ring-blue-100':''}>{children}</section>}
+import { DragEvent, ReactNode } from "react";
+export default function CsvAudiencePanel({
+  children,
+  dragging,
+  onDrop,
+  onDragging,
+}: {
+  children: ReactNode;
+  dragging: boolean;
+  onDrop: (file?: File) => void;
+  onDragging: (value: boolean) => void;
+}) {
+  const drop = (event: DragEvent) => {
+    event.preventDefault();
+    onDragging(false);
+    onDrop(event.dataTransfer.files[0]);
+  };
+  return (
+    <section
+      onDragOver={(event) => {
+        event.preventDefault();
+        onDragging(true);
+      }}
+      onDragLeave={() => onDragging(false)}
+      onDrop={drop}
+      className={dragging ? "ring-4 ring-blue-100" : ""}
+    >
+      {children}
+    </section>
+  );
+}

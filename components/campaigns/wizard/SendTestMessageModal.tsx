@@ -6,4 +6,146 @@ import Input from "@/components/ui/Input";
 import { normalizeCampaignPhone } from "@/lib/campaign-phone";
 import { VariableMapping } from "@/services/campaigns.service";
 import { WhatsappTemplate } from "@/types/templates";
-export default function SendTestMessageModal({open,onClose,onSend,template,mappings,accountName}:{open:boolean;onClose:()=>void;onSend:(phone:string,values:{component:string;position:number;buttonIndex?:number;value:string}[])=>Promise<void>;template?:WhatsappTemplate;mappings:VariableMapping[];accountName:string}){const[phone,setPhone]=useState(""),[values,setValues]=useState<Record<string,string>>({}),[status,setStatus]=useState<"idle"|"sending"|"sent"|"error">("idle"),[message,setMessage]=useState("");const checked=useMemo(()=>normalizeCampaignPhone(phone),[phone]);const required=template?.variables||[],missing=required.some(v=>!values[`${v.component}:${v.position}:${v.buttonIndex??""}`]?.trim());async function submit(){if(!checked.e164||missing||status==="sending")return;setStatus("sending");setMessage("");try{await onSend(checked.e164,required.map(v=>({component:v.component,position:v.position,buttonIndex:v.buttonIndex,value:values[`${v.component}:${v.position}:${v.buttonIndex??""}`]})));setStatus("sent");setMessage("Mensagem de teste aceita para envio.")}catch(e){setStatus("error");setMessage(e instanceof Error?e.message:"Não foi possível enviar a mensagem de teste.")}}return <Modal isOpen={open} onClose={onClose} title="Enviar mensagem de teste" width="lg"><div className="space-y-5"><div className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900"><strong>Este envio enviará apenas uma mensagem e não iniciará a campanha.</strong><p className="mt-1">Conta: {accountName} · Template: {template?.displayName||"não selecionado"} · Idioma: {template?.language||"—"}</p></div><Input label="Telefone destinatário" placeholder="+55 11 99999-9999" value={phone} onChange={e=>setPhone(e.target.value)} error={phone&&!checked.e164?checked.reason:undefined}/><div><h3 className="mb-2 font-semibold">Variáveis de teste</h3>{required.length===0?<p className="text-sm text-slate-500">Este template não possui variáveis.</p>:<div className="grid gap-3 sm:grid-cols-2">{required.map(v=>{const key=`${v.component}:${v.position}:${v.buttonIndex??""}`,mapping=mappings.find(m=>`${m.component}:${m.position}:${m.buttonIndex??""}`===key);return <Input key={key} label={`${v.component} {{${v.position}}} · obrigatória`} placeholder={String(v.example||mapping?.fixedValue||"Informe o valor") } value={values[key]||""} onChange={e=>setValues(old=>({...old,[key]:e.target.value}))}/>} )}</div>}</div>{message&&<div role="status" className={`rounded-xl p-3 text-sm ${status==="sent"?"bg-emerald-50 text-emerald-800":"bg-red-50 text-red-800"}`}>{message}</div>}<div className="flex justify-end gap-2"><Button variant="ghost" onClick={onClose}>Cancelar</Button><Button loading={status==="sending"} disabled={!checked.e164||missing||!template?.availableForSending} onClick={()=>void submit()}>Enviar teste</Button></div></div></Modal>}
+export default function SendTestMessageModal({
+  open,
+  onClose,
+  onSend,
+  template,
+  mappings,
+  accountName,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onSend: (
+    phone: string,
+    values: {
+      component: string;
+      position: number;
+      buttonIndex?: number;
+      value: string;
+    }[],
+  ) => Promise<void>;
+  template?: WhatsappTemplate;
+  mappings: VariableMapping[];
+  accountName: string;
+}) {
+  const [phone, setPhone] = useState(""),
+    [values, setValues] = useState<Record<string, string>>({}),
+    [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">(
+      "idle",
+    ),
+    [message, setMessage] = useState("");
+  const checked = useMemo(() => normalizeCampaignPhone(phone), [phone]);
+  const required = template?.variables || [],
+    missing = required.some(
+      (v) =>
+        !values[`${v.component}:${v.position}:${v.buttonIndex ?? ""}`]?.trim(),
+    );
+  async function submit() {
+    if (!checked.e164 || missing || status === "sending") return;
+    setStatus("sending");
+    setMessage("");
+    try {
+      await onSend(
+        checked.e164,
+        required.map((v) => ({
+          component: v.component,
+          position: v.position,
+          buttonIndex: v.buttonIndex,
+          value: values[`${v.component}:${v.position}:${v.buttonIndex ?? ""}`],
+        })),
+      );
+      setStatus("sent");
+      setMessage("Mensagem de teste aceita para envio.");
+    } catch (e) {
+      setStatus("error");
+      setMessage(
+        e instanceof Error
+          ? e.message
+          : "Não foi possível enviar a mensagem de teste.",
+      );
+    }
+  }
+  return (
+    <Modal
+      isOpen={open}
+      onClose={onClose}
+      title="Enviar mensagem de teste"
+      width="lg"
+    >
+      <div className="space-y-5">
+        <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">
+          <strong>
+            Este envio enviará apenas uma mensagem e não iniciará a campanha.
+          </strong>
+          <p className="mt-1">
+            Conta: {accountName} · Template:{" "}
+            {template?.displayName || "não selecionado"} · Idioma:{" "}
+            {template?.language || "—"}
+          </p>
+        </div>
+        <Input
+          label="Telefone destinatário"
+          placeholder="+55 11 99999-9999"
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+          error={phone && !checked.e164 ? checked.reason : undefined}
+        />
+        <div>
+          <h3 className="mb-2 font-semibold">Variáveis de teste</h3>
+          {required.length === 0 ? (
+            <p className="text-sm text-slate-500">
+              Este template não possui variáveis.
+            </p>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2">
+              {required.map((v) => {
+                const key = `${v.component}:${v.position}:${v.buttonIndex ?? ""}`,
+                  mapping = mappings.find(
+                    (m) =>
+                      `${m.component}:${m.position}:${m.buttonIndex ?? ""}` ===
+                      key,
+                  );
+                return (
+                  <Input
+                    key={key}
+                    label={`${v.component} {{${v.position}}} · obrigatória`}
+                    placeholder={String(
+                      v.example || mapping?.fixedValue || "Informe o valor",
+                    )}
+                    value={values[key] || ""}
+                    onChange={(e) =>
+                      setValues((old) => ({ ...old, [key]: e.target.value }))
+                    }
+                  />
+                );
+              })}
+            </div>
+          )}
+        </div>
+        {message && (
+          <div
+            role="status"
+            className={`rounded-xl p-3 text-sm ${status === "sent" ? "bg-emerald-50 text-emerald-800" : "bg-red-50 text-red-800"}`}
+          >
+            {message}
+          </div>
+        )}
+        <div className="flex justify-end gap-2">
+          <Button variant="ghost" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button
+            loading={status === "sending"}
+            disabled={
+              !checked.e164 || missing || !template?.availableForSending
+            }
+            onClick={() => void submit()}
+          >
+            Enviar teste
+          </Button>
+        </div>
+      </div>
+    </Modal>
+  );
+}

@@ -1,4 +1,43 @@
-import assert from'node:assert/strict';import{readFileSync}from'node:fs';import test from'node:test';const page=readFileSync('app/leads/received/page.tsx','utf8'),service=readFileSync('services/distribution-commercial.service.ts','utf8'),sidebar=readFileSync('components/layout/Sidebar.tsx','utf8');
-test('caixa de leads recebidos possui filtros, métricas e estados profissionais',()=>{for(const text of ['Leads recebidos','Cliques únicos','Cliques totais','Empreendimento','Bairro','Somente pendentes','Somente atrasados','Nenhum lead recebido','aria-busy','role="alert"'])assert.match(page,new RegExp(text));assert.match(sidebar,/\/leads\/received/)});
-test('questionário pós-atendimento cobre tentativa, resposta, status e acompanhamento',()=>{for(const text of ['Iniciou o atendimento','Cliente respondeu','Ainda não tentei','Aguardando resposta','Próximo acompanhamento'])assert.match(page,new RegExp(text));assert.match(service,/followUp/)});
-test('contratos comerciais incluem status, reatribuição, disponibilidade e métricas',()=>{for(const method of ['updateStatus','reassign','availability','setAvailability','metrics'])assert.match(service,new RegExp(method))});
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import test from "node:test";
+const page = readFileSync("app/leads/received/page.tsx", "utf8"),
+  service = readFileSync("services/distribution-commercial.service.ts", "utf8"),
+  sidebar = readFileSync("components/layout/Sidebar.tsx", "utf8");
+test("caixa de leads recebidos possui filtros, métricas e estados profissionais", () => {
+  for (const text of [
+    "Leads recebidos",
+    "Cliques únicos",
+    "Cliques totais",
+    "Empreendimento",
+    "Bairro",
+    "Somente pendentes",
+    "Somente atrasados",
+    "Nenhum lead recebido",
+    "aria-busy",
+    'role="alert"',
+  ])
+    assert.match(page, new RegExp(text));
+  assert.match(sidebar, /\/leads\/received/);
+});
+test("questionário pós-atendimento cobre tentativa, resposta, status e acompanhamento", () => {
+  for (const text of [
+    "Iniciou o atendimento",
+    "Cliente respondeu",
+    "Ainda não tentei",
+    "Aguardando resposta",
+    "Próximo acompanhamento",
+  ])
+    assert.match(page, new RegExp(text));
+  assert.match(service, /followUp/);
+});
+test("contratos comerciais incluem status, reatribuição, disponibilidade e métricas", () => {
+  for (const method of [
+    "updateStatus",
+    "reassign",
+    "availability",
+    "setAvailability",
+    "metrics",
+  ])
+    assert.match(service, new RegExp(method));
+});

@@ -1,7 +1,168 @@
 import { CampaignFunnelStage } from "@/types/analytics";
 
-export function MiniLineChart({ points, label }: { points: number[]; label: string }) { const max = Math.max(1, ...points); const coordinates = points.map((value, index) => `${points.length === 1 ? 50 : (index / (points.length - 1)) * 100},${44 - (value / max) * 38}`).join(" "); return <div role="img" aria-label={label} className="h-48 rounded-2xl bg-gradient-to-b from-blue-50 to-white p-3"><svg viewBox="0 0 100 48" className="h-full w-full" preserveAspectRatio="none"><defs><linearGradient id="area" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#2563eb" stopOpacity=".3"/><stop offset="1" stopColor="#2563eb" stopOpacity="0"/></linearGradient></defs><polygon points={`0,48 ${coordinates} 100,48`} fill="url(#area)"/><polyline points={coordinates} fill="none" stroke="#2563eb" strokeWidth="2" vectorEffect="non-scaling-stroke"/></svg></div>; }
-export function ComparisonBars({ items }: { items: Array<{ label: string; value: number }> }) { const max = Math.max(1, ...items.map((item) => item.value)); return <div className="space-y-3">{items.map((item) => <div key={item.label}><div className="mb-1 flex justify-between text-sm"><span className="truncate text-slate-600">{item.label}</span><strong>{item.value.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}</strong></div><div className="h-2.5 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-gradient-to-r from-blue-600 to-cyan-400 transition-all" style={{ width: `${Math.max(item.value ? 4 : 0, item.value / max * 100)}%` }}/></div></div>)}</div>; }
-export function FunnelChart({ stages, bottleneck }: { stages: CampaignFunnelStage[]; bottleneck?: CampaignFunnelStage | null }) { return <div className="space-y-2">{stages.map((stage, index) => <div key={stage.key} className="group mx-auto transition-transform hover:scale-[1.01]" style={{ width: `${100 - index * 6}%` }} title={`${stage.stepRate}% da etapa anterior`}><div className={`flex min-h-14 items-center justify-between rounded-xl px-4 text-white shadow-sm ${bottleneck?.key === stage.key ? "bg-gradient-to-r from-amber-600 to-orange-500 ring-4 ring-amber-100" : "bg-gradient-to-r from-blue-700 to-cyan-500"}`}><div><strong>{stage.label}</strong><span className="ml-2 text-xs opacity-80">{stage.cumulativeRate}% acumulado</span></div><div className="text-right"><strong className="text-lg">{stage.value}</strong><p className="text-[11px]">abandono {stage.abandonment}</p></div></div></div>)}</div>; }
-export function DonutChart({ values, label }: { values: number[]; label: string }) { const total = Math.max(1, values.reduce((sum, value) => sum + value, 0)); const first = values[0] ?? 0; const second = values[1] ?? 0; const firstEnd = first / total * 100; const secondEnd = firstEnd + second / total * 100; return <div className="flex items-center gap-5" role="img" aria-label={label}><div className="h-32 w-32 shrink-0 rounded-full" style={{ background: `radial-gradient(circle, white 0 42%, transparent 43%), conic-gradient(#2563eb 0 ${firstEnd}%, #06b6d4 ${firstEnd}% ${secondEnd}%, #f59e0b ${secondEnd}% 100%)` }}/><div className="space-y-2 text-sm text-slate-600">{values.map((value, index) => <p key={index}><span className={`mr-2 inline-block h-2.5 w-2.5 rounded-full ${index === 0 ? "bg-blue-600" : index === 1 ? "bg-cyan-500" : "bg-amber-500"}`}/>{value.toLocaleString("pt-BR")}</p>)}</div></div>; }
-export function SimpleHeatmap({ values, label }: { values: number[]; label: string }) { const max = Math.max(1, ...values); return <div role="img" aria-label={label} className="grid grid-cols-7 gap-2">{values.map((value, index) => <div key={index} title={`${value} eventos`} className="aspect-square rounded-md border border-blue-100" style={{ backgroundColor: `rgb(37 99 235 / ${Math.max(.06, value / max)})` }}/>)}</div>; }
+export function MiniLineChart({
+  points,
+  label,
+}: {
+  points: number[];
+  label: string;
+}) {
+  const max = Math.max(1, ...points);
+  const coordinates = points
+    .map(
+      (value, index) =>
+        `${points.length === 1 ? 50 : (index / (points.length - 1)) * 100},${44 - (value / max) * 38}`,
+    )
+    .join(" ");
+  return (
+    <div
+      role="img"
+      aria-label={label}
+      className="h-48 rounded-2xl bg-gradient-to-b from-blue-50 to-white p-3"
+    >
+      <svg
+        viewBox="0 0 100 48"
+        className="h-full w-full"
+        preserveAspectRatio="none"
+      >
+        <defs>
+          <linearGradient id="area" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor="#2563eb" stopOpacity=".3" />
+            <stop offset="1" stopColor="#2563eb" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        <polygon points={`0,48 ${coordinates} 100,48`} fill="url(#area)" />
+        <polyline
+          points={coordinates}
+          fill="none"
+          stroke="#2563eb"
+          strokeWidth="2"
+          vectorEffect="non-scaling-stroke"
+        />
+      </svg>
+    </div>
+  );
+}
+export function ComparisonBars({
+  items,
+}: {
+  items: Array<{ label: string; value: number }>;
+}) {
+  const max = Math.max(1, ...items.map((item) => item.value));
+  return (
+    <div className="space-y-3">
+      {items.map((item) => (
+        <div key={item.label}>
+          <div className="mb-1 flex justify-between text-sm">
+            <span className="truncate text-slate-600">{item.label}</span>
+            <strong>
+              {item.value.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}
+            </strong>
+          </div>
+          <div className="h-2.5 overflow-hidden rounded-full bg-slate-100">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-blue-600 to-cyan-400 transition-all"
+              style={{
+                width: `${Math.max(item.value ? 4 : 0, (item.value / max) * 100)}%`,
+              }}
+            />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+export function FunnelChart({
+  stages,
+  bottleneck,
+}: {
+  stages: CampaignFunnelStage[];
+  bottleneck?: CampaignFunnelStage | null;
+}) {
+  return (
+    <div className="space-y-2">
+      {stages.map((stage, index) => (
+        <div
+          key={stage.key}
+          className="group mx-auto transition-transform hover:scale-[1.01]"
+          style={{ width: `${100 - index * 6}%` }}
+          title={`${stage.stepRate}% da etapa anterior`}
+        >
+          <div
+            className={`flex min-h-14 items-center justify-between rounded-xl px-4 text-white shadow-sm ${bottleneck?.key === stage.key ? "bg-gradient-to-r from-amber-600 to-orange-500 ring-4 ring-amber-100" : "bg-gradient-to-r from-blue-700 to-cyan-500"}`}
+          >
+            <div>
+              <strong>{stage.label}</strong>
+              <span className="ml-2 text-xs opacity-80">
+                {stage.cumulativeRate}% acumulado
+              </span>
+            </div>
+            <div className="text-right">
+              <strong className="text-lg">{stage.value}</strong>
+              <p className="text-[11px]">abandono {stage.abandonment}</p>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+export function DonutChart({
+  values,
+  label,
+}: {
+  values: number[];
+  label: string;
+}) {
+  const total = Math.max(
+    1,
+    values.reduce((sum, value) => sum + value, 0),
+  );
+  const first = values[0] ?? 0;
+  const second = values[1] ?? 0;
+  const firstEnd = (first / total) * 100;
+  const secondEnd = firstEnd + (second / total) * 100;
+  return (
+    <div className="flex items-center gap-5" role="img" aria-label={label}>
+      <div
+        className="h-32 w-32 shrink-0 rounded-full"
+        style={{
+          background: `radial-gradient(circle, white 0 42%, transparent 43%), conic-gradient(#2563eb 0 ${firstEnd}%, #06b6d4 ${firstEnd}% ${secondEnd}%, #f59e0b ${secondEnd}% 100%)`,
+        }}
+      />
+      <div className="space-y-2 text-sm text-slate-600">
+        {values.map((value, index) => (
+          <p key={index}>
+            <span
+              className={`mr-2 inline-block h-2.5 w-2.5 rounded-full ${index === 0 ? "bg-blue-600" : index === 1 ? "bg-cyan-500" : "bg-amber-500"}`}
+            />
+            {value.toLocaleString("pt-BR")}
+          </p>
+        ))}
+      </div>
+    </div>
+  );
+}
+export function SimpleHeatmap({
+  values,
+  label,
+}: {
+  values: number[];
+  label: string;
+}) {
+  const max = Math.max(1, ...values);
+  return (
+    <div role="img" aria-label={label} className="grid grid-cols-7 gap-2">
+      {values.map((value, index) => (
+        <div
+          key={index}
+          title={`${value} eventos`}
+          className="aspect-square rounded-md border border-blue-100"
+          style={{
+            backgroundColor: `rgb(37 99 235 / ${Math.max(0.06, value / max)})`,
+          }}
+        />
+      ))}
+    </div>
+  );
+}

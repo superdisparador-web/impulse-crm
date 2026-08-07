@@ -78,15 +78,24 @@ export default function OrganizationTable({
           {loading && (
             <TableRow>
               <TableCell colSpan={columnCount} className="p-6">
-                <div className="h-32 animate-pulse rounded-xl bg-slate-100" aria-label="Carregando empresas" />
+                <div
+                  className="h-32 animate-pulse rounded-xl bg-slate-100"
+                  aria-label="Carregando empresas"
+                />
               </TableCell>
             </TableRow>
           )}
 
           {!loading && error && (
             <TableRow>
-              <TableCell colSpan={columnCount} align="center" className="py-14 text-red-600">
-                <p className="font-semibold">Não foi possível carregar as empresas</p>
+              <TableCell
+                colSpan={columnCount}
+                align="center"
+                className="py-14 text-red-600"
+              >
+                <p className="font-semibold">
+                  Não foi possível carregar as empresas
+                </p>
                 <p className="mt-1 text-sm text-red-500">{error}</p>
               </TableCell>
             </TableRow>
@@ -99,45 +108,85 @@ export default function OrganizationTable({
                   title="Nenhuma empresa encontrada"
                   description="Ajuste os filtros ou cadastre uma nova empresa para começar."
                   icon={<Building2 size={20} />}
-                  action={canManage ? <Button onClick={onCreate}>Nova Empresa</Button> : undefined}
+                  action={
+                    canManage ? (
+                      <Button onClick={onCreate}>Nova Empresa</Button>
+                    ) : undefined
+                  }
                 />
               </TableCell>
             </TableRow>
           )}
 
-          {!loading && !error && organizations.map((organization) => (
-            <TableRow key={organization.id}>
-              <TableCell>
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 font-bold text-blue-700">
-                    {organization.name.charAt(0).toUpperCase()}
+          {!loading &&
+            !error &&
+            organizations.map((organization) => (
+              <TableRow key={organization.id}>
+                <TableCell>
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 font-bold text-blue-700">
+                      {organization.name.charAt(0).toUpperCase()}
+                    </div>
+                    <span className="font-semibold text-slate-900">
+                      {organization.name}
+                    </span>
                   </div>
-                  <span className="font-semibold text-slate-900">{organization.name}</span>
-                </div>
-              </TableCell>
-              <TableCell>{organization.document || "—"}</TableCell>
-              <TableCell>
-                <p className="text-slate-700">{organization.email || "—"}</p>
-                {organization.phone && <p className="mt-1 text-xs text-slate-500">{organization.phone}</p>}
-              </TableCell>
-              <TableCell><Usage organization={organization} /></TableCell>
-              <TableCell className="whitespace-nowrap">{formatDate(organization.createdAt)}</TableCell>
-              <TableCell align="center">
-                <Badge variant={organization.active ? "success" : "neutral"}>
-                  {organization.active ? "Ativa" : "Inativa"}
-                </Badge>
-              </TableCell>
-              <TableCell align="right">
-                {canManage ? (
-                  <div className="flex justify-end gap-1">
-                    <Button variant="ghost" size="sm" aria-label={`Editar ${organization.name}`} onClick={() => onEdit(organization)}><Pencil size={16} /></Button>
-                    <Button variant="ghost" size="sm" aria-label={`${organization.active ? "Inativar" : "Ativar"} ${organization.name}`} onClick={() => onToggleStatus(organization)}><Power size={16} /></Button>
-                    <Button variant="ghost" size="sm" className="text-red-600 hover:bg-red-50 hover:text-red-700" aria-label={`Excluir ${organization.name}`} onClick={() => onDelete(organization)}><Trash2 size={16} /></Button>
-                  </div>
-                ) : <span className="text-slate-400">—</span>}
-              </TableCell>
-            </TableRow>
-          ))}
+                </TableCell>
+                <TableCell>{organization.document || "—"}</TableCell>
+                <TableCell>
+                  <p className="text-slate-700">{organization.email || "—"}</p>
+                  {organization.phone && (
+                    <p className="mt-1 text-xs text-slate-500">
+                      {organization.phone}
+                    </p>
+                  )}
+                </TableCell>
+                <TableCell>
+                  <Usage organization={organization} />
+                </TableCell>
+                <TableCell className="whitespace-nowrap">
+                  {formatDate(organization.createdAt)}
+                </TableCell>
+                <TableCell align="center">
+                  <Badge variant={organization.active ? "success" : "neutral"}>
+                    {organization.active ? "Ativa" : "Inativa"}
+                  </Badge>
+                </TableCell>
+                <TableCell align="right">
+                  {canManage ? (
+                    <div className="flex justify-end gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        aria-label={`Editar ${organization.name}`}
+                        onClick={() => onEdit(organization)}
+                      >
+                        <Pencil size={16} />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        aria-label={`${organization.active ? "Inativar" : "Ativar"} ${organization.name}`}
+                        onClick={() => onToggleStatus(organization)}
+                      >
+                        <Power size={16} />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                        aria-label={`Excluir ${organization.name}`}
+                        onClick={() => onDelete(organization)}
+                      >
+                        <Trash2 size={16} />
+                      </Button>
+                    </div>
+                  ) : (
+                    <span className="text-slate-400">—</span>
+                  )}
+                </TableCell>
+              </TableRow>
+            ))}
         </TableBody>
       </Table>
     </TableContainer>

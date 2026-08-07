@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   Activity,
@@ -23,18 +17,11 @@ import {
   updateLead360,
 } from "@/services/lead-360.service";
 
-import {
-  Lead,
-  LeadActivity,
-  LeadActivityFormData,
-} from "@/types/lead";
+import { Lead, LeadActivity, LeadActivityFormData } from "@/types/lead";
 
 import { LeadNote } from "@/types/lead-360";
 
-import {
-  PipelineBoard,
-  PipelineCard,
-} from "@/types/pipeline-board";
+import { PipelineBoard, PipelineCard } from "@/types/pipeline-board";
 
 import { LeadActivities } from "./LeadActivities";
 import { LeadHeader } from "./LeadHeader";
@@ -45,19 +32,12 @@ import { LeadTimeline } from "./LeadTimeline";
 
 import { buildPipelineHistory } from "./lead360-utils";
 
-import {
-  parseLeadNotes,
-  serializeLeadNotes,
-} from "./lead-notes.adapter";
+import { parseLeadNotes, serializeLeadNotes } from "./lead-notes.adapter";
 
 import { mapLeadTimeline } from "./lead-timeline.adapter";
 
 type LeadDrawerTab =
-  | "summary"
-  | "timeline"
-  | "notes"
-  | "activities"
-  | "history";
+  "summary" | "timeline" | "notes" | "activities" | "history";
 
 interface LeadDrawerProps {
   card: PipelineCard | null;
@@ -110,12 +90,9 @@ export function LeadDrawer({
 }: LeadDrawerProps) {
   const [lead, setLead] = useState<Lead | null>(null);
   const [notes, setNotes] = useState<LeadNote[]>([]);
-  const [activities, setActivities] = useState<LeadActivity[]>(
-    []
-  );
+  const [activities, setActivities] = useState<LeadActivity[]>([]);
 
-  const [activeTab, setActiveTab] =
-    useState<LeadDrawerTab>("summary");
+  const [activeTab, setActiveTab] = useState<LeadDrawerTab>("summary");
 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -178,7 +155,7 @@ export function LeadDrawer({
           setError(
             err instanceof Error
               ? err.message
-              : "Não foi possível carregar a ficha do lead."
+              : "Não foi possível carregar a ficha do lead.",
           );
         })
         .finally(() => {
@@ -235,9 +212,7 @@ export function LeadDrawer({
   }, [board, card]);
 
   const nextAction =
-    activities.find(
-      (activity) => activity.status !== "COMPLETED"
-    ) ?? null;
+    activities.find((activity) => activity.status !== "COMPLETED") ?? null;
 
   async function persistNotes(nextNotes: LeadNote[]) {
     if (!lead) {
@@ -258,16 +233,14 @@ export function LeadDrawer({
       setError(
         err instanceof Error
           ? err.message
-          : "Não foi possível salvar observações."
+          : "Não foi possível salvar observações.",
       );
     } finally {
       setSaving(false);
     }
   }
 
-  async function createActivity(
-    data: LeadActivityFormData
-  ) {
+  async function createActivity(data: LeadActivityFormData) {
     if (!lead) {
       return;
     }
@@ -276,23 +249,18 @@ export function LeadDrawer({
     setError("");
 
     try {
-      const created = await createLead360Activity(
-        lead.id,
-        data
-      );
+      const created = await createLead360Activity(lead.id, data);
 
       setActivities((current) =>
         [...current, created].sort(
-          (a, b) =>
-            new Date(a.dueAt).getTime() -
-            new Date(b.dueAt).getTime()
-        )
+          (a, b) => new Date(a.dueAt).getTime() - new Date(b.dueAt).getTime(),
+        ),
       );
     } catch (err) {
       setError(
         err instanceof Error
           ? err.message
-          : "Não foi possível criar atividade."
+          : "Não foi possível criar atividade.",
       );
     } finally {
       setSaving(false);
@@ -315,7 +283,7 @@ export function LeadDrawer({
       setError(
         err instanceof Error
           ? err.message
-          : "Não foi possível arquivar o lead."
+          : "Não foi possível arquivar o lead.",
       );
     } finally {
       setSaving(false);
@@ -327,10 +295,7 @@ export function LeadDrawer({
   }
 
   return (
-    <div
-      className="fixed inset-0 z-40"
-      aria-label="Área da ficha do lead"
-    >
+    <div className="fixed inset-0 z-40" aria-label="Área da ficha do lead">
       <button
         type="button"
         aria-label="Fechar ficha clicando fora"
@@ -343,9 +308,7 @@ export function LeadDrawer({
       <aside
         aria-label="Ficha completa do cliente"
         className={`absolute right-0 top-0 flex h-screen w-full max-w-3xl flex-col border-l border-slate-800 bg-slate-950 shadow-2xl transition-transform duration-200 ease-out ${
-          isClosing
-            ? "translate-x-full"
-            : "translate-x-0"
+          isClosing ? "translate-x-full" : "translate-x-0"
         }`}
       >
         <LeadHeader
@@ -353,9 +316,7 @@ export function LeadDrawer({
           lead={lead}
           archiving={saving}
           onArchive={() => void archiveLead()}
-          onEdit={
-            lead ? () => onEdit?.(lead) : undefined
-          }
+          onEdit={lead ? () => onEdit?.(lead) : undefined}
           onClose={requestClose}
         />
 
@@ -429,9 +390,9 @@ export function LeadDrawer({
 
                           <p className="mt-1 text-sm text-slate-400">
                             {nextAction
-                              ? new Date(
-                                  nextAction.dueAt
-                                ).toLocaleString("pt-BR")
+                              ? new Date(nextAction.dueAt).toLocaleString(
+                                  "pt-BR",
+                                )
                               : "Nenhuma atividade pendente cadastrada."}
                           </p>
                         </div>
@@ -472,36 +433,26 @@ export function LeadDrawer({
                   </div>
                 )}
 
-                {activeTab === "timeline" && (
-                  <LeadTimeline items={timeline} />
-                )}
+                {activeTab === "timeline" && <LeadTimeline items={timeline} />}
 
                 {activeTab === "notes" && (
                   <LeadNotes
                     notes={notes}
                     saving={saving}
-                    onChange={(nextNotes) =>
-                      void persistNotes(nextNotes)
-                    }
+                    onChange={(nextNotes) => void persistNotes(nextNotes)}
                   />
                 )}
 
                 {activeTab === "activities" && (
                   <LeadActivities
                     activities={activities}
-                    responsibleUserId={
-                      lead.assignedUserId
-                    }
+                    responsibleUserId={lead.assignedUserId}
                     saving={saving}
-                    onCreate={(data) =>
-                      void createActivity(data)
-                    }
+                    onCreate={(data) => void createActivity(data)}
                   />
                 )}
 
-                {activeTab === "history" && (
-                  <LeadHistory stages={history} />
-                )}
+                {activeTab === "history" && <LeadHistory stages={history} />}
               </>
             )}
           </div>
