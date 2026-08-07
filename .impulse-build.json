@@ -1,8 +1,8 @@
 {
-  "commit": "79a927f26c6f027ab57f08b6b5ddd588f6a79cb7",
-  "branch": "recovery/frontend-enterprise",
-  "buildDate": "2026-08-07T04:58:55.158Z",
-  "buildId": "79a927f26c6f-msih5w6u-6bac0007",
+  "commit": "08522f24b6552f8d5831b7016fe41155427b5d07",
+  "branch": "backup/2026-08-07-estavel",
+  "buildDate": "2026-08-07T07:20:15.657Z",
+  "buildId": "08522f24b655-msim7ns9-2b66e55a",
   "frontendVersion": "0.1.0",
   "backendVersion": "1.0.0"
 }

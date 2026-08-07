@@ -21,6 +21,7 @@ import SmartphoneMockup from "@/components/ui/crm/SmartphoneMockup";
 import { VariableMapping } from "@/services/campaigns.service";
 import { WhatsappTemplate } from "@/types/templates";
 import { initialPreviewState, previewReducer } from "./campaign-preview-state";
+import { parseTemplate } from "@/src/lib/whatsapp/template-parser";
 
 export type PreviewRecipient = {
   phone: string;
@@ -63,30 +64,55 @@ export function renderTemplateText(
   );
 }
 
-function MediaHeader({ type, name }: { type: string; name: string }) {
+function MediaHeader({
+  type,
+  name,
+  url,
+}: {
+  type: string;
+  name: string;
+  url?: string;
+}) {
   const cls =
-    "mb-3 grid min-h-32 place-items-center rounded-xl border border-black/5 bg-slate-200/80 text-slate-600";
-  if (type === "IMAGE")
+    "mb-3 overflow-hidden rounded-xl border border-black/5 bg-slate-200/80 text-slate-600";
+
+  if (type === "IMAGE") {
+    if (url) {
+      return (
+        <div className={cls}>
+          <img
+            src={url}
+            alt={name || "Imagem do template"}
+            className="max-h-72 w-full object-cover"
+          />
+        </div>
+      );
+    }
+
     return (
-      <div className={cls}>
+      <div className={`${cls} grid min-h-32 place-items-center`}>
         <ImageIcon />
         <span className="text-xs">{name || "Imagem indisponível"}</span>
       </div>
     );
+  }
+
   if (type === "VIDEO")
     return (
-      <div className={cls}>
+      <div className={`${cls} grid min-h-32 place-items-center`}>
         <Video />
         <span className="text-xs">{name || "Vídeo indisponível"}</span>
       </div>
     );
+
   if (type === "DOCUMENT")
     return (
-      <div className={cls}>
+      <div className={`${cls} grid min-h-32 place-items-center`}>
         <FileText />
         <span className="text-xs">{name || "Documento indisponível"}</span>
       </div>
     );
+
   return null;
 }
 
@@ -116,6 +142,11 @@ export default function CampaignMessagePreview({
     initialPreviewState,
   );
   const recipient = useMemo(() => ({ phone, name, row }), [phone, name, row]);
+  const parsed = useMemo(() => {
+  if (!template?.components) return null;
+
+  return parseTemplate(template.components as any);
+}, [template]);
   const summary = template
     ? `${template.displayName} (${template.language}) — ${renderTemplateText(template.body, "BODY", mappings, recipient)}`
     : "Nenhum template selecionado";
@@ -228,7 +259,15 @@ export default function CampaignMessagePreview({
                 </div>
               ) : (
                 <>
-                  <MediaHeader type={template.headerType} name={mediaName} />
+                  <MediaHeader
+  type={parsed?.header.type || template.headerType}
+  name={mediaName}
+  url={
+    parsed?.header.type === "IMAGE"
+      ? parsed.header.url
+      : undefined
+  }
+/>
                   {template.headerText && (
                     <strong className="mb-1 block">
                       {renderTemplateText(
@@ -240,37 +279,35 @@ export default function CampaignMessagePreview({
                     </strong>
                   )}
                   <p className="whitespace-pre-wrap break-words">
-                    {renderTemplateText(
-                      template.body,
-                      "BODY",
-                      mappings,
-                      recipient,
-                    )}
-                  </p>
+  {renderTemplateText(
+    parsed?.body || template.body,
+    "BODY",
+    mappings,
+    recipient,
+  )}
+</p>
                   {template.footer && (
                     <small className="mt-2 block opacity-60">
                       {template.footer}
                     </small>
                   )}
-                  {template.buttons?.map((button, index) => (
-                    <div
-                      className="mt-2 border-t border-current/10 pt-2 text-center font-medium text-blue-600"
-                      key={`${button.type}-${index}`}
-                    >
-                      {button.type === "PHONE_NUMBER" && (
-                        <Phone className="mr-1 inline" size={14} />
-                      )}{" "}
-                      {renderTemplateText(
-                        button.text ||
-                          button.url ||
-                          button.phoneNumber ||
-                          button.type,
-                        "BUTTON",
-                        mappings.filter((m) => m.buttonIndex === index),
-                        recipient,
-                      )}
-                    </div>
-                  ))}
+                  {(parsed?.buttons || template.buttons || []).map((button, index) => (
+  <div
+    className="mt-2 border-t border-current/10 pt-2 text-center font-medium text-blue-600"
+    key={`${button.type}-${index}`}
+  >
+    {button.type === "PHONE_NUMBER" && (
+      <Phone className="mr-1 inline" size={14} />
+    )}{" "}
+    {renderTemplateText(
+      button.text || button.url || button.type,
+      "BUTTON",
+      mappings.filter((m) => m.buttonIndex === index),
+      recipient,
+    )}
+  </div>
+))}
+                  
                   <span className="mt-1 flex justify-end gap-1 text-[10px] opacity-60">
                     10:30 <CheckCheck size={13} />
                   </span>

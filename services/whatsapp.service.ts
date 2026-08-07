@@ -62,12 +62,18 @@ class WhatsappService {
   }
 
   createManualAccount(data: ManualWhatsappAccountFormData) {
-    return api.post<WhatsappAccount>("/whatsapp/admin/accounts/manual", data);
+    return api.post<WhatsappAccount>(
+      "/whatsapp/admin/accounts/manual",
+      data,
+    );
   }
 
   updateAccount(
     id: string,
-    data: Pick<WhatsappAccountFormData, "name" | "phoneNumber" | "apiVersion">,
+    data: Pick<
+      WhatsappAccountFormData,
+      "name" | "phoneNumber" | "apiVersion"
+    >,
   ) {
     return api<WhatsappAccount>(`/whatsapp/accounts/${id}`, {
       method: "PATCH",
@@ -100,11 +106,41 @@ class WhatsappService {
   }
 
   testAccount(id: string) {
-    return api.post<WhatsappAccount>(`/whatsapp/accounts/${id}/test`, {});
+    return api.post<WhatsappAccount>(
+      `/whatsapp/accounts/${id}/test`,
+      {},
+    );
   }
 
   syncAccount(id: string) {
-    return api.post<WhatsappAccount>(`/whatsapp/accounts/${id}/sync`, {});
+    return api.post<WhatsappAccount>(
+      `/whatsapp/accounts/${id}/sync`,
+      {},
+    );
+  }
+
+  /**
+   * Envia um template de teste utilizando a API oficial da Meta.
+   */
+  sendTest(
+    accountId: string,
+    data: {
+      phone: string;
+      templateId: string;
+      components?: unknown[];
+    },
+  ) {
+    return api.post<{
+      success: boolean;
+      status: string;
+      phone: string;
+      templateId: string;
+      templateName: string;
+      externalMessageId: string;
+    }>(
+      `/whatsapp/accounts/${accountId}/send-test`,
+      data,
+    );
   }
 
   async deleteAccount(id: string) {

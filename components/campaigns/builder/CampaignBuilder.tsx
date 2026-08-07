@@ -131,6 +131,7 @@ export default function CampaignBuilder() {
   const [headerImageFile, setHeaderImageFile] = useState<File | null>(null);
   const [headerMediaId, setHeaderMediaId] = useState("");
   const [uploadingHeaderMedia, setUploadingHeaderMedia] = useState(false);
+  const [sendingTest, setSendingTest] = useState(false);
 
   /* =========================
    IMPORTAÇÃO DE ARQUIVOS
@@ -164,6 +165,167 @@ export default function CampaignBuilder() {
   const body = components.find((c) => c.type === "BODY");
   const footer = components.find((c) => c.type === "FOOTER");
   const buttons = components.find((c) => c.type === "BUTTONS");
+  const templateHeaderImageUrl =
+  header?.format === "IMAGE" &&
+  Array.isArray(header?.example?.header_handle)
+    ? header.example.header_handle[0] || ""
+    : "";
+    async function sendTestMessage() {
+  if (!accountId) {
+    toast.warning(
+      "Conta não selecionada",
+      "Selecione a conta oficial do WhatsApp.",
+    );
+    return;
+  }
+
+  if (!templateId || !selectedTemplate) {
+    toast.warning(
+      "Template não selecionado",
+      "Selecione um template aprovado.",
+    );
+    return;
+  }
+
+  const phoneInput = window.prompt(
+    "Digite o telefone que receberá o teste.\nExemplo: 5511999999999",
+    "",
+  );
+
+  if (phoneInput === null) {
+    return;
+  }
+
+  const phone = phoneInput.replace(/\D/g, "");
+
+  if (phone.length < 10) {
+    toast.warning(
+      "Telefone inválido",
+      "Informe o telefone com DDI e DDD. Exemplo: 5511999999999.",
+    );
+    return;
+  }
+
+  const testComponents: unknown[] = [];
+
+  /*
+   * HEADER
+   *
+   * Para o primeiro teste usamos a imagem oficial que veio
+   * sincronizada junto com o template da Meta.
+   */
+  if (header?.format === "IMAGE") {
+    if (!templateHeaderImageUrl) {
+      toast.warning(
+        "Imagem indisponível",
+        "O template possui cabeçalho de imagem, mas a imagem sincronizada não está disponível.",
+      );
+      return;
+    }
+
+    testComponents.push({
+      type: "header",
+      parameters: [
+        {
+          type: "image",
+          image: {
+            link: templateHeaderImageUrl,
+          },
+        },
+      ],
+    });
+  }
+
+  /*
+   * BODY
+   *
+   * Se o template possuir {{1}}, {{2}}, etc.,
+   * pedimos os valores apenas para este teste.
+   */
+  const bodyText = String(
+    body?.text || selectedTemplate.body || "",
+  );
+
+  const variableMatches = [
+    ...bodyText.matchAll(/{{\s*(\d+)\s*}}/g),
+  ];
+
+  const variableIndexes = [
+    ...new Set(
+      variableMatches.map((match) => Number(match[1])),
+    ),
+  ].sort((a, b) => a - b);
+
+  if (variableIndexes.length > 0) {
+    const parameters: Array<{
+      type: "text";
+      text: string;
+    }> = [];
+
+    for (const index of variableIndexes) {
+      const value = window.prompt(
+        `Digite o valor para {{${index}}}:`,
+        "",
+      );
+
+      if (value === null) {
+        return;
+      }
+
+      if (!value.trim()) {
+        toast.warning(
+          "Variável obrigatória",
+          `Informe um valor para {{${index}}}.`,
+        );
+        return;
+      }
+
+      parameters.push({
+        type: "text",
+        text: value.trim(),
+      });
+    }
+
+    testComponents.push({
+      type: "body",
+      parameters,
+    });
+  }
+
+  setSendingTest(true);
+
+  try {
+    const result = await whatsappService.sendTest(
+      accountId,
+      {
+        phone,
+        templateId,
+        components: testComponents,
+      },
+    );
+
+    toast.success(
+      "Teste enviado",
+      result.externalMessageId
+        ? `A Meta aceitou a mensagem. ID: ${result.externalMessageId}`
+        : "A Meta aceitou a mensagem para envio.",
+    );
+  } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Não foi possível enviar a mensagem de teste.";
+
+    console.error(error);
+
+    toast.error(
+      "Erro ao enviar teste",
+      message,
+    );
+  } finally {
+    setSendingTest(false);
+  }
+}
 
   useEffect(() => {
     let active = true;
@@ -782,17 +944,18 @@ export default function CampaignBuilder() {
                         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-[#efeae2] px-3 py-4">
                           <div className="ml-auto w-[94%] overflow-hidden rounded-xl rounded-tr-sm bg-[#d9fdd3] shadow-sm">
                             {header?.format === "IMAGE" &&
-                              (headerImageUrl ? (
-                                <img
-                                  src={headerImageUrl}
-                                  alt="Prévia da imagem do cabeçalho"
-                                  className="aspect-[4/3] w-full object-cover"
-                                />
-                              ) : (
-                                <div className="flex aspect-[4/3] items-center justify-center bg-slate-200 px-3 text-center text-xs text-slate-500">
-                                  Selecione a imagem do cabeçalho
-                                </div>
-                              ))}
+  (headerImageUrl || templateHeaderImageUrl ? (
+    <img
+      src={headerImageUrl || templateHeaderImageUrl}
+      alt="Prévia da imagem do cabeçalho"
+      className="aspect-[4/3] w-full object-cover"
+    />
+  ) : (
+    <div className="flex aspect-[4/3] items-center justify-center bg-slate-200 px-3 text-center text-xs text-slate-500">
+      Imagem do template indisponível
+    </div>
+  ))}
+                              
 
                             {header?.format === "TEXT" && (
                               <div className="px-3 pt-3 text-xs font-semibold text-slate-900">
@@ -1388,89 +1551,101 @@ export default function CampaignBuilder() {
           </dl>
 
           <div className="mt-6 space-y-2">
-            <Button
-              variant="secondary"
-              className="w-full"
-              onClick={saveDraft}
-              disabled={!readyToSave || saving}
-            >
-              <Save size={17} />
-              {saving ? "Salvando..." : "Salvar rascunho"}
-            </Button>
+  <Button
+    variant="secondary"
+    className="w-full"
+    onClick={() => void sendTestMessage()}
+    disabled={!accountId || !templateId || sendingTest}
+  >
+    <Send size={17} />
+    {sendingTest ? "Enviando teste..." : "Enviar teste"}
+  </Button>
 
-            <Button
-              className="w-full"
-              disabled={!readyToSend || uploadingHeaderMedia || saving}
-              onClick={async () => {
-                try {
-                  if (!campaignId) {
-                    toast.warning(
-                      "Campanha não salva",
-                      "Salve o rascunho antes de iniciar a campanha.",
-                    );
-                    return;
-                  }
+  <Button
+    variant="secondary"
+    className="w-full"
+    onClick={saveDraft}
+    disabled={!readyToSave || saving}
+  >
+    <Save size={17} />
+    {saving ? "Salvando..." : "Salvar rascunho"}
+  </Button>
 
-                  if (!headerImageFile && !headerMediaId) {
-                    toast.warning(
-                      "Imagem obrigatória",
-                      "Selecione a imagem do cabeçalho antes de iniciar.",
-                    );
-                    return;
-                  }
+  <Button
+    className="w-full"
+    disabled={!readyToSend || uploadingHeaderMedia || saving}
+    onClick={async () => {
+      try {
+        if (!campaignId) {
+          toast.warning(
+            "Campanha não salva",
+            "Salve o rascunho antes de iniciar a campanha.",
+          );
+          return;
+        }
 
-                  let mediaId = headerMediaId;
+        if (!headerImageFile && !headerMediaId) {
+          toast.warning(
+            "Imagem obrigatória",
+            "Selecione a imagem do cabeçalho antes de iniciar.",
+          );
+          return;
+        }
 
-                  if (!mediaId && headerImageFile) {
-                    setUploadingHeaderMedia(true);
+        let mediaId = headerMediaId;
 
-                    const uploadedMedia = await campaignsService.uploadMedia(
-                      campaignId,
-                      headerImageFile,
-                    );
+        if (!mediaId && headerImageFile) {
+          setUploadingHeaderMedia(true);
 
-                    mediaId = uploadedMedia.mediaId;
-                    setHeaderMediaId(mediaId);
-                  }
+          const uploadedMedia = await campaignsService.uploadMedia(
+            campaignId,
+            headerImageFile,
+          );
 
-                  if (!mediaId) {
-                    throw new Error(
-                      "A Meta não retornou o Media ID da imagem.",
-                    );
-                  }
+          mediaId = uploadedMedia.mediaId;
+          setHeaderMediaId(mediaId);
+        }
 
-                  const result = await campaignsService.startCampaign(
-                    campaignId,
-                    {
-                      headerMediaId: mediaId,
-                    },
-                  );
+        if (!mediaId) {
+          throw new Error(
+            "A Meta não retornou o Media ID da imagem.",
+          );
+        }
 
-                  toast.success(
-                    "Campanha iniciada",
-                    `${result.queued} mensagem(ns) foram adicionadas à fila.`,
-                  );
-                } catch (error) {
-                  const message =
-                    error instanceof Error
-                      ? error.message
-                      : "Não foi possível iniciar a campanha.";
+        const result = await campaignsService.startCampaign(
+          campaignId,
+          {
+            headerMediaId: mediaId,
+          },
+        );
 
-                  console.error(error);
-                  toast.error("Erro ao iniciar campanha", message);
-                } finally {
-                  setUploadingHeaderMedia(false);
-                }
-              }}
-            >
-              <Send size={17} />
-              {uploadingHeaderMedia
-                ? "Enviando imagem..."
-                : sendMode === "NOW"
-                  ? "Iniciar campanha"
-                  : "Agendar campanha"}
-            </Button>
-          </div>
+        toast.success(
+          "Campanha iniciada",
+          `${result.queued} mensagem(ns) foram adicionadas à fila.`,
+        );
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Não foi possível iniciar a campanha.";
+
+        console.error(error);
+        toast.error("Erro ao iniciar campanha", message);
+      } finally {
+        setUploadingHeaderMedia(false);
+      }
+    }}
+  >
+    <Send size={17} />
+    {uploadingHeaderMedia
+      ? "Enviando imagem..."
+      : sendMode === "NOW"
+        ? "Iniciar campanha"
+        : "Agendar campanha"}
+  </Button>
+</div>
+
+                
 
           <p className="mt-4 text-xs leading-5 text-slate-400">
             Esta primeira entrega cria a nova experiência visual. As ações serão
