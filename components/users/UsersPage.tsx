@@ -86,12 +86,15 @@ export default function UsersPage({ mode }: { mode: "users" | "corretores" }) {
   const inFlight = useRef(false);
   useEffect(() => {
     const id = window.setTimeout(() => {
+      if (search === debounced) return;
+
+      setLoading(true);
       setDebounced(search);
       setPage(1);
-      setLoading(true);
     }, 350);
+
     return () => window.clearTimeout(id);
-  }, [search]);
+  }, [search, debounced]);
   const loadUsers = useCallback(
     async (force = false) => {
       await Promise.resolve();
@@ -108,13 +111,18 @@ export default function UsersPage({ mode }: { mode: "users" | "corretores" }) {
           role: (role || undefined) as UserRole | undefined,
           organizationId: organizationId || undefined,
         };
-        const [list, summary] = await Promise.all([
-          userService.getAll(query),
-          userService.getMetrics({
+        const list = await userService.getAll(query);
+
+        let summary = emptyMetrics;
+
+        if (!brokers) {
+          summary = await userService.getMetrics({
             organizationId: organizationId || undefined,
-          }),
-        ]);
+          });
+        }
+
         if (requestId !== requestSequence.current) return;
+
         setUsers(
           brokers
             ? list.items.filter((u) => ["CORRETOR", "BROKER"].includes(u.role))
@@ -122,7 +130,10 @@ export default function UsersPage({ mode }: { mode: "users" | "corretores" }) {
         );
         setPages(list.meta.totalPages || 1);
         setTotal(list.meta.total);
-        setMetrics(summary);
+
+        if (!brokers) {
+          setMetrics(summary);
+        }
       } catch (e) {
         if (requestId === requestSequence.current)
           setError(
