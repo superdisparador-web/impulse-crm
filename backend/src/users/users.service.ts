@@ -20,12 +20,14 @@ const userSelect = {
   status: true,
   organizationId: true,
   organization: { select: { id: true, name: true } },
+  managerId: true,
+  manager: { select: { id: true, name: true, email: true } },
   createdAt: true,
   updatedAt: true,
   deletedAt: true,
 } satisfies Prisma.UserSelect;
 
-type UserPayload = { name?: string; email?: string; password?: string; phone?: string | null; role?: Role; active?: boolean; status?: UserStatus; organizationId?: string | null };
+type UserPayload = { name?: string; email?: string; password?: string; phone?: string | null; role?: Role; active?: boolean; status?: UserStatus; organizationId?: string | null; managerId?: string | null };
 
 @Injectable()
 export class UsersService {
@@ -36,9 +38,30 @@ export class UsersService {
     const page = query.page ?? 1;
     const limit = query.limit ?? 10;
     const search = query.search?.trim();
+    const isSuperintendent =
+      actor.role === Role.ADMIN || actor.role === Role.ORG_ADMIN;
+
+    const isManager = actor.role === Role.MANAGER;
+    const isBroker =
+      actor.role === Role.BROKER || actor.role === Role.CORRETOR;
+
+    const scope: Prisma.UserWhereInput = actor.global
+      ? (query.organizationId ? { organizationId: query.organizationId } : {})
+      : isSuperintendent
+        ? { organizationId: actor.organizationId }
+        : isManager
+          ? {
+              organizationId: actor.organizationId,
+              managerId: actor.id,
+              role: { in: [Role.BROKER, Role.CORRETOR] },
+            }
+          : isBroker
+            ? { id: actor.id }
+            : { organizationId: actor.organizationId };
+
     const where: Prisma.UserWhereInput = {
       deletedAt: null,
-      ...(actor.global ? (query.organizationId ? { organizationId: query.organizationId } : {}) : { organizationId: actor.organizationId }),
+      ...scope,
       ...(search ? { OR: [{ name: { contains: search, mode: 'insensitive' } }, { email: { contains: search.toLowerCase(), mode: 'insensitive' } }] } : {}),
       ...(query.active !== undefined ? { status: query.active ? UserStatus.ACTIVE : { not: UserStatus.ACTIVE } } : {}),
       ...(query.role ? { role: query.role } : {}),
@@ -50,6 +73,97 @@ export class UsersService {
     ]);
 
     return { items, meta: { total, page, limit, totalPages: Math.max(1, Math.ceil(total / limit)) } };
+  }
+
+  async getMetrics(user?: AuthenticatedUserRef) {
+    const actor = await this.accessContext.resolve(user);
+
+    const isSuperintendent =
+      actor.role === Role.ADMIN || actor.role === Role.ORG_ADMIN;
+
+    const isManager = actor.role === Role.MANAGER;
+
+    const isBroker =
+      actor.role === Role.BROKER || actor.role === Role.CORRETOR;
+
+    const scope: Prisma.UserWhereInput = actor.global
+      ? {}
+      : isSuperintendent
+        ? { organizationId: actor.organizationId }
+        : isManager
+          ? {
+              organizationId: actor.organizationId,
+              managerId: actor.id,
+              role: { in: [Role.BROKER, Role.CORRETOR] },
+            }
+          : isBroker
+            ? { id: actor.id }
+            : { organizationId: actor.organizationId };
+
+    const base: Prisma.UserWhereInput = {
+      deletedAt: null,
+      ...scope,
+    };
+
+    const [
+      total,
+      active,
+      inactive,
+      administrators,
+      managers,
+      brokers,
+    ] = await this.prisma.$transaction([
+      this.prisma.user.count({ where: base }),
+
+      this.prisma.user.count({
+        where: { ...base, status: UserStatus.ACTIVE },
+      }),
+
+      this.prisma.user.count({
+        where: {
+          ...base,
+          status: { not: UserStatus.ACTIVE },
+        },
+      }),
+
+      this.prisma.user.count({
+        where: {
+          ...base,
+          role: {
+            in: [
+              Role.ADMIN,
+              Role.GLOBAL_ADMIN,
+              Role.ORG_ADMIN,
+            ],
+          },
+        },
+      }),
+
+      this.prisma.user.count({
+        where: {
+          ...base,
+          role: Role.MANAGER,
+        },
+      }),
+
+      this.prisma.user.count({
+        where: {
+          ...base,
+          role: {
+            in: [Role.BROKER, Role.CORRETOR],
+          },
+        },
+      }),
+    ]);
+
+    return {
+      total,
+      active,
+      inactive,
+      administrators,
+      managers,
+      brokers,
+    };
   }
 
   async findOne(id: string, user?: AuthenticatedUserRef) {
@@ -76,7 +190,10 @@ export class UsersService {
     await this.ensureEmailAvailable(payload.email!);
     if (!payload.organizationId && payload.role !== Role.ADMIN && payload.role !== Role.GLOBAL_ADMIN) throw new BadRequestException('Usuário deve pertencer a uma organização');
     if (payload.organizationId) await this.ensureOrganization(payload.organizationId);
-    const created = await this.prisma.user.create({ data: payload as Prisma.UserCreateInput, select: userSelect });
+    const created = await this.prisma.user.create({
+      data: payload as Prisma.UserUncheckedCreateInput,
+      select: userSelect,
+    });
     await this.syncUserRole(created.id, created.role, created.organizationId);
     await this.recordAudit('user.created', actor.id, created.organizationId, created.id, undefined, this.auditSnapshot(created));
     return created;
@@ -154,22 +271,99 @@ export class UsersService {
     if ('password' in data && data.password) payload.password = data.password.startsWith('$2') ? data.password : await this.passwords.hash(data.password);
     if (!partial && payload.active === undefined) { payload.active = true; payload.status = UserStatus.ACTIVE; }
 
-    const requestedRole = 'role' in data && data.role ? data.role as Role : undefined;
-    if (actor.global) payload.role = requestedRole ?? (partial ? undefined : Role.CORRETOR);
-    else if (!partial) payload.role = Role.CORRETOR;
-    else if (requestedRole && requestedRole !== target?.role) throw new ForbiddenException('Não é permitido alterar papel de usuário');
+    const requestedRole =
+      'role' in data && data.role ? (data.role as Role) : undefined;
 
-    if (actor.global) {
-      if ('organizationId' in data && data.organizationId !== undefined) payload.organizationId = data.organizationId || null;
-      else if (!partial) payload.organizationId = requestedRole === Role.ADMIN || requestedRole === Role.GLOBAL_ADMIN ? null : undefined;
+    const isSuperintendent =
+      actor.role === Role.ADMIN || actor.role === Role.ORG_ADMIN;
+
+    const isManager = actor.role === Role.MANAGER;
+
+    if (!partial) {
+      if (actor.global) {
+        payload.role = requestedRole ?? Role.ORG_ADMIN;
+
+        if ('organizationId' in data && data.organizationId !== undefined) {
+          payload.organizationId = data.organizationId || null;
+        } else {
+          payload.organizationId =
+            payload.role === Role.ADMIN || payload.role === Role.GLOBAL_ADMIN
+              ? null
+              : undefined;
+        }
+      } else if (isSuperintendent) {
+        if (requestedRole && requestedRole !== Role.MANAGER) {
+          throw new ForbiddenException(
+            'Superintendente pode criar apenas gerentes',
+          );
+        }
+
+        payload.role = Role.MANAGER;
+        payload.organizationId = actor.organizationId;
+        payload.managerId = null;
+      } else if (isManager) {
+        if (
+          requestedRole &&
+          requestedRole !== Role.BROKER &&
+          requestedRole !== Role.CORRETOR
+        ) {
+          throw new ForbiddenException(
+            'Gerente pode criar apenas corretores',
+          );
+        }
+
+        payload.role = Role.BROKER;
+        payload.organizationId = actor.organizationId;
+        payload.managerId = actor.id;
+      } else {
+        throw new ForbiddenException(
+          'Seu perfil não pode criar usuários',
+        );
+      }
     } else {
-      if (!partial) payload.organizationId = actor.organizationId;
+      if (
+        requestedRole &&
+        requestedRole !== target?.role &&
+        !actor.global
+      ) {
+        throw new ForbiddenException(
+          'Não é permitido alterar papel de usuário',
+        );
+      }
+
+      if (actor.global && requestedRole) {
+        payload.role = requestedRole;
+      }
     }
+
     return payload;
   }
 
   private ensureCanRead(actor: AccessContext, target: Prisma.UserGetPayload<{ select: typeof userSelect }>) {
-    if (actor.global || target.id === actor.id || (actor.permissions.includes('users:read') && target.organizationId === actor.organizationId)) return;
+    if (actor.global || target.id === actor.id) return;
+
+    const sameOrganization =
+      target.organizationId === actor.organizationId;
+
+    if (!sameOrganization) {
+      throw new NotFoundException('Usuário não encontrado');
+    }
+
+    if (
+      actor.role === Role.ADMIN ||
+      actor.role === Role.ORG_ADMIN
+    ) {
+      return;
+    }
+
+    if (
+      actor.role === Role.MANAGER &&
+      target.managerId === actor.id &&
+      (target.role === Role.BROKER || target.role === Role.CORRETOR)
+    ) {
+      return;
+    }
+
     throw new NotFoundException('Usuário não encontrado');
   }
 
@@ -180,7 +374,26 @@ export class UsersService {
 
   private ensureCanManageTarget(actor: AccessContext, target: Prisma.UserGetPayload<{ select: typeof userSelect }>) {
     if (actor.global) return;
-    if (target.organizationId === actor.organizationId) return;
+
+    if (target.organizationId !== actor.organizationId) {
+      throw new NotFoundException('Usuário não encontrado');
+    }
+
+    if (
+      actor.role === Role.ADMIN ||
+      actor.role === Role.ORG_ADMIN
+    ) {
+      return;
+    }
+
+    if (
+      actor.role === Role.MANAGER &&
+      target.managerId === actor.id &&
+      (target.role === Role.BROKER || target.role === Role.CORRETOR)
+    ) {
+      return;
+    }
+
     throw new NotFoundException('Usuário não encontrado');
   }
 

@@ -22,8 +22,13 @@ export class MetaEmbeddedSignupService {
   async signupConfiguration(user:AuthenticatedUserRef,accountId?:string){ const ctx=await this.context(user); if(accountId){ const found=await this.prisma.whatsappAccount.findFirst({where:{id:accountId,organizationId:ctx.organizationId!,deletedAt:null}}); if(!found) throw new BadRequestException('Conta WhatsApp não encontrada'); } const cfg=this.config(); return {appId:cfg.appId,configId:cfg.configId,apiVersion:cfg.apiVersion,state:this.encode({organizationId:ctx.organizationId!,userId:ctx.id,accountId,nonce:randomBytes(18).toString('hex'),exp:Date.now()+10*60_000},cfg.secret)}; }
 
   async createSession(dto:StartEmbeddedSignupDto,user:AuthenticatedUserRef){
-    const allowedOrigin=new URL(process.env.FRONTEND_URL||dto.returnUrl).origin, returnUrl=new URL(dto.returnUrl);
-    if(returnUrl.origin!==allowedOrigin) throw new BadRequestException('META_REDIRECT_URI_INVALID');
+    const frontendUrl = process.env.FRONTEND_URL;
+    if (!frontendUrl) {
+      throw new BadRequestException('FRONTEND_URL_NOT_CONFIGURED');
+    }
+
+    const returnUrl = new URL('/whatsapp', frontendUrl);
+
     const configuration=await this.signupConfiguration(user,dto.accountId), expiresAt=new Date(Date.now()+10*60_000).toISOString();
     const params=new URLSearchParams({client_id:configuration.appId,config_id:configuration.configId,redirect_uri:returnUrl.toString(),response_type:'code',override_default_response_type:'true',state:configuration.state});
     return {authorizationUrl:`https://www.facebook.com/${configuration.apiVersion}/dialog/oauth?${params}`,expiresAt};
