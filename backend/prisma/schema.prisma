@@ -2439,3 +2439,47 @@ model WhatsappMetric {
   @@index([organizationId, whatsappAccountId, bucketStart])
   @@map("whatsapp_metrics")
 }
+
+enum IncomeParameterTableStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+model IncomeParameterTable {
+  id          String                     @id @default(cuid())
+  name        String
+  description String?
+  year        Int
+  validFrom   DateTime                   @db.Date
+  validUntil  DateTime?                  @db.Date
+  status      IncomeParameterTableStatus @default(DRAFT)
+  createdAt   DateTime                   @default(now())
+  updatedAt   DateTime                   @updatedAt
+  rows        IncomeParameterRow[]
+
+  @@map("income_parameter_tables")
+}
+
+model IncomeParameterRow {
+  id                      String               @id @default(cuid())
+  tableId                 String
+  income                  Decimal              @db.Decimal(18, 2)
+  firstInstallment        Decimal              @db.Decimal(18, 2)
+  rateWithoutReducer      Decimal              @db.Decimal(10, 6)
+  financingWithoutReducer Decimal              @db.Decimal(18, 2)
+  rateWithReducer         Decimal              @db.Decimal(10, 6)
+  financingWithReducer    Decimal              @db.Decimal(18, 2)
+  subsidyWithDependent    Decimal              @db.Decimal(18, 2)
+  subsidyWithoutDependent Decimal              @db.Decimal(18, 2)
+  maxPropertyValue        Decimal              @db.Decimal(18, 2)
+  incomeBand              String
+  housingCategory         String
+  createdAt               DateTime             @default(now())
+  table                   IncomeParameterTable @relation(fields: [tableId], references: [id], onDelete: Cascade)
+
+  @@index([tableId])
+  @@index([income])
+  @@index([tableId, income])
+  @@map("income_parameter_rows")
+}
