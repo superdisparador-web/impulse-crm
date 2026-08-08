@@ -1140,6 +1140,7 @@ enum WhatsappTemplateStatus {
   PENDING
   APPROVED
   REJECTED
+  PAUSED
   DISABLED
 }
 
